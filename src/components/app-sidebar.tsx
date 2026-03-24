@@ -39,8 +39,11 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="px-4 py-5">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-ocean text-white font-bold text-sm">
-            S
+          <div className="flex size-8 items-center justify-center rounded-lg bg-ocean/10">
+            <svg viewBox="0 0 24 24" fill="none" className="size-5 text-ocean" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 3C7 3 3 7 3 12s4 9 9 9 9-4 9-9" strokeLinecap="round" />
+              <path d="M21 12c-2 0-4 1.5-6 1.5S11 12 9 12s-4 1.5-6 1.5" strokeLinecap="round" />
+            </svg>
           </div>
           <span className="text-lg font-semibold tracking-tight text-ocean-deep">
             SkyeSearch

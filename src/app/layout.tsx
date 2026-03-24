@@ -25,8 +25,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistMono.variable} h-full antialiased`}
-      style={{ fontFamily: "'Plus Jakarta Sans Variable', sans-serif" }}
+      className={`${geistMono.variable} h-full antialiased font-sans`}
     >
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
