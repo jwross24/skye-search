@@ -134,10 +134,45 @@ When working in a swarm (multiple agents via NTM):
 8. Advance: `bv --robot-next` to pick next bead
 
 ### Beads & BV
-- `br list --status open --json` — see all open beads
+- `br list --limit 0 --json` — all open beads (default limit is 50, always override)
+- `br show <id>` — full bead state. **Read before modifying** — `br list` omits comments and truncates descriptions.
+- `br update <id> --description "..."` — REPLACES entire description
+- `br dep add <issue> <depends-on>` — add blocking dependency
 - `bv --robot-next` — highest-priority unblocked bead
 - `bv --robot-plan` — parallel execution tracks
 - `bv --robot-triage` — full graph analysis with scores
+
+Bead descriptions are the single source of truth for specs, test plans, and acceptance criteria.
+
+## Session Memory (CASS + CM)
+
+Agents in this repo have access to two memory systems that improve over time:
+
+### CASS (Coding Agent Session Search)
+Search past coding sessions for solutions, patterns, and context.
+```
+cass search "<query>" --robot --limit 5    # Search past sessions
+cass context src/lib/urgency-scoring.ts    # Context for a specific file
+cass sessions --workspace "$(pwd)" --json  # Sessions in this project
+cass health --json                         # Health check (run if searches fail)
+```
+CASS indexes sessions automatically. If health check shows `stale: true`, run `cass index --full`.
+
+### CM (Procedural Memory)
+Retrieve and contribute to the project's learned rules.
+```
+cm context "<task>" --json                 # Get relevant rules before starting work
+cm mark <rule-id> helpful "Reason"         # Rule helped during this session
+cm mark <rule-id> unhelpful "Reason"       # Rule hurt or was misleading
+```
+
+**Agent workflow with CASS + CM:**
+1. **START**: Run `cm context "<task>" --json` before complex work — check relevantBullets and antiPatterns
+2. **SEARCH**: Use `cass search` when stuck — past sessions often have solutions
+3. **WORK**: Reference rule IDs in comments when following CM guidance: `// [cass: helpful b-xyz]`
+4. **END**: Mark rules that helped or hurt via `cm mark`
+
+Agents can create new rules in `.claude/rules/` when they discover patterns. Flag problematic rules for revision.
 
 ## Quality Standards
 - No AI writing patterns in user-facing text (use /humanizer skill)
