@@ -162,8 +162,8 @@ CASS indexes sessions automatically. If health check shows `stale: true`, run `c
 Retrieve and contribute to the project's learned rules.
 ```
 cm context "<task>" --json                 # Get relevant rules before starting work
-cm mark <rule-id> helpful "Reason"         # Rule helped during this session
-cm mark <rule-id> unhelpful "Reason"       # Rule hurt or was misleading
+cm mark <rule-id> --helpful --reason "..." --json   # Rule helped
+cm mark <rule-id> --harmful --reason "..." --json   # Rule hurt or misled
 ```
 
 **Agent workflow with CASS + CM:**
