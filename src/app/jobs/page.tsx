@@ -6,9 +6,9 @@ import type { UserState } from '@/lib/urgency-scoring'
 // Later: fetch from Supabase immigration_clock view.
 const userState: UserState = {
   days_remaining: 150 - seedImmigrationStatus.initial_days_used,
-  is_employed: false,
+  is_employed: seedImmigrationStatus.employment_active,
   offer_accepted_not_started: false,
-  employment_end_date: null,
+  employment_end_date: seedImmigrationStatus.postdoc_end_date,
   in_grace_period: false,
   today: new Date().toISOString().split('T')[0],
 }

@@ -13,6 +13,7 @@ interface JobRowProps {
   index: number
   onTrack: (index: number) => void
   isTracked: boolean
+  today: string
 }
 
 function formatDeadline(deadline: string | null, today: string): string | null {
@@ -50,9 +51,9 @@ function getImmigrationContext(job: SeedJob): string | null {
   return null
 }
 
-export function JobRow({ job, urgencyScore, index, onTrack, isTracked }: JobRowProps) {
+export function JobRow({ job, urgencyScore, index, onTrack, isTracked, today }: JobRowProps) {
   const [tracking, setTracking] = useState(false)
-  const deadline = formatDeadline(job.application_deadline, '2026-03-24')
+  const deadline = formatDeadline(job.application_deadline, today)
   const immigrationContext = getImmigrationContext(job)
 
   const handleTrack = async () => {

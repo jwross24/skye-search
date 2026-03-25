@@ -29,7 +29,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
   const batch = useMemo(() => {
     return jobs
       .map((job, originalIndex) => {
-        const result = computeUrgencyScore(seedJobToInput(job), userState)
+        const result = computeUrgencyScore(seedJobToInput(job, userState.today), userState)
         return { job, originalIndex, score: result.urgency_score }
       })
       .filter((item) => item.score >= 0)
@@ -151,6 +151,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
               index={originalIndex}
               onVote={handleVote}
               staggerIndex={i}
+              today={userState.today}
             />
           )
         })}

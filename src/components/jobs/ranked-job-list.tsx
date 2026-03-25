@@ -13,7 +13,7 @@ interface RankedJobListProps {
   trackedIndices?: Set<number>
 }
 
-function seedJobToInput(job: SeedJob): JobInput {
+function seedJobToInput(job: SeedJob, today: string): JobInput {
   return {
     visa_path: job.visa_path,
     employer_type: job.employer_type,
@@ -24,7 +24,7 @@ function seedJobToInput(job: SeedJob): JobInput {
     h1b_sponsor_count: job.h1b_sponsor_count,
     application_deadline: job.application_deadline,
     application_complexity: job.application_complexity,
-    indexed_date: '2026-03-24',
+    indexed_date: today,
   }
 }
 
@@ -36,7 +36,7 @@ export function RankedJobList({ jobs, userState, trackedIndices: initialTracked 
   const scoredJobs = useMemo(() => {
     return jobs
       .map((job, originalIndex) => {
-        const result = computeUrgencyScore(seedJobToInput(job), userState)
+        const result = computeUrgencyScore(seedJobToInput(job, userState.today), userState)
         return { job, originalIndex, score: result.urgency_score }
       })
       .filter((item) => {
@@ -116,6 +116,7 @@ export function RankedJobList({ jobs, userState, trackedIndices: initialTracked 
             index={originalIndex}
             onTrack={handleTrack}
             isTracked={tracked.has(originalIndex)}
+            today={userState.today}
           />
         ))}
       </div>

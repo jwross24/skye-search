@@ -198,11 +198,9 @@ export function computeUrgencyScore(
   ) {
     const daysUntilEnd = daysBetween(user.today, user.employment_end_date)
     if (daysUntilEnd > 0) {
-      const projectedRemaining = user.days_remaining - 0 // clock paused while employed
-      // After bridge ends, clock resumes. Projected days = current remaining
-      // (since clock is paused now). But if end_date is known, we're looking at
-      // how much runway she'll have after employment ends.
-      if (projectedRemaining < 75) {
+      // Clock is paused while employed — projected remaining equals current remaining.
+      // If end_date is known, this tells us how much runway she'll have after employment ends.
+      if (user.days_remaining < 75) {
         modifiers.push({ name: 'conversion_urgency', value: 0.05 })
       }
     }

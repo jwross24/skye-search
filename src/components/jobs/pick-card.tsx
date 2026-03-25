@@ -26,14 +26,15 @@ interface PickCardProps {
   index: number
   onVote: (index: number, decision: VoteDecision, tags?: DismissTag[]) => void
   staggerIndex: number
+  today: string
 }
 
-export function PickCard({ job, urgencyScore, index, onVote, staggerIndex }: PickCardProps) {
+export function PickCard({ job, urgencyScore, index, onVote, staggerIndex, today }: PickCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showTags, setShowTags] = useState(false)
 
   const immigrationContext = getImmigrationContext(job)
-  const deadline = formatDeadline(job.application_deadline, '2026-03-24')
+  const deadline = formatDeadline(job.application_deadline, today)
 
   const handleVote = (decision: VoteDecision) => {
     if (decision === 'not_for_me') {

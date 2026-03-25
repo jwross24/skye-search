@@ -30,6 +30,20 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 18. `br close <id> --reason "Completed"`
 19. `bv --robot-next` — advance
 
+## Every 3-5 beads: Cross-agent review
+
+After completing 3-5 beads, run a deep review pass before starting the next batch.
+Spin up a subagent with this prompt:
+
+> Pick 3-5 recently changed files, deeply investigate each one, trace execution
+> flows through imports and dependencies. Check for: bugs, type errors, missing
+> error handling, inconsistent patterns, broken imports, untested edge cases.
+> Run `/simplify` on changed code. Fix anything you find. Run `bun run verify`
+> after fixes.
+
+This mirrors the swarm-supervisor's cross-agent review (triggered every N beads).
+In single-agent mode, do it yourself between bead batches.
+
 ## What NOT to do
 
 - `br comments add` for lessons — closed beads are never read

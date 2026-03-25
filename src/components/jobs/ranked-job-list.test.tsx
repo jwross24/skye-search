@@ -37,7 +37,7 @@ describe('RankedJobList', () => {
     const scored = jobs
       .map((job, i) => ({
         index: i,
-        score: computeUrgencyScore(seedJobToInput(job), userState).urgency_score,
+        score: computeUrgencyScore(seedJobToInput(job, userState.today), userState).urgency_score,
       }))
       .filter((s) => s.score >= 0)
       .sort((a, b) => b.score - a.score)
@@ -188,7 +188,7 @@ describe('Scoring integration', () => {
     const expected = jobs
       .map((job, i) => ({
         index: i,
-        score: computeUrgencyScore(seedJobToInput(job), userState).urgency_score,
+        score: computeUrgencyScore(seedJobToInput(job, userState.today), userState).urgency_score,
       }))
       .filter((s) => s.score >= 0)
       .sort((a, b) => b.score - a.score)
