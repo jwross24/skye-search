@@ -48,3 +48,4 @@ next-env.d.ts
 !.claude/
 !.claude/**
 .claude/.verify-stamp
+.claude/settings.local.json
