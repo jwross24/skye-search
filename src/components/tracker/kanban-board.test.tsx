@@ -8,6 +8,14 @@ function log(step: string, detail: string) {
   process.stdout.write(`  [kanban test] ${step}: ${detail}\n`)
 }
 
+// ─── Server action mocks ──────────────────────────────────────────────────
+
+vi.mock('@/app/tracker/actions', () => ({
+  moveApplication: vi.fn().mockResolvedValue({ success: true }),
+  updateApplicationNotes: vi.fn().mockResolvedValue({ success: true }),
+  captureRejection: vi.fn().mockResolvedValue({ success: true }),
+}))
+
 // ─── Mobile mock ──────────────────────────────────────────────────────────
 
 let mockIsMobile = false

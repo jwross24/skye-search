@@ -1,51 +1,90 @@
-import { KanbanBoard, type TrackedApplication } from '@/components/tracker/kanban-board'
-import { seedJobs } from '@/db/seed'
+import { redirect } from 'next/navigation'
+import { KanbanBoard, type TrackedApplication, type KanbanStatus } from '@/components/tracker/kanban-board'
+import { createClient } from '@/db/supabase-server'
+import type { SeedJob } from '@/db/seed'
 
-function makeAppId(job: typeof seedJobs[number], index: number): string {
-  // Use domain + title slug for uniqueness (multiple jobs can share a domain)
-  const base = `${job.company_domain ?? job.company}-${job.title}`
-  return `app-${base}-${index}`.replace(/[^a-z0-9-]/gi, '-').replace(/-+/g, '-').toLowerCase()
-}
+export default async function TrackerPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-function buildSeedApplications(): TrackedApplication[] {
-  const apps: TrackedApplication[] = []
-  let idx = 0
+  if (!user) redirect('/login')
 
-  for (const job of seedJobs) {
-    if (job.pre_applied) {
-      apps.push({
-        id: makeAppId(job, idx++),
+  // ─── Query applications with joined job data ──────────────────────────
+
+  const { data: rows } = await supabase
+    .from('applications')
+    .select(`
+      id,
+      kanban_status,
+      notes,
+      contacts,
+      applied_date,
+      rejection_type,
+      created_at,
+      jobs (
+        title,
+        company,
+        company_domain,
+        location,
+        url,
+        visa_path,
+        employer_type,
+        cap_exempt_confidence,
+        employment_type,
+        source_type,
+        application_deadline,
+        deadline_source,
+        application_complexity,
+        h1b_sponsor_count,
+        salary,
+        remote_status,
+        skills_required,
+        why_fits
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  // ─── Map DB rows to TrackedApplication[] ───────────────────────────────
+
+  const applications: TrackedApplication[] = (rows ?? [])
+    .filter((row) => row.jobs) // skip orphaned applications
+    .map((row) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const j = row.jobs as any
+      const job: SeedJob = {
+        title: j.title ?? '',
+        company: j.company ?? '',
+        company_domain: j.company_domain ?? null,
+        location: j.location ?? '',
+        url: j.url ?? null,
+        visa_path: j.visa_path ?? 'unknown',
+        employer_type: j.employer_type ?? 'unknown',
+        cap_exempt_confidence: j.cap_exempt_confidence ?? 'none',
+        employment_type: j.employment_type ?? 'unknown',
+        source_type: j.source_type ?? 'academic',
+        application_deadline: j.application_deadline ?? null,
+        deadline_source: j.deadline_source ?? null,
+        application_complexity: j.application_complexity ?? null,
+        h1b_sponsor_count: j.h1b_sponsor_count ?? null,
+        salary: j.salary ?? null,
+        remote_status: j.remote_status ?? null,
+        skills_required: j.skills_required ?? [],
+        why_fits: j.why_fits ?? '',
+      }
+
+      return {
+        id: row.id,
         job,
-        status: 'applied',
-        dateAdded: job.pre_applied_date ?? '2026-03-24',
-        notes: '',
+        status: row.kanban_status as KanbanStatus,
+        dateAdded: row.applied_date ?? row.created_at?.split('T')[0] ?? '',
+        notes: row.notes ?? '',
         nextAction: '',
         nextActionDate: '',
-        contacts: [],
-      })
-    }
-  }
-
-  // Add a couple of "interested" jobs for richer seed data
-  const interestedJobs = seedJobs.filter((j) => !j.pre_applied).slice(0, 3)
-  for (const job of interestedJobs) {
-    apps.push({
-      id: makeAppId(job, idx++),
-      job,
-      status: 'interested',
-      dateAdded: '2026-03-25',
-      notes: '',
-      nextAction: '',
-      nextActionDate: '',
-      contacts: [],
+        contacts: (row.contacts as { name: string; email: string; role: string }[]) ?? [],
+        rejectionType: row.rejection_type as TrackedApplication['rejectionType'],
+      }
     })
-  }
-
-  return apps
-}
-
-export default function TrackerPage() {
-  const applications = buildSeedApplications()
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

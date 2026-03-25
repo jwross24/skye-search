@@ -8,6 +8,7 @@ import { CardDetail } from './card-detail'
 import { RejectionCapture } from './rejection-capture'
 import { OfferVerification } from './offer-verification'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection } from '@/app/tracker/actions'
 import type { SeedJob } from '@/db/seed'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -89,33 +90,48 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       setPendingOffer(appId)
       return
     }
+    // Optimistic update + persist
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, status: newStatus } : app)),
     )
+    moveApplicationAction(appId, newStatus)
   }
 
   const confirmReject = (appId: string, rejectionType?: RejectionType) => {
+    // Optimistic update + persist
     setApplications((prev) =>
       prev.map((app) =>
         app.id === appId ? { ...app, status: 'rejected' as KanbanStatus, rejectionType } : app,
       ),
     )
     setPendingReject(null)
+    captureRejection(appId, rejectionType ?? 'ghosted')
   }
 
   const confirmOffer = (appId: string) => {
+    // Optimistic update + persist
     setApplications((prev) =>
       prev.map((app) =>
         app.id === appId ? { ...app, status: 'offer' as KanbanStatus, offerVerified: true } : app,
       ),
     )
     setPendingOffer(null)
+    moveApplicationAction(appId, 'offer')
   }
 
   const updateApplication = (appId: string, updates: Partial<TrackedApplication>) => {
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, ...updates } : app)),
     )
+    if (updates.notes !== undefined || updates.nextAction !== undefined || updates.nextActionDate !== undefined) {
+      const app = applications.find((a) => a.id === appId)
+      updateApplicationNotes(
+        appId,
+        updates.notes ?? app?.notes ?? '',
+        updates.nextAction ?? app?.nextAction ?? '',
+        updates.nextActionDate ?? app?.nextActionDate ?? '',
+      )
+    }
   }
 
   const selectedApplication = applications.find((a) => a.id === selectedApp) ?? null
