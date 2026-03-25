@@ -9,6 +9,7 @@ interface DisclaimerBannerProps {
 export function DisclaimerBanner({ onAcknowledge }: DisclaimerBannerProps) {
   return (
     <div
+      role="alert"
       className="animate-in fade-in duration-300 mb-8 border-l-2 border-amber-warm/40 pl-4 py-3"
       data-testid="disclaimer-banner"
     >

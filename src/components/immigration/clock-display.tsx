@@ -25,6 +25,7 @@ function getDaysColor(days: number): string {
 
 function getDaysLabel(days: number, isEmployed: boolean): string {
   if (isEmployed) return 'Clock paused while employed'
+  if (days <= 0) return 'Clock exhausted — talk to your attorney'
   if (days >= 90) return 'Comfortable runway'
   if (days >= 60) return 'Time to be intentional'
   if (days >= 30) return 'Every week matters'
@@ -73,6 +74,7 @@ export function ClockDisplay({
             className={`text-5xl sm:text-6xl font-semibold tracking-tight ${daysColor}`}
             style={{ fontVariantNumeric: 'tabular-nums' }}
             data-testid="days-remaining"
+            aria-label={`${daysRemaining} of 150 unemployment days remaining. ${daysLabel}`}
           >
             {daysRemaining}
           </span>
@@ -116,9 +118,11 @@ export function ClockDisplay({
         <p className="text-sm text-muted-foreground leading-relaxed">
           {isEmployed
             ? 'Your unemployment clock is paused while you hold qualifying employment. It resumes when employment ends.'
-            : daysRemaining >= 60
-              ? 'Focus on cap-exempt positions — they can sponsor H1-B year-round without lottery.'
-              : 'Consider bridge employment (20+ hrs/week at a cap-exempt employer) to pause the clock.'}
+            : daysRemaining <= 0
+              ? 'Your 150 unemployment days have been used. Speak with your immigration attorney about next steps.'
+              : daysRemaining >= 60
+                ? 'Focus on cap-exempt positions — they can sponsor H1-B year-round without lottery.'
+                : 'Consider bridge employment (20+ hrs/week at a cap-exempt employer) to pause the clock.'}
         </p>
       </div>
     </div>

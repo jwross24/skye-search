@@ -47,8 +47,26 @@ describe('ClockDisplay labels', () => {
     expect(getDaysLabel(60, false)).toBe('Time to be intentional')
   })
 
+  it('30-59 -> every week matters', () => {
+    expect(getDaysLabel(30, false)).toBe('Every week matters')
+    expect(getDaysLabel(59, false)).toBe('Every week matters')
+  })
+
   it('<30 -> seek bridge employment', () => {
     expect(getDaysLabel(15, false)).toBe('Seek bridge employment')
+  })
+
+  it('0 days -> clock exhausted', () => {
+    expect(getDaysLabel(0, false)).toBe('Clock exhausted — talk to your attorney')
+  })
+
+  it('negative days -> clock exhausted', () => {
+    expect(getDaysLabel(-5, false)).toBe('Clock exhausted — talk to your attorney')
+  })
+
+  it('employed always overrides days label', () => {
+    expect(getDaysLabel(0, true)).toBe('Clock paused while employed')
+    expect(getDaysLabel(-5, true)).toBe('Clock paused while employed')
   })
 })
 
@@ -98,6 +116,36 @@ describe('ClockDisplay rendering', () => {
       />,
     )
     expect(screen.getByText(/Based on your estimate/)).toBeDefined()
+  })
+
+  it('shows exhausted state at 0 days remaining', () => {
+    render(
+      <ClockDisplay
+        daysRemaining={0}
+        optExpiry="2026-08-15"
+        today={TODAY}
+        isEmployed={false}
+        dataSource="dso_confirmed"
+      />,
+    )
+    expect(screen.getByTestId('days-remaining').textContent).toBe('0')
+    expect(screen.getByText(/Clock exhausted/)).toBeDefined()
+    expect(screen.getByText(/150 unemployment days have been used/)).toBeDefined()
+  })
+
+  it('has aria-label on days remaining for screen readers', () => {
+    render(
+      <ClockDisplay
+        daysRemaining={119}
+        optExpiry="2026-08-15"
+        today={TODAY}
+        isEmployed={true}
+        dataSource="dso_confirmed"
+      />,
+    )
+    const days = screen.getByTestId('days-remaining')
+    expect(days.getAttribute('aria-label')).toContain('119 of 150')
+    expect(days.getAttribute('aria-label')).toContain('Clock paused while employed')
   })
 
   it('does NOT show data source caveat for dso_confirmed', () => {
@@ -221,6 +269,43 @@ describe('Immigration HQ with seed data', () => {
     // Disclaimer first, but clock should be visible (seed data has days_used=31)
     expect(screen.getByTestId('clock-display')).toBeDefined()
     console.log('[Test] Clock visible immediately with seed data')
+  })
+
+  it('shows 0 days remaining when all 150 days used via calibration', async () => {
+    const user = userEvent.setup()
+    const status = { ...seedImmigrationStatus, initial_days_used: 0, employment_active: false }
+    render(<ImmigrationHQ immigrationStatus={status} today={TODAY} />)
+
+    // Ack disclaimer
+    await user.click(screen.getByRole('button', { name: /I understand/i }))
+
+    // Enter 150 days used
+    const input = screen.getByLabelText(/Days already used/i)
+    await user.clear(input)
+    await user.type(input, '150')
+    await user.click(screen.getByRole('button', { name: /Set my clock/i }))
+
+    expect(screen.getByTestId('days-remaining').textContent).toBe('0')
+    expect(screen.getByText(/Clock exhausted/)).toBeDefined()
+    expect(screen.getByText(/150 unemployment days have been used/)).toBeDefined()
+  })
+
+  it('shows 150 days remaining when 0 days used via calibration', async () => {
+    const user = userEvent.setup()
+    const status = { ...seedImmigrationStatus, initial_days_used: 0, employment_active: false }
+    render(<ImmigrationHQ immigrationStatus={status} today={TODAY} />)
+
+    // Ack disclaimer
+    await user.click(screen.getByRole('button', { name: /I understand/i }))
+
+    // Enter 0 days used
+    const input = screen.getByLabelText(/Days already used/i)
+    await user.clear(input)
+    await user.type(input, '0')
+    await user.click(screen.getByRole('button', { name: /Set my clock/i }))
+
+    expect(screen.getByTestId('days-remaining').textContent).toBe('150')
+    expect(screen.getByText(/Comfortable runway/)).toBeDefined()
   })
 
   it('persistent footer always visible', () => {
