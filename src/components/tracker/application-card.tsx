@@ -15,6 +15,7 @@ const VISA_BADGE: Record<string, { label: string; className: string }> = {
 const STATUS_OPTIONS: { value: KanbanStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
   { value: 'applied', label: 'Applied' },
+  { value: 'phone_screen', label: 'Phone Screen' },
   { value: 'interview', label: 'Interview' },
   { value: 'offer', label: 'Offer' },
   { value: 'rejected', label: 'Rejected' },
@@ -160,13 +161,14 @@ function StatusMenu({
       <div
         className="fixed inset-0 z-40"
         onClick={onClose}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
         role="presentation"
       />
       {/* Menu */}
       <div
         className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]"
         role="menu"
+        tabIndex={-1}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
         data-testid="status-menu"
       >
         {STATUS_OPTIONS.map((option) => (

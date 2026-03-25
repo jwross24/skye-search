@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { KanbanBoard, type TrackedApplication } from './kanban-board'
@@ -7,6 +7,17 @@ import { seedJobs } from '@/db/seed'
 function log(step: string, detail: string) {
   process.stdout.write(`  [kanban test] ${step}: ${detail}\n`)
 }
+
+// ─── Mobile mock ──────────────────────────────────────────────────────────
+
+let mockIsMobile = false
+vi.mock('@/hooks/use-mobile', () => ({
+  useIsMobile: () => mockIsMobile,
+}))
+
+beforeEach(() => {
+  mockIsMobile = false
+})
 
 // ─── Seed Data ──────────────────────────────────────────────────────────────
 
@@ -66,15 +77,16 @@ const SEED_APPS: TrackedApplication[] = [
 // ─── Column Rendering ───────────────────────────────────────────────────────
 
 describe('Kanban columns', () => {
-  it('renders 4 columns: Interested, Applied, Interview, Offer', () => {
-    log('Step 1', 'Rendering board with seed data')
+  it('renders 5 columns when Phone Screen is unlocked: Interested, Applied, Phone Screen, Interview, Offer + Rejected', () => {
+    log('Step 1', 'Rendering board with seed data (has interview card → Phone Screen visible)')
     render(<KanbanBoard initialApplications={SEED_APPS} />)
 
     expect(screen.getByTestId('column-interested')).toBeDefined()
     expect(screen.getByTestId('column-applied')).toBeDefined()
+    expect(screen.getByTestId('column-phone_screen')).toBeDefined()
     expect(screen.getByTestId('column-interview')).toBeDefined()
     expect(screen.getByTestId('column-offer')).toBeDefined()
-    log('Step 2', 'All 4 columns rendered')
+    log('Step 2', 'All 5 columns + Rejected rendered')
   })
 
   it('renders Rejected column always visible', () => {
@@ -105,6 +117,47 @@ describe('Kanban columns', () => {
     render(<KanbanBoard initialApplications={SEED_APPS} />)
     const offerCol = screen.getByTestId('column-offer')
     expect(offerCol.textContent).toContain('The goal')
+  })
+})
+
+// ─── Progressive Reveal ──────────────────────────────────────────────────
+
+describe('Phone Screen progressive reveal', () => {
+  it('Phone Screen column hidden when no cards past Applied', () => {
+    log('Step 1', 'Rendering board with only interested + applied cards')
+    const earlyApps: TrackedApplication[] = SEED_APPS.filter(
+      (a) => a.status === 'interested' || a.status === 'applied',
+    )
+    render(<KanbanBoard initialApplications={earlyApps} />)
+
+    expect(screen.queryByTestId('column-phone_screen')).toBeNull()
+    log('Step 2', 'Phone Screen column hidden — no cards past Applied')
+  })
+
+  it('Phone Screen appears after first card moves past Applied', async () => {
+    log('Step 1', 'Rendering with only interested + applied cards')
+    const user = userEvent.setup()
+    const earlyApps: TrackedApplication[] = SEED_APPS.filter(
+      (a) => a.status === 'interested' || a.status === 'applied',
+    )
+    render(<KanbanBoard initialApplications={earlyApps} />)
+
+    expect(screen.queryByTestId('column-phone_screen')).toBeNull()
+
+    log('Step 2', 'Moving card from Applied → Phone Screen')
+    const moveBtn = screen.getByTestId('card-app-brown-move-button')
+    await user.click(moveBtn)
+    const phoneScreenOption = screen.getByTestId('status-phone_screen')
+    await user.click(phoneScreenOption)
+
+    log('Step 3', 'Verifying Phone Screen column appeared')
+    expect(screen.getByTestId('column-phone_screen')).toBeDefined()
+  })
+
+  it('Phone Screen visible when any card is in interview status', () => {
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+    // SEED_APPS has app-ibss in 'interview' → Phone Screen should be visible
+    expect(screen.getByTestId('column-phone_screen')).toBeDefined()
   })
 })
 
@@ -156,7 +209,8 @@ describe('Card movement', () => {
     expect(within(appliedCol).getByTestId('card-app-bu-sif')).toBeDefined()
   })
 
-  it('move to Rejected works from any column', async () => {
+  it('move to Rejected shows rejection capture', async () => {
+    log('Step 1', 'Moving card to Rejected')
     const user = userEvent.setup()
     render(<KanbanBoard initialApplications={SEED_APPS} />)
 
@@ -166,8 +220,101 @@ describe('Card movement', () => {
     const rejectedOption = screen.getByTestId('status-rejected')
     await user.click(rejectedOption)
 
+    log('Step 2', 'Verifying rejection capture dialog appears')
+    expect(screen.getByTestId('rejection-capture')).toBeDefined()
+  })
+})
+
+// ─── Rejection Quick-Capture ──────────────────────────────────────────────
+
+describe('Rejection quick-capture', () => {
+  it('rejection_type captured when moving to Rejected', async () => {
+    log('Step 1', 'Moving card to Rejected and selecting form_email')
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-rejected'))
+
+    log('Step 2', 'Selecting form_email rejection type')
+    await user.click(screen.getByTestId('rejection-form_email'))
+
+    log('Step 3', 'Verifying card moved to Rejected column')
     const rejectedCol = screen.getByTestId('column-rejected')
     expect(within(rejectedCol).getByTestId('card-app-ibss')).toBeDefined()
+  })
+
+  it('skip rejection type and still move to Rejected', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-rejected'))
+    await user.click(screen.getByTestId('rejection-skip'))
+
+    const rejectedCol = screen.getByTestId('column-rejected')
+    expect(within(rejectedCol).getByTestId('card-app-ibss')).toBeDefined()
+  })
+
+  it('rejection capture shows all three options: form_email, personalized, ghosted', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-rejected'))
+
+    expect(screen.getByTestId('rejection-form_email')).toBeDefined()
+    expect(screen.getByTestId('rejection-personalized')).toBeDefined()
+    expect(screen.getByTestId('rejection-ghosted')).toBeDefined()
+  })
+})
+
+// ─── Offer Verification ──────────────────────────────────────────────────
+
+describe('Offer verification', () => {
+  it('moving to Offer shows immigration verification prompt', async () => {
+    log('Step 1', 'Moving card to Offer')
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-offer'))
+
+    log('Step 2', 'Verifying offer verification dialog appears')
+    const dialog = screen.getByTestId('offer-verification')
+    expect(dialog).toBeDefined()
+    expect(dialog.textContent).toContain('cap-exempt')
+  })
+
+  it('confirming offer moves card to Offer column', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-offer'))
+    await user.click(screen.getByTestId('offer-confirm'))
+
+    const offerCol = screen.getByTestId('column-offer')
+    expect(within(offerCol).getByTestId('card-app-ibss')).toBeDefined()
+  })
+
+  it('cancelling offer does not move card', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-offer'))
+    await user.click(screen.getByTestId('offer-cancel'))
+
+    // Card stays in Interview
+    const interviewCol = screen.getByTestId('column-interview')
+    expect(within(interviewCol).getByTestId('card-app-ibss')).toBeDefined()
   })
 })
 
@@ -225,14 +372,14 @@ describe('Card detail view', () => {
     render(<KanbanBoard initialApplications={SEED_APPS} />)
 
     await user.click(screen.getByTestId('card-app-brown'))
-    await user.click(screen.getByTestId('detail-status-interview'))
+    await user.click(screen.getByTestId('detail-status-phone_screen'))
 
     log('Step 2', 'Closing detail and verifying column change')
     // Close detail
     await user.click(screen.getByLabelText('Close'))
 
-    const interviewCol = screen.getByTestId('column-interview')
-    expect(within(interviewCol).getByTestId('card-app-brown')).toBeDefined()
+    const phoneScreenCol = screen.getByTestId('column-phone_screen')
+    expect(within(phoneScreenCol).getByTestId('card-app-brown')).toBeDefined()
   })
 })
 
@@ -282,6 +429,38 @@ describe('View toggle', () => {
     await user.click(screen.getByTestId('view-toggle'))
     const appliedCol = screen.getByTestId('column-applied')
     expect(within(appliedCol).getByTestId('card-app-bu-sif')).toBeDefined()
+  })
+})
+
+// ─── Mobile Default ─────────────────────────────────────────────────────────
+
+describe('Mobile default', () => {
+  it('defaults to list view on mobile', () => {
+    log('Step 1', 'Rendering board with mobile viewport mock')
+    mockIsMobile = true
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    log('Step 2', 'Verifying list view is default')
+    expect(screen.getByTestId('list-view')).toBeDefined()
+    expect(screen.queryByTestId('board-view')).toBeNull()
+  })
+
+  it('mobile user can toggle to board view', async () => {
+    mockIsMobile = true
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    expect(screen.getByTestId('list-view')).toBeDefined()
+
+    await user.click(screen.getByTestId('view-toggle'))
+    expect(screen.getByTestId('board-view')).toBeDefined()
+    expect(screen.queryByTestId('list-view')).toBeNull()
+  })
+
+  it('defaults to board view on desktop', () => {
+    mockIsMobile = false
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+    expect(screen.getByTestId('board-view')).toBeDefined()
   })
 })
 
