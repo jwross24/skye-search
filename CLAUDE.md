@@ -66,6 +66,35 @@ agent-browser navigate http://localhost:3000  # Browser automation for e2e
 ntm scan .              # UBS bug scan
 ```
 
+### Environments
+
+**Local development** uses local Supabase via Docker. **Production** uses the hosted Supabase project on Vercel.
+
+```
+# Start local Supabase (required before bun run dev)
+supabase start           # Starts Postgres + Auth + Storage via Docker
+supabase status          # Show connection URLs and keys
+supabase db reset        # Replay all migrations from clean state
+supabase stop            # Stop all containers
+
+# Local Supabase URLs (from supabase status)
+# Project URL:    http://127.0.0.1:54321
+# Studio:         http://127.0.0.1:54323
+# Database:       postgresql://postgres:postgres@127.0.0.1:54322/postgres
+```
+
+| Environment | Supabase | .env source | Test user |
+|---|---|---|---|
+| Local dev | Docker (`supabase start`) | `.env.local` → `127.0.0.1:54321` | `dev@skye-search.test` / `testpass123` |
+| Vercel Production | Hosted project | Vercel env vars | None — Skye only |
+
+**Rules:**
+- `.env.local` MUST point to local Supabase, never production
+- Production Supabase credentials go in Vercel env vars only
+- Test user (`dev@skye-search.test`) exists in local Supabase ONLY — never in production
+- Migrations live in `supabase/migrations/` — single source of truth for both environments
+- Run `supabase db reset` to replay all migrations after pulling new ones
+
 ### Build Gate (mandatory before every commit)
 ```
 bun run verify
