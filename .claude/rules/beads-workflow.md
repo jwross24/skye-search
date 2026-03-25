@@ -30,7 +30,7 @@ Use `br dep add <issue> <depends-on>` to set blocking relationships. Check exist
 - `br list --limit 0` — default limit is 50, always use --limit 0 for full list
 - `br show <id> --json` — full bead with description, comments, deps
 - `br update <id> --description "..."` — REPLACES entire description
-- `br comments add <id> "text"` — append-only, NO delete. Use sparingly (lessons learned, not test specs)
+- `br comments add <id> "text"` — append-only, NO delete. Use for coordination notes on OPEN beads only (e.g., blockers, handoff context). Do NOT use for post-completion lessons — nothing reads closed bead comments. Route learnings to `.claude/rules/`, CM, or memory instead.
 - `br dep add <issue> <depends-on>` — add blocking dependency
 - `br dep list <id>` — show dependencies
 - `br dep cycles` — check for circular deps
