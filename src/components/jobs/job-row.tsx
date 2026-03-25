@@ -62,7 +62,8 @@ export function JobRow({ job, urgencyScore, index, onTrack, isTracked }: JobRowP
 
   return (
     <article
-      className="group relative py-5 first:pt-0"
+      className="group relative py-5 first:pt-0 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
+      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
       data-testid={`job-row-${index}`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -70,7 +71,7 @@ export function JobRow({ job, urgencyScore, index, onTrack, isTracked }: JobRowP
         <div className="min-w-0 flex-1 space-y-1.5">
           {/* Title + badges row */}
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[0.95rem] font-semibold leading-snug text-foreground">
+            <h3 className="text-base font-semibold leading-snug text-foreground">
               {job.title}
             </h3>
             <VisaBadge
@@ -120,7 +121,7 @@ export function JobRow({ job, urgencyScore, index, onTrack, isTracked }: JobRowP
               href={job.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-ocean hover:text-ocean-deep hover:underline underline-offset-2 transition-colors"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-ocean hover:text-ocean-deep hover:bg-ocean/5 underline-offset-2 transition-colors"
             >
               Apply
               <ExternalLink className="size-3" />

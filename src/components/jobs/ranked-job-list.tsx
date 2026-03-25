@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Filter, Sparkles } from 'lucide-react'
+import { Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { JobRow } from './job-row'
 import { computeUrgencyScore, type JobInput, type UserState } from '@/lib/urgency-scoring'
@@ -58,18 +58,16 @@ export function RankedJobList({ jobs, userState, trackedIndices: initialTracked 
     setTracked((prev) => new Set(prev).add(index))
   }
 
-  // Empty state
+  // Empty state — teach the interface, don't just say "nothing here"
   if (jobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-ocean/10 mb-4">
-          <Sparkles className="size-6 text-ocean" />
-        </div>
+      <div className="py-16">
         <h2 className="text-lg font-semibold text-foreground">
           No jobs loaded yet
         </h2>
-        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-          Jobs will appear here once the seed data is loaded. Check back soon.
+        <p className="mt-2 max-w-md text-sm text-muted-foreground leading-relaxed">
+          Your daily picks will appear here — cap-exempt roles, bridge positions,
+          and opportunities ranked by how they fit your immigration timeline.
         </p>
       </div>
     )
@@ -137,12 +135,10 @@ function ListHeader({
   count: number
 }) {
   return (
-    <div className="flex items-center justify-between pb-4 mb-2">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          {count} {count === 1 ? 'position' : 'positions'} ranked by immigration fit
-        </p>
-      </div>
+    <div className="flex items-center justify-between pb-3 mb-1">
+      <p className="text-sm text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {count} {count === 1 ? 'position' : 'positions'} ranked by immigration fit
+      </p>
       <Button
         variant={bridgeOnly ? 'secondary' : 'ghost'}
         size="sm"

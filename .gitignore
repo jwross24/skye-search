@@ -43,3 +43,8 @@ next-env.d.ts
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Track project-specific Claude config (overrides global .claude/* ignore)
+!.claude/
+!.claude/**
+.claude/.verify-stamp

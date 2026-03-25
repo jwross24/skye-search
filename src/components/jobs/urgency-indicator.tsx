@@ -2,6 +2,8 @@
  * Visual urgency indicator — a thin tide-line that fills based on score.
  * Warm amber at high urgency, ocean blue at moderate, jade at low.
  * Never shows raw numbers. Conveys feeling, not precision.
+ *
+ * Uses transform: scaleX() for GPU-accelerated animation (no layout thrash).
  */
 
 const urgencyConfig = [
@@ -22,7 +24,7 @@ interface UrgencyIndicatorProps {
 
 export function UrgencyIndicator({ score }: UrgencyIndicatorProps) {
   const config = getUrgencyConfig(score)
-  const widthPercent = Math.max(8, Math.min(100, score * 100))
+  const scale = Math.max(0.08, Math.min(1, score))
 
   return (
     <div className="flex items-center gap-2.5">
@@ -35,8 +37,8 @@ export function UrgencyIndicator({ score }: UrgencyIndicatorProps) {
         aria-label={`Urgency: ${config.label}`}
       >
         <div
-          className={`h-full rounded-full transition-all duration-500 ${config.className}`}
-          style={{ width: `${widthPercent}%` }}
+          className={`h-full w-full origin-left rounded-full transition-transform duration-500 ease-out ${config.className}`}
+          style={{ transform: `scaleX(${scale})` }}
         />
       </div>
       <span className="text-xs text-muted-foreground whitespace-nowrap">

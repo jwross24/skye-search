@@ -131,10 +131,9 @@ When working in a swarm (multiple agents via NTM):
 5. Commit: `git pull && git add <specific files> && git commit -m "br-XX: description"`
 6. Learn: If you discovered something surprising or non-obvious, route it to where it'll be read:
    - **Reusable pattern/gotcha** → new file in `.claude/rules/` (loaded every session)
-   - **CM-worthy rule** → `cm mark` existing rule, or create new `.claude/rules/` file
    - **Cross-session project context** → memory file (recalled in future conversations)
    - Skip if the lesson is obvious or already captured in the commit/code.
-   - Do NOT use `br comments add` for lessons — closed bead comments are never read.
+   - Do NOT use `br comments add` (closed beads never read) or manual `cm mark` (automated by SessionEnd pipeline).
 7. Close: `br close <id> --reason "Completed"`
 8. Advance: `bv --robot-next` to pick next bead
 

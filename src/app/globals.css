@@ -164,8 +164,16 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-kerning: normal;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Reduced motion: crossfade only, no spatial movement */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation-duration: 0.01ms !important;
   }
 }
