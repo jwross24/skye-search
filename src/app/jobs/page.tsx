@@ -1,4 +1,4 @@
-import { RankedJobList } from '@/components/jobs/ranked-job-list'
+import { DailyBatch } from '@/components/jobs/daily-batch'
 import { seedJobs, seedImmigrationStatus } from '@/db/seed'
 import type { UserState } from '@/lib/urgency-scoring'
 
@@ -6,7 +6,7 @@ import type { UserState } from '@/lib/urgency-scoring'
 // Later: fetch from Supabase immigration_clock view.
 const userState: UserState = {
   days_remaining: 150 - seedImmigrationStatus.initial_days_used,
-  is_employed: false, // PostDoc ending — score as unemployed for job ranking
+  is_employed: false,
   offer_accepted_not_started: false,
   employment_end_date: null,
   in_grace_period: false,
@@ -21,11 +21,11 @@ export default function JobsPage() {
           Today&apos;s Picks
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ranked by immigration fit. Cap-exempt roles are prioritized.
+          8 roles matched to your immigration timeline. Take your time.
         </p>
       </div>
 
-      <RankedJobList jobs={seedJobs} userState={userState} />
+      <DailyBatch jobs={seedJobs} userState={userState} />
     </div>
   )
 }
