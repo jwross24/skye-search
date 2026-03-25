@@ -258,6 +258,23 @@ describe('Rejection quick-capture', () => {
     expect(within(rejectedCol).getByTestId('card-app-ibss')).toBeDefined()
   })
 
+  it('cancelling rejection capture keeps card in original column', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-rejected'))
+
+    // Click backdrop to cancel
+    expect(screen.getByTestId('rejection-capture')).toBeDefined()
+    await user.keyboard('{Escape}')
+
+    // Card stays in Interview
+    const interviewCol = screen.getByTestId('column-interview')
+    expect(within(interviewCol).getByTestId('card-app-ibss')).toBeDefined()
+  })
+
   it('rejection capture shows all three options: form_email, personalized, ghosted', async () => {
     const user = userEvent.setup()
     render(<KanbanBoard initialApplications={SEED_APPS} />)

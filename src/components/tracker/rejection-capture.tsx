@@ -44,6 +44,7 @@ export function RejectionCapture({ application, onConfirm, onCancel }: Rejection
         className="relative w-full max-w-sm mx-4 bg-card border border-border rounded-2xl shadow-lg p-5"
         data-testid="rejection-capture"
         role="dialog"
+        aria-modal="true"
         aria-label={`How was ${application.job.company}'s response?`}
       >
         <p className="text-sm font-medium text-foreground mb-1">

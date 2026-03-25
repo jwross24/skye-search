@@ -209,6 +209,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       <AnimatePresence>
         {selectedApplication && (
           <CardDetail
+            key={selectedApplication.id}
             application={selectedApplication}
             onClose={() => setSelectedApp(null)}
             onUpdate={(updates) => updateApplication(selectedApplication.id, updates)}
@@ -221,6 +222,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       <AnimatePresence>
         {pendingRejectApp && (
           <RejectionCapture
+            key={pendingRejectApp.id}
             application={pendingRejectApp}
             onConfirm={(rejectionType) => confirmReject(pendingRejectApp.id, rejectionType)}
             onCancel={() => setPendingReject(null)}
@@ -232,6 +234,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       <AnimatePresence>
         {pendingOfferApp && (
           <OfferVerification
+            key={pendingOfferApp.id}
             application={pendingOfferApp}
             onConfirm={() => confirmOffer(pendingOfferApp.id)}
             onCancel={() => setPendingOffer(null)}

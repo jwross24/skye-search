@@ -44,6 +44,7 @@ export function OfferVerification({ application, onConfirm, onCancel }: OfferVer
         className="relative w-full max-w-sm mx-4 bg-card border border-border rounded-2xl shadow-lg p-5"
         data-testid="offer-verification"
         role="dialog"
+        aria-modal="true"
         aria-label={`Verify immigration details for ${application.job.company}`}
       >
         <p className="text-sm font-medium text-foreground mb-1">
