@@ -7,7 +7,7 @@ interface ClockStatusProps {
   label?: string
 }
 
-export function ClockStatus({ daysRemaining, totalDays, label = 'Unemployment days remaining' }: ClockStatusProps) {
+export function ClockStatus({ daysRemaining, totalDays, label = 'Your immigration clock' }: ClockStatusProps) {
   const urgency = daysRemaining <= 30 ? 'critical' : daysRemaining <= 60 ? 'warning' : 'normal'
   const accentColor = urgency === 'critical' ? BRAND.amberWarm : urgency === 'warning' ? BRAND.amberWarm : BRAND.ocean
 
@@ -16,21 +16,23 @@ export function ClockStatus({ daysRemaining, totalDays, label = 'Unemployment da
       style={{
         backgroundColor: BRAND.card,
         borderRadius: '12px',
-        padding: '20px',
+        padding: '20px 24px',
         marginBottom: '16px',
         border: `1px solid ${BRAND.border}`,
       }}
     >
-      <Text style={{ fontSize: '12px', color: BRAND.textMuted, margin: '0 0 4px', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+      <Text style={{ fontSize: '13px', color: BRAND.textMuted, margin: '0 0 6px', letterSpacing: '0.01em' }}>
         {label}
       </Text>
-      <Text style={{ fontSize: '32px', fontWeight: 700, color: accentColor, margin: '0 0 4px', lineHeight: '1.1' }}>
+      <Text style={{ fontSize: '36px', fontWeight: 700, color: accentColor, margin: '0 0 4px', lineHeight: '1' }}>
         {daysRemaining}
-        <span style={{ fontSize: '16px', fontWeight: 400, color: BRAND.textMuted }}> / {totalDays}</span>
+        <span style={{ fontSize: '15px', fontWeight: 400, color: BRAND.textMuted }}> of {totalDays} days</span>
       </Text>
       {urgency !== 'normal' && (
-        <Text style={{ fontSize: '13px', color: BRAND.amberWarm, margin: 0 }}>
-          {urgency === 'critical' ? 'Time is running short — prioritize cap-exempt roles' : 'Worth keeping an eye on this'}
+        <Text style={{ fontSize: '13px', color: BRAND.amberWarm, margin: '4px 0 0', lineHeight: '1.4' }}>
+          {urgency === 'critical'
+            ? 'Getting close — cap-exempt roles are your strongest path right now'
+            : 'Worth keeping an eye on this'}
         </Text>
       )}
     </Section>

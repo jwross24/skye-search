@@ -9,10 +9,10 @@ interface AlertBannerProps {
   message: string
 }
 
-const LEVEL_STYLES: Record<AlertLevel, { bg: string; border: string; titleColor: string }> = {
-  info: { bg: '#eff6ff', border: BRAND.oceanLight, titleColor: BRAND.ocean },
-  warning: { bg: '#fffbeb', border: BRAND.amberWarm, titleColor: BRAND.amberWarm },
-  urgent: { bg: '#fef3c7', border: BRAND.amberWarm, titleColor: BRAND.amberWarm },
+const LEVEL_STYLES: Record<AlertLevel, { bg: string; accent: string; titleColor: string }> = {
+  info: { bg: '#eff6ff', accent: BRAND.ocean, titleColor: BRAND.oceanDeep },
+  warning: { bg: '#fffbeb', accent: BRAND.amberWarm, titleColor: '#92400e' },
+  urgent: { bg: '#fef3c7', accent: BRAND.amberWarm, titleColor: '#92400e' },
 }
 
 export function AlertBanner({ level, title, message }: AlertBannerProps) {
@@ -25,7 +25,6 @@ export function AlertBanner({ level, title, message }: AlertBannerProps) {
         borderRadius: '12px',
         padding: '16px 20px',
         marginBottom: '16px',
-        borderLeft: `3px solid ${styles.border}`,
       }}
     >
       <Text style={{ fontSize: '14px', fontWeight: 600, color: styles.titleColor, margin: '0 0 4px' }}>

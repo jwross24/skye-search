@@ -62,7 +62,7 @@ export function JobCard({ title, company, visaPath, location, score, url }: JobC
               marginLeft: '8px',
             }}
           >
-            Score: {score}
+            {score} match
           </span>
         )}
       </Text>

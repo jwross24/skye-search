@@ -26,11 +26,13 @@ export function getResendClient(): Resend {
 export interface SendEmailParams {
   to: string | string[]
   subject: string
+  react?: React.ReactElement
   html?: string
   text?: string
   replyTo?: string
   cc?: string[]
   bcc?: string[]
+  idempotencyKey?: string
 }
 
 export interface SendEmailResult {
@@ -44,12 +46,17 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
   const from = getRequiredEnv('RESEND_FROM_EMAIL')
   const to = Array.isArray(params.to) ? params.to : [params.to]
 
-  // Resend SDK uses discriminated unions — must provide exactly one of html/text
-  const payload = params.html
-    ? { from, to, subject: params.subject, html: params.html, replyTo: params.replyTo, cc: params.cc, bcc: params.bcc }
-    : { from, to, subject: params.subject, text: params.text ?? '', replyTo: params.replyTo, cc: params.cc, bcc: params.bcc }
+  // Resend SDK uses discriminated unions — must provide exactly one of react/html/text
+  const base = { from, to, subject: params.subject, replyTo: params.replyTo, cc: params.cc, bcc: params.bcc }
+  const payload = params.react
+    ? { ...base, react: params.react }
+    : params.html
+      ? { ...base, html: params.html }
+      : { ...base, text: params.text ?? '' }
 
-  const { data, error } = await resend.emails.send(payload)
+  const { data, error } = params.idempotencyKey
+    ? await resend.emails.send(payload, { idempotencyKey: params.idempotencyKey })
+    : await resend.emails.send(payload)
 
   if (error) {
     throw new Error(`Resend send failed: ${error.message} (${error.name})`)

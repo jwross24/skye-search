@@ -52,17 +52,17 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
         >
           <Container style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 16px' }}>
             {/* Header */}
-            <Section style={{ paddingBottom: '24px' }}>
+            <Section style={{ paddingBottom: '28px', borderBottom: `1px solid ${BRAND.border}`, marginBottom: '24px' }}>
               <Text
                 style={{
-                  fontSize: '18px',
+                  fontSize: '17px',
                   fontWeight: 700,
                   color: BRAND.oceanDeep,
-                  letterSpacing: '-0.025em',
+                  letterSpacing: '-0.02em',
                   margin: 0,
                 }}
               >
-                SkyeSearch
+                Skye<span style={{ color: BRAND.ocean }}>Search</span>
               </Text>
             </Section>
 
@@ -73,9 +73,9 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
             <Hr style={{ borderColor: BRAND.border, margin: '32px 0 24px' }} />
             <Section>
               <Text style={{ fontSize: '12px', lineHeight: '18px', color: BRAND.textMuted, margin: '0 0 8px' }}>
-                This is not legal advice. Immigration rules change frequently.
-                Always verify with your DSO or immigration attorney before
-                making decisions based on information in this email.
+                This email is for informational purposes only — immigration
+                rules change frequently. Always double-check with your DSO or
+                attorney before making decisions.
               </Text>
               <Text style={{ fontSize: '12px', lineHeight: '18px', color: BRAND.textMuted, margin: 0 }}>
                 <Link href="{{unsubscribeUrl}}" style={{ color: BRAND.ocean, textDecoration: 'none' }}>

@@ -22,7 +22,7 @@ describe('BaseLayout', () => {
 
     log('Step 2', 'Verifying required elements')
     expect(html).toContain('SkyeSearch')
-    expect(html).toContain('not legal advice')
+    expect(html).toContain('informational purposes only')
     expect(html).toContain('Unsubscribe')
     expect(html).toContain('Test content')
     expect(html).toContain('<!DOCTYPE html')
@@ -73,7 +73,7 @@ describe('ClockStatus', () => {
     log('Step 2', 'Verifying days display')
     expect(html).toContain('119')
     expect(html).toContain('150')
-    expect(html).toContain('Unemployment days remaining')
+    expect(html).toContain('Your immigration clock')
   })
 
   it('shows warning message when days <= 60', async () => {
@@ -93,7 +93,7 @@ describe('ClockStatus', () => {
       </BaseLayout>,
     )
 
-    expect(html).toContain('cap-exempt roles')
+    expect(html).toContain('cap-exempt roles are your strongest path')
   })
 
   it('no urgency message when days > 60', async () => {
@@ -131,6 +131,7 @@ describe('JobCard', () => {
     expect(html).toContain('Cap-exempt')
     expect(html).toContain('Providence, RI')
     expect(html).toContain('92')
+    expect(html).toContain('match')
   })
 
   it('renders link when url provided', async () => {
