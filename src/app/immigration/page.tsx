@@ -1,11 +1,11 @@
 import { ImmigrationHQ } from '@/components/immigration/immigration-hq'
-import { seedImmigrationStatus } from '@/db/seed'
+import { seedImmigrationStatus, seedPlans } from '@/db/seed'
 
 export default function ImmigrationPage() {
   const today = new Date().toISOString().split('T')[0]
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-10">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Immigration HQ
@@ -18,6 +18,7 @@ export default function ImmigrationPage() {
       <ImmigrationHQ
         immigrationStatus={seedImmigrationStatus}
         today={today}
+        plans={seedPlans}
       />
     </div>
   )
