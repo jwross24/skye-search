@@ -14,7 +14,7 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 ## During implementation
 
 7. Write tests alongside code (not after)
-8. For UI beads: invoke /impeccable skill (reads .impeccable.md + reference docs)
+8. If bead creates/modifies ANY .tsx component: invoke /impeccable skill. No exceptions. Even forms and dialogs benefit from UX writing + interaction design audits. The skill reads .impeccable.md + 7 reference docs automatically.
 9. Use `cass search` when stuck
 10. Use seed test user for E2E: `dev@skye-search.test` / `testpass123`
 
