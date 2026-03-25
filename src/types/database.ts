@@ -1464,6 +1464,14 @@ export type Database = {
       }
     }
     Functions: {
+      fn_daily_unemployment_checkpoint: {
+        Args: {
+          p_user_id?: string
+          p_target_date?: string
+          p_trigger_source?: Database["public"]["Enums"]["trigger_source_type"]
+        }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
