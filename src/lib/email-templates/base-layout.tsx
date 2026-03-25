@@ -38,10 +38,11 @@ export const BRAND = {
 
 interface BaseLayoutProps {
   preview: string
+  unsubscribeUrl?: string
   children: ReactNode
 }
 
-export function BaseLayout({ preview, children }: BaseLayoutProps) {
+export function BaseLayout({ preview, unsubscribeUrl, children }: BaseLayoutProps) {
   return (
     <Html lang="en">
       <Tailwind>
@@ -88,11 +89,15 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
                 attorney before making decisions.
               </Text>
               <Text style={{ fontSize: '12px', lineHeight: '18px', color: BRAND.textMuted, margin: 0 }}>
-                <Link href="{{unsubscribeUrl}}" style={{ color: BRAND.ocean, textDecoration: 'none' }}>
-                  Unsubscribe
-                </Link>
-                {' '}·{' '}
-                <Link href="https://skye-search.vercel.app" style={{ color: BRAND.ocean, textDecoration: 'none' }}>
+                {unsubscribeUrl && (
+                  <>
+                    <Link href={unsubscribeUrl} style={{ color: BRAND.ocean, textDecoration: 'none' }}>
+                      Unsubscribe
+                    </Link>
+                    {' '}·{' '}
+                  </>
+                )}
+                <Link href={`${BASE_URL}`} style={{ color: BRAND.ocean, textDecoration: 'none' }}>
                   Open SkyeSearch
                 </Link>
               </Text>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Resend } from 'resend'
 
 // ─── Environment Guards ─────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ export function getResendClient(): Resend {
 export interface SendEmailParams {
   to: string | string[]
   subject: string
-  react?: React.ReactElement
+  react?: ReactNode
   html?: string
   text?: string
   replyTo?: string

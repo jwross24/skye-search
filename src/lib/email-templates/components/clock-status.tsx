@@ -9,7 +9,7 @@ interface ClockStatusProps {
 
 export function ClockStatus({ daysRemaining, totalDays, label = 'Your immigration clock' }: ClockStatusProps) {
   const urgency = daysRemaining <= 30 ? 'critical' : daysRemaining <= 60 ? 'warning' : 'normal'
-  const accentColor = urgency === 'critical' ? BRAND.amberWarm : urgency === 'warning' ? BRAND.amberWarm : BRAND.ocean
+  const accentColor = urgency === 'normal' ? BRAND.ocean : BRAND.amberWarm
 
   return (
     <Section

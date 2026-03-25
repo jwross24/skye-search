@@ -15,7 +15,7 @@ describe('BaseLayout', () => {
   it('renders valid HTML with header, footer, and disclaimer', async () => {
     log('Step 1', 'Rendering base layout to HTML')
     const html = await render(
-      <BaseLayout preview="Test preview text">
+      <BaseLayout preview="Test preview text" unsubscribeUrl="https://example.com/unsub">
         <p>Test content</p>
       </BaseLayout>,
     )
@@ -24,6 +24,7 @@ describe('BaseLayout', () => {
     expect(html).toContain('SkyeSearch')
     expect(html).toContain('informational purposes only')
     expect(html).toContain('Unsubscribe')
+    expect(html).toContain('example.com/unsub')
     expect(html).toContain('Test content')
     expect(html).toContain('<!DOCTYPE html')
   })
