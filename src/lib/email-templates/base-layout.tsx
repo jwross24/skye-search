@@ -7,6 +7,7 @@ import {
   Section,
   Text,
   Link,
+  Img,
   Hr,
   Tailwind,
 } from '@react-email/components'
@@ -51,18 +52,27 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
           className="dark:bg-[#1c1917]"
         >
           <Container style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 16px' }}>
-            {/* Header */}
-            <Section style={{ paddingBottom: '28px', borderBottom: `1px solid ${BRAND.border}`, marginBottom: '24px' }}>
-              <Text
-                style={{
-                  fontSize: '17px',
-                  fontWeight: 700,
-                  color: BRAND.oceanDeep,
-                  letterSpacing: '-0.02em',
-                  margin: 0,
-                }}
-              >
-                Skye<span style={{ color: BRAND.ocean }}>Search</span>
+            {/* Header — matches web app sidebar: wave icon + ocean-deep wordmark */}
+            <Section style={{ paddingBottom: '20px', borderBottom: `1px solid ${BRAND.border}`, marginBottom: '24px' }}>
+              <Text style={{ margin: 0, fontSize: 0, lineHeight: 0 }}>
+                <Img
+                  src={`${BASE_URL}/email/wave-icon.png`}
+                  width="28"
+                  height="28"
+                  alt="SkyeSearch"
+                  style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px', borderRadius: '7px' }}
+                />
+                <span
+                  style={{
+                    fontSize: '17px',
+                    fontWeight: 600,
+                    color: BRAND.oceanDeep,
+                    letterSpacing: '-0.02em',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  SkyeSearch
+                </span>
               </Text>
             </Section>
 
@@ -94,9 +104,11 @@ export function BaseLayout({ preview, children }: BaseLayoutProps) {
   )
 }
 
-// ─── Font Stack ──────────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://skye-search.vercel.app'
 
 const FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, sans-serif'
 
-export { FONT_STACK }
+export { FONT_STACK, BASE_URL }
