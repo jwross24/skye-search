@@ -6,14 +6,16 @@ import { CalibrationFlow } from './calibration-flow'
 import { DisclaimerBanner } from './disclaimer-banner'
 import { EmploymentToggle, type EmploymentData } from './employment-toggle'
 import { StrategyMap } from './strategy-map'
+import { saveCalibration, acknowledgeDisclaimer, toggleEmployment } from '@/app/immigration/actions'
 import type { SeedImmigrationStatus, SeedPlan } from '@/db/seed'
 
 interface ImmigrationHQProps {
-  immigrationStatus: SeedImmigrationStatus
+  immigrationStatus: SeedImmigrationStatus | null
   today: string
   plans: SeedPlan[]
   lastCronRun?: string | null
   gapAlert?: string | null
+  disclaimerAcked?: boolean
 }
 
 export function ImmigrationHQ({
@@ -22,26 +24,37 @@ export function ImmigrationHQ({
   plans,
   lastCronRun = null,
   gapAlert = null,
+  disclaimerAcked: initialDisclaimerAcked = false,
 }: ImmigrationHQProps) {
-  const [disclaimerAcked, setDisclaimerAcked] = useState(false)
+  const [disclaimerAcked, setDisclaimerAcked] = useState(initialDisclaimerAcked)
   const [calibrated, setCalibrated] = useState(
-    immigrationStatus.initial_days_used > 0,
+    (immigrationStatus?.initial_days_used ?? 0) > 0,
   )
-  const [daysUsed, setDaysUsed] = useState(immigrationStatus.initial_days_used)
-  const [dataSource, setDataSource] = useState(immigrationStatus.initial_days_source)
-  const [employed, setEmployed] = useState(immigrationStatus.employment_active)
+  const [daysUsed, setDaysUsed] = useState(immigrationStatus?.initial_days_used ?? 0)
+  const [dataSource, setDataSource] = useState(immigrationStatus?.initial_days_source ?? 'user_reported')
+  const [employed, setEmployed] = useState(immigrationStatus?.employment_active ?? false)
   const [employmentOverride, setEmploymentOverride] = useState(false)
   const [haltedSince, setHaltedSince] = useState<string | null>(
-    immigrationStatus.employment_active ? (immigrationStatus.postdoc_end_date ?? today) : null,
+    immigrationStatus?.employment_active ? (immigrationStatus?.postdoc_end_date ?? today) : null,
   )
   const [haltSource, setHaltSource] = useState<string | null>(
-    immigrationStatus.employment_active ? 'PostDoc' : null,
+    immigrationStatus?.employment_active ? 'PostDoc' : null,
   )
+
+  const handleDisclaimerAck = () => {
+    setDisclaimerAcked(true)
+    acknowledgeDisclaimer()
+  }
 
   const handleCalibration = (days: number, dsoConfirmed: boolean) => {
     setDaysUsed(days)
     setDataSource(dsoConfirmed ? 'dso_confirmed' : 'user_reported')
     setCalibrated(true)
+    saveCalibration({
+      initial_days_used: days,
+      dso_confirmed: dsoConfirmed,
+      calibration_date: today,
+    })
   }
 
   const handleEmploymentToggle = (isEmployed: boolean, data?: EmploymentData) => {
@@ -54,16 +67,18 @@ export function ImmigrationHQ({
       setHaltedSince(null)
       setHaltSource(null)
     }
+    toggleEmployment(isEmployed, data?.start_date)
   }
 
   const daysRemaining = 150 - daysUsed
-  const optExpiryPassed = today > immigrationStatus.opt_expiry
+  const optExpiry = immigrationStatus?.opt_expiry ?? ''
+  const optExpiryPassed = optExpiry ? today > optExpiry : false
   const isGracePeriod = optExpiryPassed && !employed
 
   // Resolve status label for display
   const getStatusLabel = (): string | undefined => {
     if (!calibrated) return undefined
-    if (today <= (immigrationStatus.postdoc_end_date ?? '')) return 'Employed (PostDoc)'
+    if (today <= (immigrationStatus?.postdoc_end_date ?? '')) return 'Employed (PostDoc)'
     if (employed) return 'Employed (Bridge)'
     if (isGracePeriod) return 'Grace Period'
     if (daysRemaining <= 0) return 'Clock Exhausted'
@@ -76,7 +91,7 @@ export function ImmigrationHQ({
       <div className="flex-1 min-w-0 max-w-2xl">
         {/* Disclaimer — shown once */}
         {!disclaimerAcked && (
-          <DisclaimerBanner onAcknowledge={() => setDisclaimerAcked(true)} />
+          <DisclaimerBanner onAcknowledge={handleDisclaimerAck} />
         )}
 
         {/* Calibration — shown if no initial data */}
@@ -92,7 +107,7 @@ export function ImmigrationHQ({
           <>
             <ClockDisplay
               daysRemaining={daysRemaining}
-              optExpiry={immigrationStatus.opt_expiry}
+              optExpiry={optExpiry}
               today={today}
               isEmployed={employed}
               dataSource={dataSource}
@@ -134,7 +149,7 @@ export function ImmigrationHQ({
           <StrategyMap
             plans={plans}
             daysRemaining={daysRemaining}
-            optExpiryDate={immigrationStatus.opt_expiry}
+            optExpiryDate={optExpiry}
             today={today}
           />
         </div>

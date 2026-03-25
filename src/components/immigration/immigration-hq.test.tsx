@@ -1,6 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+
+// Mock server actions (they call cookies() which requires Next.js request scope)
+vi.mock('@/app/immigration/actions', () => ({
+  saveCalibration: vi.fn().mockResolvedValue({ success: true }),
+  acknowledgeDisclaimer: vi.fn().mockResolvedValue({ success: true }),
+  toggleEmployment: vi.fn().mockResolvedValue({ success: true }),
+}))
+
 import { ImmigrationHQ } from './immigration-hq'
 import { ClockDisplay, getDaysColor, getDaysLabel, getExpiryDays, getDaysColorVar } from './clock-display'
 import { StrategyMap, getDecisionAlert } from './strategy-map'
@@ -357,6 +365,22 @@ describe('Conditional clock views', () => {
     expect(screen.getByText(/Employed \(Bridge\)/)).toBeDefined()
     expect(screen.getByText(/Clock halted since/)).toBeDefined()
     expect(screen.getByText(/Manual/)).toBeDefined()
+  })
+
+  it('OPT expired while employed shows "Expired" not negative days', () => {
+    render(
+      <ClockDisplay
+        daysRemaining={100}
+        optExpiry="2026-08-15"
+        today="2026-09-01"
+        isEmployed={true}
+        dataSource="dso_confirmed"
+      />,
+    )
+    // Should show "Expired", not "Valid for -17 more days"
+    expect(screen.getByText('Expired')).toBeDefined()
+    // Arc should show 0, not a negative number
+    expect(screen.queryByText(/-\d+/)).toBeNull()
   })
 })
 
