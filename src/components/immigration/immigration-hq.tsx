@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ClockDisplay } from './clock-display'
 import { CalibrationFlow } from './calibration-flow'
 import { DisclaimerBanner } from './disclaimer-banner'
+import { EmploymentToggle, type EmploymentData } from './employment-toggle'
 import type { SeedImmigrationStatus } from '@/db/seed'
 
 interface ImmigrationHQProps {
@@ -18,11 +19,20 @@ export function ImmigrationHQ({ immigrationStatus, today }: ImmigrationHQProps) 
   )
   const [daysUsed, setDaysUsed] = useState(immigrationStatus.initial_days_used)
   const [dataSource, setDataSource] = useState(immigrationStatus.initial_days_source)
+  const [employed, setEmployed] = useState(immigrationStatus.employment_active)
+  const [employmentOverride, setEmploymentOverride] = useState(false)
 
   const handleCalibration = (days: number, dsoConfirmed: boolean) => {
     setDaysUsed(days)
     setDataSource(dsoConfirmed ? 'dso_confirmed' : 'user_reported')
     setCalibrated(true)
+  }
+
+  const handleEmploymentToggle = (isEmployed: boolean, data?: EmploymentData) => {
+    setEmployed(isEmployed)
+    if (data) {
+      setEmploymentOverride(data.eligibility_override)
+    }
   }
 
   const daysRemaining = 150 - daysUsed
@@ -44,13 +54,29 @@ export function ImmigrationHQ({ immigrationStatus, today }: ImmigrationHQProps) 
 
       {/* Clock display — visible whenever calibrated */}
       {calibrated && (
-        <ClockDisplay
-          daysRemaining={daysRemaining}
-          optExpiry={immigrationStatus.opt_expiry}
-          today={today}
-          isEmployed={immigrationStatus.employment_active}
-          dataSource={dataSource}
-        />
+        <>
+          <ClockDisplay
+            daysRemaining={daysRemaining}
+            optExpiry={immigrationStatus.opt_expiry}
+            today={today}
+            isEmployed={employed}
+            dataSource={dataSource}
+          />
+
+          {/* Employment toggle */}
+          <div className="mt-8 border-t border-border/50 pt-6">
+            <EmploymentToggle
+              isEmployed={employed}
+              today={today}
+              onToggle={handleEmploymentToggle}
+            />
+            {employmentOverride && (
+              <p className="mt-2 text-xs text-amber-warm">
+                Eligibility unconfirmed — verify with your DSO
+              </p>
+            )}
+          </div>
+        </>
       )}
 
       {/* Persistent footer */}
