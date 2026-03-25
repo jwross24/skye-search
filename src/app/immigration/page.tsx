@@ -1,8 +1,24 @@
-export default function uimmigrationPage() {
+import { ImmigrationHQ } from '@/components/immigration/immigration-hq'
+import { seedImmigrationStatus } from '@/db/seed'
+
+export default function ImmigrationPage() {
+  const today = new Date().toISOString().split('T')[0]
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold text-foreground">uimmigration</h1>
-      <p className="mt-2 text-muted-foreground">Coming soon</p>
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-10">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Immigration HQ
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your compass. Check in anytime.
+        </p>
+      </div>
+
+      <ImmigrationHQ
+        immigrationStatus={seedImmigrationStatus}
+        today={today}
+      />
     </div>
   )
 }
