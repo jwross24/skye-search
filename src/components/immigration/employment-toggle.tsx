@@ -84,17 +84,17 @@ export function EmploymentToggle({ isEmployed, today, onToggle }: EmploymentTogg
     setFormError(null)
 
     if (!employerName.trim()) {
-      setFormError('Employer name is required')
+      setFormError('Please enter your employer name so we can track this correctly')
       return
     }
     if (!startDate) {
-      setFormError('Start date is required')
+      setFormError('When do you start? We need this to know when to pause the clock')
       return
     }
 
     const parsedHours = parseInt(hours, 10)
     if (isNaN(parsedHours) || parsedHours < 1) {
-      setFormError('Enter your weekly hours')
+      setFormError('How many hours per week? STEM OPT requires at least 20')
       return
     }
 
@@ -221,8 +221,8 @@ export function EmploymentToggle({ isEmployed, today, onToggle }: EmploymentTogg
               />
             </div>
 
-            {/* Eligibility checkboxes */}
-            <div className="space-y-2.5 pt-1">
+            {/* Eligibility checkboxes — visually separated from text inputs */}
+            <div className="space-y-2.5 pt-3 mt-1 border-t border-border/30">
               <label className="flex items-center gap-2.5 cursor-pointer text-sm">
                 <input
                   type="checkbox"
@@ -268,7 +268,7 @@ export function EmploymentToggle({ isEmployed, today, onToggle }: EmploymentTogg
                   resetForm()
                 }}
               >
-                Cancel
+                Not right now
               </Button>
             </div>
           </form>

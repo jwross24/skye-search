@@ -91,7 +91,7 @@ describe('EmploymentToggle rendering', () => {
     await user.click(screen.getByLabelText('Employment status'))
     await user.click(screen.getByRole('button', { name: /Confirm employment/i }))
 
-    expect(screen.getByText('Employer name is required')).toBeDefined()
+    expect(screen.getByText(/Please enter your employer name/)).toBeDefined()
   })
 
   it('submits valid form and calls onToggle', async () => {
@@ -189,7 +189,7 @@ describe('EmploymentToggle rendering', () => {
     await user.type(screen.getByLabelText('Employer name'), 'Stale Corp')
 
     // Cancel
-    await user.click(screen.getByRole('button', { name: /Cancel/i }))
+    await user.click(screen.getByRole('button', { name: /Not right now/i }))
 
     // Re-open: form fields should be reset
     await user.click(screen.getByLabelText('Employment status'))
@@ -207,7 +207,7 @@ describe('EmploymentToggle rendering', () => {
     await user.type(screen.getByLabelText('Hours per week'), '20')
     await user.click(screen.getByRole('button', { name: /Confirm employment/i }))
 
-    expect(screen.getByText('Start date is required')).toBeDefined()
+    expect(screen.getByText(/When do you start/)).toBeDefined()
     expect(onToggle).not.toHaveBeenCalled()
   })
 
@@ -222,7 +222,7 @@ describe('EmploymentToggle rendering', () => {
     // Skip hours
     await user.click(screen.getByRole('button', { name: /Confirm employment/i }))
 
-    expect(screen.getByText('Enter your weekly hours')).toBeDefined()
+    expect(screen.getByText(/How many hours per week/)).toBeDefined()
     expect(onToggle).not.toHaveBeenCalled()
   })
 
@@ -235,6 +235,6 @@ describe('EmploymentToggle rendering', () => {
     await user.click(screen.getByRole('button', { name: /Confirm employment/i }))
 
     const alert = screen.getByRole('alert')
-    expect(alert.textContent).toBe('Employer name is required')
+    expect(alert.textContent).toContain('Please enter your employer name')
   })
 })
