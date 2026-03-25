@@ -30,6 +30,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+    "@react-email/components": "^1.0.10",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.100.0",
     "class-variance-authority": "^0.7.1",
