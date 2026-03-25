@@ -94,6 +94,7 @@ supabase stop            # Stop all containers
 - Test user (`dev@skye-search.test`) exists in local Supabase ONLY — never in production
 - Migrations live in `supabase/migrations/` — single source of truth for both environments
 - Run `supabase db reset` to replay all migrations after pulling new ones
+- Run `bun run src/db/seed-to-supabase.ts` after reset to seed data + create test user
 
 ### Build Gate (mandatory before every commit)
 ```
