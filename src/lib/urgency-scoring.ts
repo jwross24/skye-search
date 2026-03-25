@@ -7,6 +7,9 @@
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+import type { SourceType } from '@/types/job-source'
+export type { SourceType }
+
 export type VisaPath = 'cap_exempt' | 'cap_subject' | 'opt_compatible' | 'canada' | 'unknown'
 export type EmployerType =
   | 'university'
@@ -18,7 +21,6 @@ export type EmployerType =
   | 'unknown'
 export type CapExemptConfidence = 'none' | 'unverified' | 'likely' | 'confirmed'
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'unknown'
-export type SourceType = 'industry' | 'government' | 'academic' | 'until_filled'
 
 export interface JobInput {
   visa_path: VisaPath
