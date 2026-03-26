@@ -5,10 +5,10 @@ import { MapPin, ExternalLink, Clock, Building2, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { VisaBadge } from '@/components/visa-badge'
 import { UrgencyIndicator } from './urgency-indicator'
-import type { SeedJob } from '@/db/seed'
+import type { Job } from '@/types/job'
 
 interface JobRowProps {
-  job: SeedJob
+  job: Job
   urgencyScore: number
   index: number
   onTrack: (index: number) => void
@@ -36,7 +36,7 @@ function formatDeadline(deadline: string | null, today: string): string | null {
   })
 }
 
-function getImmigrationContext(job: SeedJob): string | null {
+function getImmigrationContext(job: Job): string | null {
   if (job.visa_path === 'cap_exempt') {
     if (job.employer_type === 'university') return 'University — cap-exempt'
     if (job.employer_type === 'nonprofit_research') return 'Nonprofit research — cap-exempt'

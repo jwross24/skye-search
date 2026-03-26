@@ -293,6 +293,36 @@ function daysBetween(fromDate: string, toDate: string): number {
   return Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+/** Convert a job (from DB or seed) to the JobInput shape used by computeUrgencyScore. */
+export function jobToInput(
+  job: {
+    visa_path: VisaPath
+    employer_type: EmployerType
+    cap_exempt_confidence: CapExemptConfidence
+    employment_type: EmploymentType
+    source_type: SourceType | null
+    location: string | null
+    h1b_sponsor_count: number | null
+    application_deadline: string | null
+    application_complexity: string | null
+    indexed_date?: string | null
+  },
+  today: string,
+): JobInput {
+  return {
+    visa_path: job.visa_path,
+    employer_type: job.employer_type,
+    cap_exempt_confidence: job.cap_exempt_confidence,
+    employment_type: job.employment_type,
+    source_type: job.source_type,
+    location: job.location,
+    h1b_sponsor_count: job.h1b_sponsor_count,
+    application_deadline: job.application_deadline,
+    application_complexity: job.application_complexity,
+    indexed_date: job.indexed_date ?? today,
+  }
+}
+
 function isBoston(location: string): boolean {
   const normalized = location.toLowerCase()
   return (

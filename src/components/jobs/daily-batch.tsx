@@ -4,15 +4,14 @@ import { useState, useMemo } from 'react'
 import { Coffee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PickCard } from './pick-card'
-import { computeUrgencyScore, type UserState } from '@/lib/urgency-scoring'
-import { seedJobToInput } from './ranked-job-list'
-import type { SeedJob } from '@/db/seed'
-import type { VoteDecision, DismissTag } from '@/app/jobs/actions'
+import { computeUrgencyScore, jobToInput, type UserState } from '@/lib/urgency-scoring'
+import type { Job } from '@/types/job'
+import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
 
 const BATCH_SIZE = 8
 
 interface DailyBatchProps {
-  jobs: SeedJob[]
+  jobs: Job[]
   userState: UserState
 }
 
@@ -22,27 +21,29 @@ interface VoteRecord {
 }
 
 export function DailyBatch({ jobs, userState }: DailyBatchProps) {
-  const [votes, setVotes] = useState<Map<number, VoteRecord>>(new Map())
+  const [votes, setVotes] = useState<Map<string, VoteRecord>>(new Map())
   const [exitedEarly, setExitedEarly] = useState(false)
 
   // Score, sort, and pick top 8
   const batch = useMemo(() => {
     return jobs
-      .map((job, originalIndex) => {
-        const result = computeUrgencyScore(seedJobToInput(job, userState.today), userState)
-        return { job, originalIndex, score: result.urgency_score }
+      .map((job) => {
+        const result = computeUrgencyScore(jobToInput(job, userState.today), userState)
+        return { job, score: result.urgency_score }
       })
       .filter((item) => item.score >= 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, BATCH_SIZE)
   }, [jobs, userState])
 
-  const handleVote = (index: number, decision: VoteDecision, tags: DismissTag[] = []) => {
+  const handleVote = (jobId: string, decision: VoteDecision, tags: DismissTag[] = []) => {
     setVotes((prev) => {
       const next = new Map(prev)
-      next.set(index, { decision, tags })
+      next.set(jobId, { decision, tags })
       return next
     })
+    // Persist to Supabase (fire-and-forget — optimistic UI)
+    voteOnJob(jobId, decision, tags)
   }
 
   // Empty batch — check before allReviewed (0 >= 0 is true)
@@ -62,7 +63,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
 
   const reviewedCount = votes.size
   const allReviewed = reviewedCount >= batch.length
-  const activeCards = batch.filter((item) => !votes.has(item.originalIndex))
+  const activeCards = batch.filter((item) => !votes.has(item.job.id))
 
   // "Enough for today" or "All reviewed" state
   if (exitedEarly || allReviewed) {
@@ -122,10 +123,10 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
 
       {/* Card stack */}
       <div>
-        {batch.map(({ job, originalIndex, score }, i) => {
-          if (votes.has(originalIndex)) {
+        {batch.map(({ job, score }, i) => {
+          if (votes.has(job.id)) {
             // Show voted confirmation inline
-            const vote = votes.get(originalIndex)!
+            const vote = votes.get(job.id)!
             const messages: Record<VoteDecision, string> = {
               interested: 'Added to your tracker',
               not_for_me: 'Got it — noted',
@@ -133,9 +134,9 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
             }
             return (
               <div
-                key={originalIndex}
+                key={job.id}
                 className="py-2 text-sm text-muted-foreground/60 animate-in fade-in duration-200"
-                data-testid={`pick-card-voted-${originalIndex}`}
+                data-testid={`pick-card-voted-${job.id}`}
               >
                 <span className="text-xs">{messages[vote.decision]}</span>
                 <div className="h-px bg-border/30 mt-2" />
@@ -145,10 +146,9 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
 
           return (
             <PickCard
-              key={originalIndex}
+              key={job.id}
               job={job}
               urgencyScore={score}
-              index={originalIndex}
               onVote={handleVote}
               staggerIndex={i}
               today={userState.today}

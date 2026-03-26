@@ -17,19 +17,18 @@ import { VisaBadge } from '@/components/visa-badge'
 import { UrgencyIndicator } from './urgency-indicator'
 import { TagPicker } from './tag-picker'
 import { getImmigrationContext, formatDeadline } from './job-row'
-import type { SeedJob } from '@/db/seed'
+import type { Job } from '@/types/job'
 import type { VoteDecision, DismissTag } from '@/app/jobs/actions'
 
 interface PickCardProps {
-  job: SeedJob
+  job: Job
   urgencyScore: number
-  index: number
-  onVote: (index: number, decision: VoteDecision, tags?: DismissTag[]) => void
+  onVote: (jobId: string, decision: VoteDecision, tags?: DismissTag[]) => void
   staggerIndex: number
   today: string
 }
 
-export function PickCard({ job, urgencyScore, index, onVote, staggerIndex, today }: PickCardProps) {
+export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: PickCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showTags, setShowTags] = useState(false)
 
@@ -42,24 +41,24 @@ export function PickCard({ job, urgencyScore, index, onVote, staggerIndex, today
       return
     }
     // Parent (DailyBatch) handles the voted state and re-renders
-    onVote(index, decision)
+    onVote(job.id, decision)
   }
 
   const handleTagSelect = (tags: DismissTag[]) => {
     setShowTags(false)
-    onVote(index, 'not_for_me', tags)
+    onVote(job.id, 'not_for_me', tags)
   }
 
   const handleTagSkip = () => {
     setShowTags(false)
-    onVote(index, 'not_for_me')
+    onVote(job.id, 'not_for_me')
   }
 
   return (
     <article
       className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
       style={{ animationDelay: `${Math.min(staggerIndex, 8) * 50}ms` }}
-      data-testid={`pick-card-${index}`}
+      data-testid={`pick-card-${job.id}`}
     >
       <div className="py-5 group">
         {/* Main card content — tappable to expand */}

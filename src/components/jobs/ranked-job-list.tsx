@@ -4,40 +4,25 @@ import { useState, useMemo } from 'react'
 import { Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { JobRow } from './job-row'
-import { computeUrgencyScore, type JobInput, type UserState } from '@/lib/urgency-scoring'
-import type { SeedJob } from '@/db/seed'
+import { computeUrgencyScore, jobToInput, type UserState } from '@/lib/urgency-scoring'
+import type { Job } from '@/types/job'
 
 interface RankedJobListProps {
-  jobs: SeedJob[]
+  jobs: Job[]
   userState: UserState
-  trackedIndices?: Set<number>
+  trackedIds?: Set<string>
 }
 
-function seedJobToInput(job: SeedJob, today: string): JobInput {
-  return {
-    visa_path: job.visa_path,
-    employer_type: job.employer_type,
-    cap_exempt_confidence: job.cap_exempt_confidence,
-    employment_type: job.employment_type,
-    source_type: job.source_type,
-    location: job.location,
-    h1b_sponsor_count: job.h1b_sponsor_count,
-    application_deadline: job.application_deadline,
-    application_complexity: job.application_complexity,
-    indexed_date: today,
-  }
-}
-
-export function RankedJobList({ jobs, userState, trackedIndices: initialTracked }: RankedJobListProps) {
+export function RankedJobList({ jobs, userState, trackedIds: initialTracked }: RankedJobListProps) {
   const [bridgeOnly, setBridgeOnly] = useState(false)
-  const [tracked, setTracked] = useState<Set<number>>(initialTracked ?? new Set())
+  const [tracked, setTracked] = useState<Set<string>>(initialTracked ?? new Set())
 
   // Score and sort jobs
   const scoredJobs = useMemo(() => {
     return jobs
-      .map((job, originalIndex) => {
-        const result = computeUrgencyScore(seedJobToInput(job, userState.today), userState)
-        return { job, originalIndex, score: result.urgency_score }
+      .map((job) => {
+        const result = computeUrgencyScore(jobToInput(job, userState.today), userState)
+        return { job, score: result.urgency_score }
       })
       .filter((item) => {
         // Filter out ineligible
@@ -55,7 +40,8 @@ export function RankedJobList({ jobs, userState, trackedIndices: initialTracked 
   }, [jobs, userState, bridgeOnly])
 
   const handleTrack = async (index: number) => {
-    setTracked((prev) => new Set(prev).add(index))
+    const job = scoredJobs[index]
+    if (job) setTracked((prev) => new Set(prev).add(job.job.id))
   }
 
   // Empty state — teach the interface, don't just say "nothing here"
@@ -108,14 +94,14 @@ export function RankedJobList({ jobs, userState, trackedIndices: initialTracked 
         count={scoredJobs.length}
       />
       <div className="divide-y-0">
-        {scoredJobs.map(({ job, originalIndex, score }) => (
+        {scoredJobs.map(({ job, score }, i) => (
           <JobRow
-            key={originalIndex}
+            key={job.id}
             job={job}
             urgencyScore={score}
-            index={originalIndex}
+            index={i}
             onTrack={handleTrack}
-            isTracked={tracked.has(originalIndex)}
+            isTracked={tracked.has(job.id)}
             today={userState.today}
           />
         ))}
@@ -152,5 +138,3 @@ function ListHeader({
     </div>
   )
 }
-
-export { seedJobToInput }
