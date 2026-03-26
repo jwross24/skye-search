@@ -2,6 +2,10 @@
 
 Follow every step. No skipping. The pre-commit hook will block you if you skip verify.
 
+## Session start (once per session, enforced by prereq-gate hook)
+
+0. `bash scripts/check-prereqs.sh` — verify Docker, local Supabase, dev server, .env.local. The hook auto-runs this before any bv/br command and stamps for 30 minutes.
+
 ## Before starting each bead
 
 1. `bv --robot-next` — pick the bead
