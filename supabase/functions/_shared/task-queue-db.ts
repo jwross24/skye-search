@@ -16,6 +16,7 @@ export function createTaskQueueDb(supabase: SupabaseClient): TaskQueueDb {
         .from('task_queue')
         .update({ status: 'completed', result_json: resultJson })
         .eq('id', taskId)
+        .eq('status', 'processing')
       if (error) throw new Error(`completeTask failed: ${error.message}`)
     },
 
@@ -37,6 +38,7 @@ export function createTaskQueueDb(supabase: SupabaseClient): TaskQueueDb {
           error_log: errorLog,
         })
         .eq('id', taskId)
+        .eq('status', 'processing')
       if (error) throw new Error(`deadLetterTask failed: ${error.message}`)
     },
 

@@ -36,13 +36,11 @@ export async function updateApplicationNotes(
     .from('applications')
     .update({
       notes,
-      // next_action and next_action_date don't exist in schema yet —
-      // store in notes until schema is updated
+      next_action: nextAction || null,
+      next_action_date: nextActionDate || null,
     })
     .eq('id', applicationId)
     .eq('user_id', user.id)
-
-  void [nextAction, nextActionDate] // TODO: add columns to schema
 
   if (error) return { success: false, error: error.message }
 

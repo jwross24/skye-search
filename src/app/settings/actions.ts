@@ -122,9 +122,10 @@ export async function saveExtractedProfile(extraction: CvExtraction) {
       extraction.education,
       e => `${e.degree}|${e.institution}`.toLowerCase(),
     ),
-    employment_history: deduplicateByTitle(
+    employment_history: deduplicateByKey(
       currentProfile.employment_history ?? [],
       extraction.employment_history,
+      e => `${e.title}|${e.organization}`.toLowerCase(),
     ),
   }
 

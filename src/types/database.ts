@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.4"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -67,6 +87,8 @@ export type Database = {
           kanban_status:
             | Database["public"]["Enums"]["kanban_status_type"]
             | null
+          next_action: string | null
+          next_action_date: string | null
           notes: string | null
           offer_accepted_date: string | null
           offer_date: string | null
@@ -99,6 +121,8 @@ export type Database = {
           kanban_status?:
             | Database["public"]["Enums"]["kanban_status_type"]
             | null
+          next_action?: string | null
+          next_action_date?: string | null
           notes?: string | null
           offer_accepted_date?: string | null
           offer_date?: string | null
@@ -131,6 +155,8 @@ export type Database = {
           kanban_status?:
             | Database["public"]["Enums"]["kanban_status_type"]
             | null
+          next_action?: string | null
+          next_action_date?: string | null
           notes?: string | null
           offer_accepted_date?: string | null
           offer_date?: string | null
@@ -1173,6 +1199,7 @@ export type Database = {
           max_retries: number | null
           next_retry_at: string | null
           payload_json: Json | null
+          result_json: Json | null
           retry_count: number | null
           status: Database["public"]["Enums"]["task_status_type"] | null
           task_type: string
@@ -1187,6 +1214,7 @@ export type Database = {
           max_retries?: number | null
           next_retry_at?: string | null
           payload_json?: Json | null
+          result_json?: Json | null
           retry_count?: number | null
           status?: Database["public"]["Enums"]["task_status_type"] | null
           task_type: string
@@ -1201,6 +1229,7 @@ export type Database = {
           max_retries?: number | null
           next_retry_at?: string | null
           payload_json?: Json | null
+          result_json?: Json | null
           retry_count?: number | null
           status?: Database["public"]["Enums"]["task_status_type"] | null
           task_type?: string
@@ -1464,13 +1493,41 @@ export type Database = {
       }
     }
     Functions: {
+      dequeue_task: {
+        Args: { batch_size?: number }
+        Returns: {
+          created_at: string
+          dead_lettered_at: string | null
+          error_log: string | null
+          id: string
+          max_retries: number | null
+          next_retry_at: string | null
+          payload_json: Json | null
+          result_json: Json | null
+          retry_count: number | null
+          status: Database["public"]["Enums"]["task_status_type"] | null
+          task_type: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "task_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       fn_daily_unemployment_checkpoint: {
         Args: {
-          p_user_id?: string
           p_target_date?: string
           p_trigger_source?: Database["public"]["Enums"]["trigger_source_type"]
+          p_user_id?: string
         }
         Returns: Json
+      }
+      retry_task: {
+        Args: { error_text: string; next_retry: string; task_id: string }
+        Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -1671,6 +1728,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       cap_exempt_confidence_type: ["none", "unverified", "likely", "confirmed"],
@@ -1754,3 +1814,4 @@ export const Constants = {
     },
   },
 } as const
+

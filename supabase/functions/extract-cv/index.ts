@@ -59,7 +59,15 @@ Deno.serve(async (req) => {
 
     // Convert to base64 for Claude document block
     const arrayBuffer = await fileData.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    const bytes = new Uint8Array(arrayBuffer)
+
+    // Chunked base64 encoding — spread operator crashes on >64KB arrays
+    let binary = ''
+    const CHUNK = 32768
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+    }
+    const base64 = btoa(binary)
 
     // Determine media type from file extension
     const mediaType = filePath.endsWith('.pdf')
@@ -67,7 +75,11 @@ Deno.serve(async (req) => {
       : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
     // Call Claude Haiku for extraction
-    const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+    if (!apiKey) {
+      return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500)
+    }
+    const anthropic = new Anthropic({ apiKey })
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -116,7 +128,6 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error('Failed to update document:', updateError.message)
-      // Non-fatal: extraction succeeded, just couldn't save to documents table
     }
 
     // Log API usage (best-effort, don't fail extraction if logging fails)
@@ -125,14 +136,19 @@ Deno.serve(async (req) => {
       model: message.model,
       input_tokens: message.usage.input_tokens,
       output_tokens: message.usage.output_tokens,
+      // Haiku 4.5: $0.80/MTok input, $4.00/MTok output → cents per token
       estimated_cost_cents: Math.ceil(
-        (message.usage.input_tokens * 0.08 + message.usage.output_tokens * 0.4) / 100,
+        (message.usage.input_tokens * 0.00008 + message.usage.output_tokens * 0.0004) * 100,
       ),
       task_type: 'cv_extraction',
     })
     if (logError) console.error('Failed to log API usage:', logError.message)
 
-    return jsonResponse({ ok: true, extraction })
+    return jsonResponse({
+      ok: true,
+      extraction,
+      documentUpdated: !updateError,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('extract-cv error:', message)
