@@ -5,30 +5,32 @@ vi.mock('@/lib/email-alerts', () => ({
   checkAndSendAlerts: vi.fn().mockResolvedValue([]),
 }))
 
-// Create a chainable mock that resolves at any await point
-function chainable(resolvedValue: unknown): unknown {
-  const fn = vi.fn(() => chainable(resolvedValue)) as unknown as Record<string, unknown>
-  // Make it thenable so `await` works at any point in the chain
-  fn.then = (resolve: (v: unknown) => void) => Promise.resolve(resolvedValue).then(resolve)
-  // Supabase methods that return the chain
-  fn.select = fn
-  fn.eq = fn
-  fn.from = fn
-  return fn
-}
-
-vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
-    from: () => chainable({ data: [{ id: 'user-1' }] }),
-    auth: {
-      admin: {
-        listUsers: vi.fn().mockResolvedValue({
-          data: { users: [{ id: 'user-1', email: 'test@example.com' }] },
-        }),
+vi.mock('@supabase/supabase-js', () => {
+  // Chainable query builder that resolves to a fixed value at any point
+  function queryBuilder(value: unknown) {
+    return new Proxy({} as Record<string, unknown>, {
+      get(_, prop) {
+        if (prop === 'then') {
+          return (resolve: (v: unknown) => void) => Promise.resolve(value).then(resolve)
+        }
+        return () => queryBuilder(value)
       },
-    },
-  })),
-}))
+    })
+  }
+
+  return {
+    createClient: vi.fn(() => ({
+      from: () => queryBuilder({ data: [{ id: 'user-1' }] }),
+      auth: {
+        admin: {
+          listUsers: vi.fn().mockResolvedValue({
+            data: { users: [{ id: 'user-1', email: 'test@example.com' }] },
+          }),
+        },
+      },
+    })),
+  }
+})
 
 import { POST } from './route'
 import { checkAndSendAlerts } from '@/lib/email-alerts'

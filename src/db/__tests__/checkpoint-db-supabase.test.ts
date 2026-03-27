@@ -14,7 +14,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createCheckpointDbSupabase } from '../checkpoint-db-supabase'
 
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
-const TEST_DATE = '2099-12-31' // Far future to avoid collisions with real data
+// Use a random year in the far future so concurrent test sessions don't collide
+// on the unique(user_id, checkpoint_date) constraint
+const TEST_YEAR = 2200 + Math.floor(Math.random() * 800) // 2200-2999
+const TEST_DATE = `${TEST_YEAR}-12-31`
 
 let adminClient: SupabaseClient
 let db: ReturnType<typeof createCheckpointDbSupabase>
@@ -33,13 +36,13 @@ afterEach(async () => {
     .from('daily_checkpoint')
     .delete()
     .eq('user_id', TEST_USER_ID)
-    .gte('checkpoint_date', '2099-01-01')
+    .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
 
   await adminClient
     .from('cron_execution_log')
     .delete()
     .eq('user_id', TEST_USER_ID)
-    .gte('execution_date', '2099-01-01')
+    .gte('execution_date', `${TEST_YEAR}-01-01`)
 })
 
 afterAll(async () => {
@@ -48,13 +51,13 @@ afterAll(async () => {
     .from('daily_checkpoint')
     .delete()
     .eq('user_id', TEST_USER_ID)
-    .gte('checkpoint_date', '2099-01-01')
+    .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
 
   await adminClient
     .from('cron_execution_log')
     .delete()
     .eq('user_id', TEST_USER_ID)
-    .gte('execution_date', '2099-01-01')
+    .gte('execution_date', `${TEST_YEAR}-01-01`)
 })
 
 // ─── Query Methods ───────────────────────────────────────────────────────────
@@ -111,7 +114,7 @@ describe('checkpointExists', () => {
 
 describe('getLastCheckpoint', () => {
   it('returns null when no prior checkpoints exist', async () => {
-    const result = await db.getLastCheckpoint(TEST_USER_ID, '2099-01-01')
+    const result = await db.getLastCheckpoint(TEST_USER_ID, `${TEST_YEAR}-01-01`)
     expect(result).toBeNull()
   })
 
@@ -119,7 +122,7 @@ describe('getLastCheckpoint', () => {
     // Insert two checkpoints
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-01',
+      checkpoint_date: `${TEST_YEAR}-06-01`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 32,
       trigger_source: 'manual_backfill',
@@ -127,20 +130,20 @@ describe('getLastCheckpoint', () => {
     })
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-02',
+      checkpoint_date: `${TEST_YEAR}-06-02`,
       status_snapshot: 'employed_bridge',
       unemployment_days_used_cumulative: 32,
       trigger_source: 'manual_backfill',
       evidence_notes: null,
     })
 
-    const result = await db.getLastCheckpoint(TEST_USER_ID, '2099-06-03')
+    const result = await db.getLastCheckpoint(TEST_USER_ID, `${TEST_YEAR}-06-03`)
     expect(result).not.toBeNull()
-    expect(result!.checkpoint_date).toBe('2099-06-02')
+    expect(result!.checkpoint_date).toBe(`${TEST_YEAR}-06-02`)
     expect(result!.status_snapshot).toBe('employed_bridge')
 
     // Requesting before first checkpoint returns null
-    const result2 = await db.getLastCheckpoint(TEST_USER_ID, '2099-06-01')
+    const result2 = await db.getLastCheckpoint(TEST_USER_ID, `${TEST_YEAR}-06-01`)
     expect(result2).toBeNull()
   })
 })
@@ -154,7 +157,7 @@ describe('countUnemployedCheckpoints', () => {
   it('counts only unemployed checkpoints before the target date', async () => {
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-01',
+      checkpoint_date: `${TEST_YEAR}-06-01`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 32,
       trigger_source: 'manual_backfill',
@@ -162,7 +165,7 @@ describe('countUnemployedCheckpoints', () => {
     })
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-02',
+      checkpoint_date: `${TEST_YEAR}-06-02`,
       status_snapshot: 'employed_bridge',
       unemployment_days_used_cumulative: 32,
       trigger_source: 'manual_backfill',
@@ -170,24 +173,24 @@ describe('countUnemployedCheckpoints', () => {
     })
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-03',
+      checkpoint_date: `${TEST_YEAR}-06-03`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 33,
       trigger_source: 'manual_backfill',
       evidence_notes: null,
     })
 
-    const count = await db.countUnemployedCheckpoints(TEST_USER_ID, '2099-06-04')
+    const count = await db.countUnemployedCheckpoints(TEST_USER_ID, `${TEST_YEAR}-06-04`)
     expect(count).toBe(2) // Two unemployed days (06-01 and 06-03)
 
-    const countBefore = await db.countUnemployedCheckpoints(TEST_USER_ID, '2099-06-02')
+    const countBefore = await db.countUnemployedCheckpoints(TEST_USER_ID, `${TEST_YEAR}-06-02`)
     expect(countBefore).toBe(1) // Only 06-01
   })
 })
 
 describe('getExistingCheckpointDates', () => {
   it('returns empty Set when no checkpoints in range', async () => {
-    const result = await db.getExistingCheckpointDates(TEST_USER_ID, '2099-01-01', '2099-01-31')
+    const result = await db.getExistingCheckpointDates(TEST_USER_ID, `${TEST_YEAR}-01-01`, `${TEST_YEAR}-01-31`)
     expect(result).toBeInstanceOf(Set)
     expect(result.size).toBe(0)
   })
@@ -195,7 +198,7 @@ describe('getExistingCheckpointDates', () => {
   it('returns Set of checkpoint dates in range (exclusive boundaries)', async () => {
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-01',
+      checkpoint_date: `${TEST_YEAR}-06-01`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 32,
       trigger_source: 'manual_backfill',
@@ -203,7 +206,7 @@ describe('getExistingCheckpointDates', () => {
     })
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-02',
+      checkpoint_date: `${TEST_YEAR}-06-02`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 33,
       trigger_source: 'manual_backfill',
@@ -211,19 +214,19 @@ describe('getExistingCheckpointDates', () => {
     })
     await db.insertCheckpoint({
       user_id: TEST_USER_ID,
-      checkpoint_date: '2099-06-04',
+      checkpoint_date: `${TEST_YEAR}-06-04`,
       status_snapshot: 'unemployed',
       unemployment_days_used_cumulative: 34,
       trigger_source: 'manual_backfill',
       evidence_notes: null,
     })
 
-    const result = await db.getExistingCheckpointDates(TEST_USER_ID, '2099-05-31', '2099-06-05')
+    const result = await db.getExistingCheckpointDates(TEST_USER_ID, `${TEST_YEAR}-05-31`, `${TEST_YEAR}-06-05`)
     expect(result.size).toBe(3)
-    expect(result.has('2099-06-01')).toBe(true)
-    expect(result.has('2099-06-02')).toBe(true)
-    expect(result.has('2099-06-03')).toBe(false) // Gap
-    expect(result.has('2099-06-04')).toBe(true)
+    expect(result.has(`${TEST_YEAR}-06-01`)).toBe(true)
+    expect(result.has(`${TEST_YEAR}-06-02`)).toBe(true)
+    expect(result.has(`${TEST_YEAR}-06-03`)).toBe(false) // Gap
+    expect(result.has(`${TEST_YEAR}-06-04`)).toBe(true)
   })
 })
 
@@ -250,7 +253,7 @@ describe('insertCheckpoint', () => {
     const exists = await db.checkpointExists(TEST_USER_ID, TEST_DATE)
     expect(exists).toBe(true)
 
-    const last = await db.getLastCheckpoint(TEST_USER_ID, '2100-01-01')
+    const last = await db.getLastCheckpoint(TEST_USER_ID, `${TEST_YEAR + 1}-01-01`)
     expect(last).not.toBeNull()
     expect(last!.checkpoint_date).toBe(TEST_DATE)
     expect(last!.evidence_notes).toBe('integration test insert')
