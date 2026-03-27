@@ -1,0 +1,89 @@
+name: Post-Deploy Smoke Test
+
+# Runs after every Vercel deploy to production.
+# Verifies API routes are reachable (not blocked by proxy/middleware)
+# and the database is connected.
+#
+# Trigger: Vercel sends a deployment_status webhook to GitHub.
+# Also runs on schedule as a heartbeat.
+
+on:
+  deployment_status:
+  schedule:
+    # Every 6 hours — heartbeat check
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  smoke:
+    name: Production Smoke Test
+    runs-on: ubuntu-latest
+    # Only run on successful production deployments (or schedule/manual)
+    if: >
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    steps:
+      - name: Wait for deploy to propagate
+        if: github.event_name == 'deployment_status'
+        run: sleep 30
+
+      - name: Liveness probe
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            https://skye-search.vercel.app/api/health)
+          echo "Liveness: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Liveness probe failed — API routes may be blocked by proxy"
+            exit 1
+          fi
+
+      - name: Readiness probe (DB connectivity)
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 10 \
+            "https://skye-search.vercel.app/api/health?ready=true")
+          STATUS=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+          echo "Readiness: $STATUS"
+          echo "Body: $BODY"
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Readiness probe degraded — DB may be unreachable"
+          fi
+
+      - name: Cron endpoint reachable (not redirected)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # We expect 200 (with valid secret) or 401 (wrong secret) — NOT 307 (redirect)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -X POST https://skye-search.vercel.app/api/cron/unemployment \
+            -H "Authorization: Bearer test-invalid-secret")
+          echo "Cron endpoint status: $STATUS"
+          if [ "$STATUS" = "307" ] || [ "$STATUS" = "302" ]; then
+            echo "::error::Cron endpoint is being redirected by proxy! API routes are broken."
+            exit 1
+          fi
+          # 401 is correct (bad secret), 500 is acceptable (misconfigured but reachable)
+          echo "Cron endpoint is reachable (not blocked by proxy)"
+
+      - name: Webhook endpoint reachable
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -X POST https://skye-search.vercel.app/api/webhooks/resend)
+          echo "Webhook endpoint status: $STATUS"
+          if [ "$STATUS" = "307" ] || [ "$STATUS" = "302" ]; then
+            echo "::error::Webhook endpoint is being redirected by proxy!"
+            exit 1
+          fi
+          echo "Webhook endpoint is reachable"
+
+      - name: Alerts endpoint reachable
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            -X POST https://skye-search.vercel.app/api/alerts)
+          echo "Alerts endpoint status: $STATUS"
+          if [ "$STATUS" = "307" ] || [ "$STATUS" = "302" ]; then
+            echo "::error::Alerts endpoint is being redirected by proxy!"
+            exit 1
+          fi
+          echo "Alerts endpoint is reachable"
