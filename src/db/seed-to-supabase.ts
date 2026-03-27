@@ -26,10 +26,15 @@ const DEFAULT_TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_EMAIL = 'dev@skye-search.test'
 const TEST_PASSWORD = 'testpass123'
 
+/** Parse --user-id=<uuid> from argv. Exported for testing. */
+export function parseUserIdArg(argv: string[]): { userId: string; existingUserId: string | undefined } {
+  const userIdArg = argv.find(a => a.startsWith('--user-id='))
+  const existingUserId = userIdArg?.split('=')[1]
+  return { userId: existingUserId ?? DEFAULT_TEST_USER_ID, existingUserId }
+}
+
 // Accept --user-id flag to seed for an existing user (e.g., production)
-const userIdArg = process.argv.find(a => a.startsWith('--user-id='))
-const EXISTING_USER_ID = userIdArg?.split('=')[1]
-const USER_ID = EXISTING_USER_ID ?? DEFAULT_TEST_USER_ID
+const { userId: USER_ID, existingUserId: EXISTING_USER_ID } = parseUserIdArg(process.argv)
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -236,7 +241,10 @@ async function main() {
   console.log(`  User:          ${EXISTING_USER_ID ?? `${TEST_EMAIL} / ${TEST_PASSWORD}`}`)
 }
 
-main().catch((err) => {
-  console.error('\nSeed failed:', err.message)
-  process.exit(1)
-})
+// Only run when executed directly (not when imported by tests)
+if (process.argv[1]?.endsWith('seed-to-supabase.ts')) {
+  main().catch((err) => {
+    console.error('\nSeed failed:', err.message)
+    process.exit(1)
+  })
+}
