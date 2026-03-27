@@ -7,8 +7,7 @@ set -euo pipefail
 # Hook: PreToolUse[Bash]
 # Exit 0 = allow, Exit 2 = block
 #
-# Checks for an .integration-stamp file created by running the integration
-# test script (scripts/integration-stamp.sh). The stamp must be < 30 min old.
+# Checks for an .integration-stamp file. The stamp must be < 10 min old.
 
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
@@ -36,7 +35,7 @@ if [ ! -f "$STAMP" ]; then
   exit 2
 fi
 
-# Check stamp age (1800 seconds = 30 minutes)
+# Check stamp age (600 seconds = 10 minutes)
 if [ "$(uname)" = "Darwin" ]; then
   STAMP_MOD=$(stat -f %m "$STAMP")
 else
@@ -45,8 +44,8 @@ fi
 NOW=$(date +%s)
 STAMP_AGE=$(( NOW - STAMP_MOD ))
 
-if [ "$STAMP_AGE" -gt 1800 ]; then
-  echo "BLOCKED: Integration stamp is stale (${STAMP_AGE}s old, max 1800s)." >&2
+if [ "$STAMP_AGE" -gt 600 ]; then
+  echo "BLOCKED: Integration stamp is stale (${STAMP_AGE}s old, max 600s)." >&2
   echo "Re-run your integration test and touch .claude/.integration-stamp" >&2
   exit 2
 fi
