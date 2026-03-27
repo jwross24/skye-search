@@ -9,7 +9,6 @@ set -euo pipefail
 
 NUM_COMMITS=${1:-3}
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-STAMP="$PROJECT_DIR/.claude/.cross-review-stamp"
 RESULTS="$PROJECT_DIR/.claude/.cross-review-results.json"
 
 echo "Cross-review: checking last $NUM_COMMITS commits..."
@@ -54,7 +53,9 @@ If no issues found, say 'PASS: No critical or high issues found.'
 Do NOT flag style, naming, or low-priority issues." 2>&1) || true
 
 echo "$REVIEW" > "$RESULTS"
-touch "$STAMP"
+
+# Reset the global bead counter (unlocks next bead for all agents)
+echo "0" > "$PROJECT_DIR/.claude/.bead-close-count-global"
 
 # Parse and display results
 echo ""
@@ -70,4 +71,4 @@ fi
 
 echo ""
 echo "Results saved to .claude/.cross-review-results.json"
-echo "Stamp updated — next bead is unblocked."
+echo "Counter reset — next bead is unblocked."

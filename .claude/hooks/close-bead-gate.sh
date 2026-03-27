@@ -2,25 +2,24 @@
 set -euo pipefail
 
 # Close-bead gate — blocks `br close` unless integration tests were run recently.
-# Prevents premature bead closure without real end-to-end verification.
+# Session-scoped: each agent must run its own integration test.
 #
 # Hook: PreToolUse[Bash]
 # Exit 0 = allow, Exit 2 = block
-#
-# Checks for an .integration-stamp file. The stamp must be < 10 min old.
+
+source "$(dirname "$0")/_stamp-helpers.sh"
 
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
+init_session_id "$INPUT"
 
-# Only gate br close commands
-if ! echo "$CMD" | grep -Eq 'br\s+close'; then
+# Only gate actual br close commands (not commit messages containing "br close")
+if ! echo "$CMD" | grep -Eq '^br\s+close|;\s*br\s+close|&&\s*br\s+close'; then
   exit 0
 fi
 
-STAMP="${CLAUDE_PROJECT_DIR:-.}/.claude/.integration-stamp"
-
-if [ ! -f "$STAMP" ]; then
-  echo "BLOCKED: No integration stamp found. Before closing a bead:" >&2
+if ! stamp_is_fresh "integration" 600; then
+  echo "BLOCKED: No fresh integration stamp for this session." >&2
   echo "" >&2
   echo "  1. Run the relevant integration test:" >&2
   echo "     - Edge Functions: supabase functions serve + curl" >&2
@@ -32,21 +31,6 @@ if [ ! -f "$STAMP" ]; then
   echo "" >&2
   echo "  Or if this bead has no integration test (docs-only, config-only):" >&2
   echo "     touch .claude/.integration-stamp && br close <id>" >&2
-  exit 2
-fi
-
-# Check stamp age (600 seconds = 10 minutes)
-if [ "$(uname)" = "Darwin" ]; then
-  STAMP_MOD=$(stat -f %m "$STAMP")
-else
-  STAMP_MOD=$(stat -c %Y "$STAMP")
-fi
-NOW=$(date +%s)
-STAMP_AGE=$(( NOW - STAMP_MOD ))
-
-if [ "$STAMP_AGE" -gt 600 ]; then
-  echo "BLOCKED: Integration stamp is stale (${STAMP_AGE}s old, max 600s)." >&2
-  echo "Re-run your integration test and touch .claude/.integration-stamp" >&2
   exit 2
 fi
 

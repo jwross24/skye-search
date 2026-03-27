@@ -9,7 +9,11 @@ set -euo pipefail
 # Hook: PreToolUse[Bash]
 # Exit 0 = allow, Exit 2 = block
 
+source "$(dirname "$0")/_stamp-helpers.sh"
+
 INPUT=$(cat)
+init_session_id "$INPUT"
+
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 
 # Only gate git commit commands
@@ -28,10 +32,12 @@ if [ "$STAGED_TSX" = "0" ]; then
   exit 0  # No .tsx files staged — not a UI bead
 fi
 
-# This is a UI bead commit — check for agent-browser stamp
-STAMP="${CLAUDE_PROJECT_DIR:-.}/.claude/.agent-browser-stamp"
-if [ ! -f "$STAMP" ]; then
-  cat >&2 <<'MSG'
+# This is a UI bead commit — check for agent-browser stamp (10 min TTL)
+if stamp_is_fresh "agent-browser" 600; then
+  exit 0
+fi
+
+cat >&2 <<'MSG'
 BLOCKED: UI bead detected but agent-browser verification was not run.
 
 The bead checklist requires visual verification for UI beads:
@@ -44,21 +50,4 @@ The bead checklist requires visual verification for UI beads:
 
 Run agent-browser before committing.
 MSG
-  exit 2
-fi
-
-# Check stamp age (600 seconds = 10 minutes)
-if [ "$(uname)" = "Darwin" ]; then
-  STAMP_MOD=$(stat -f %m "$STAMP")
-else
-  STAMP_MOD=$(stat -c %Y "$STAMP")
-fi
-NOW=$(date +%s)
-STAMP_AGE=$(( NOW - STAMP_MOD ))
-
-if [ "$STAMP_AGE" -gt 600 ]; then
-  echo "BLOCKED: Agent-browser stamp is stale (${STAMP_AGE}s old, max 600s). Re-run agent-browser verification." >&2
-  exit 2
-fi
-
-exit 0
+exit 2

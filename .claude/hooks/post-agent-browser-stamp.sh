@@ -7,12 +7,16 @@ set -euo pipefail
 #
 # Hook: PostToolUse[Bash]
 
+source "$(dirname "$0")/_stamp-helpers.sh"
+
 INPUT=$(cat)
+init_session_id "$INPUT"
+
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 
 # Stamp when agent-browser is invoked
 if echo "$CMD" | grep -Eq 'agent-browser'; then
-  touch "${CLAUDE_PROJECT_DIR:-.}/.claude/.agent-browser-stamp"
+  touch_stamp "agent-browser"
 fi
 
 exit 0

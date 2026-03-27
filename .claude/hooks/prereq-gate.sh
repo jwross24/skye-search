@@ -4,11 +4,12 @@
 
 set -euo pipefail
 
-STAMP_FILE="$CLAUDE_PROJECT_DIR/.claude/.prereq-stamp"
-MAX_AGE=1800  # 30 minutes
+source "$(dirname "$0")/_stamp-helpers.sh"
 
 # Only trigger on bead workflow commands
 INPUT=$(cat)
+init_session_id "$INPUT"
+
 COMMAND=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null || echo "")
 
 # Match bv and br commands (but not br search, br list which are read-only)
@@ -16,17 +17,14 @@ if ! echo "$COMMAND" | grep -qE "^(bv |br update |br close |br create )"; then
   exit 0
 fi
 
-# Check if stamp is fresh enough
-if [ -f "$STAMP_FILE" ]; then
-  STAMP_AGE=$(( $(date +%s) - $(stat -f %m "$STAMP_FILE" 2>/dev/null || stat -c %Y "$STAMP_FILE" 2>/dev/null || echo 0) ))
-  if [ "$STAMP_AGE" -lt "$MAX_AGE" ]; then
-    exit 0  # Recent stamp, allow
-  fi
+# Check if stamp is fresh enough (30 min TTL)
+if stamp_is_fresh "prereq" 1800; then
+  exit 0
 fi
 
 # Run prereq check
 if bash "$CLAUDE_PROJECT_DIR/scripts/check-prereqs.sh" 2>&1; then
-  touch "$STAMP_FILE"
+  touch_stamp "prereq"
   exit 0
 else
   echo "BLOCKED: Prerequisites not met. Run 'bash scripts/check-prereqs.sh' to see details."

@@ -6,17 +6,19 @@ set -euo pipefail
 #
 # Hook: PostToolUse[Skill]
 
-INPUT=$(cat)
-SKILL=$(printf '%s' "$INPUT" | jq -r '.tool_input.skill // ""' 2>/dev/null) || exit 0
+source "$(dirname "$0")/_stamp-helpers.sh"
 
-DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
+INPUT=$(cat)
+init_session_id "$INPUT"
+
+SKILL=$(printf '%s' "$INPUT" | jq -r '.tool_input.skill // ""' 2>/dev/null) || exit 0
 
 case "$SKILL" in
   impeccable)
-    touch "$DIR/.impeccable-stamp"
+    touch_stamp "impeccable"
     ;;
   resend)
-    touch "$DIR/.resend-stamp"
+    touch_stamp "resend"
     ;;
 esac
 
