@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -35,12 +36,17 @@ const navItems = [
   { title: 'Settings', href: '/settings', icon: Settings },
 ]
 
-interface AppSidebarProps {
-  unprocessedEmailCount?: number
-}
-
-export function AppSidebar({ unprocessedEmailCount = 0 }: AppSidebarProps) {
+export function AppSidebar() {
   const pathname = usePathname()
+  const [unprocessedCount, setUnprocessedCount] = useState(0)
+
+  useEffect(() => {
+    // Same-origin fetch — no CSP/ad-blocker issues
+    fetch('/api/inbox-count')
+      .then((res) => res.json())
+      .then((data) => setUnprocessedCount(data.count ?? 0))
+      .catch(() => {}) // Badge stays 0 on failure
+  }, [pathname])
 
   return (
     <Sidebar>
@@ -77,9 +83,9 @@ export function AppSidebar({ unprocessedEmailCount = 0 }: AppSidebarProps) {
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
-                    {item.href === '/emails' && unprocessedEmailCount > 0 && (
+                    {item.href === '/emails' && unprocessedCount > 0 && (
                       <SidebarMenuBadge className="bg-ocean/10 text-ocean text-xs font-medium">
-                        {unprocessedEmailCount}
+                        {unprocessedCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
