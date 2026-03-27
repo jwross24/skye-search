@@ -136,9 +136,10 @@ Deno.serve(async (req) => {
       model: message.model,
       input_tokens: message.usage.input_tokens,
       output_tokens: message.usage.output_tokens,
-      // Haiku 4.5: $0.80/MTok input, $4.00/MTok output → cents per token
+      // Haiku 4.5: $0.80/MTok input, $4.00/MTok output
+      // 0.00008 cents/input token, 0.0004 cents/output token (already in cents)
       estimated_cost_cents: Math.ceil(
-        (message.usage.input_tokens * 0.00008 + message.usage.output_tokens * 0.0004) * 100,
+        message.usage.input_tokens * 0.00008 + message.usage.output_tokens * 0.0004,
       ),
       task_type: 'cv_extraction',
     })

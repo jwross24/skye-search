@@ -30,11 +30,13 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to /login (except /login and /auth routes)
+  // Redirect unauthenticated users to /login
+  // Skip: /login, /auth, /api (API routes handle their own auth via Bearer tokens)
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
+    !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/api')
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
