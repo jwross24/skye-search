@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Close-bead gate — blocks `br close` unless integration tests were run recently.
-# Session-scoped: each agent must run its own integration test.
+# Close-bead gate v2 — evidence-based verification.
+# Replaces timestamp stamps with command log evidence verified against
+# test contracts (Layer 2) or Haiku classification (Layer 3).
+#
+# Flow:
+#   1. Extract bead ID from `br close <id>` command
+#   2. Read bead spec → parse test-contract block (Layer 2)
+#   3. If no contract → classify with Haiku (Layer 3)
+#   4. Verify evidence in command log (Layer 1)
+#   5. Block with specific, actionable guidance if missing
 #
 # Hook: PreToolUse[Bash]
 # Exit 0 = allow, Exit 2 = block
 
 source "$(dirname "$0")/_stamp-helpers.sh"
+
+SCRIPTS_DIR="$(cd "$(dirname "$0")/../../scripts" && pwd)"
 
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
@@ -15,24 +25,123 @@ init_session_id "$INPUT"
 
 # Only gate actual br close commands (check first line only, not heredoc body)
 FIRST_LINE=$(echo "$CMD" | head -1)
-if ! echo "$FIRST_LINE" | grep -Eq '^br\s+close|;\s*br\s+close|&&\s*br\s+close'; then
+if ! echo "$FIRST_LINE" | grep -Eq '\bbr[[:space:]]+close\b'; then
   exit 0
 fi
 
-if ! stamp_is_fresh "integration" 600; then
-  echo "BLOCKED: No fresh integration stamp for this session." >&2
+# ── Step 1: Extract bead ID ──────────────────────────────────────────────
+
+BEAD_ID=$(echo "$FIRST_LINE" | sed -E 's/.*br[[:space:]]+close[[:space:]]+([a-zA-Z0-9_-]+).*/\1/' | head -1) || true
+# Validate: if sed didn't match, it returns the full line unchanged
+if echo "$BEAD_ID" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9_-]*$' && [ "$BEAD_ID" != "$FIRST_LINE" ]; then
+  : # valid bead ID
+else
+  BEAD_ID=""
+fi
+if [ -z "$BEAD_ID" ]; then
+  # Can't parse bead ID — fall back to old stamp behavior
+  if ! stamp_is_fresh "integration" 600; then
+    echo "BLOCKED: Cannot parse bead ID and no integration stamp found." >&2
+    echo "  Touch .claude/.integration-stamp manually if this is a docs/config bead." >&2
+    exit 2
+  fi
+  exit 0
+fi
+
+# ── Step 1b: Validate review disposition (universal requirement) ──────────
+
+DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}.json"
+DISP_RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$DISP_FILE" 2>/dev/null) || true
+
+DISP_PASS=$(printf '%s' "$DISP_RESULT" | jq -r '.pass // false' 2>/dev/null) || DISP_PASS="false"
+
+if [ "$DISP_PASS" != "true" ]; then
+  DISP_ERROR=$(printf '%s' "$DISP_RESULT" | jq -r '.error // empty' 2>/dev/null) || DISP_ERROR=""
+  DISP_ISSUES=$(printf '%s' "$DISP_RESULT" | jq -r '.issues // empty' 2>/dev/null) || DISP_ISSUES=""
+
+  echo "BLOCKED: Review disposition not valid for $BEAD_ID" >&2
   echo "" >&2
-  echo "  1. Run the relevant integration test:" >&2
-  echo "     - Edge Functions: supabase functions serve + curl" >&2
-  echo "     - Database RPCs: supabase db query --local" >&2
-  echo "     - UI beads: agent-browser snapshot" >&2
-  echo "     - API routes: curl against dev server" >&2
-  echo "  2. Then run: touch .claude/.integration-stamp" >&2
-  echo "  3. Then: br close <id>" >&2
+
+  if [ -n "$DISP_ERROR" ]; then
+    echo "  $DISP_ERROR" >&2
+  fi
+
+  if [ -n "$DISP_ISSUES" ] && [ "$DISP_ISSUES" != "null" ]; then
+    NUM_DISP_ISSUES=$(printf '%s' "$DISP_ISSUES" | jq 'length' 2>/dev/null) || NUM_DISP_ISSUES=0
+    for i in $(seq 0 $((NUM_DISP_ISSUES - 1))); do
+      FINDING=$(printf '%s' "$DISP_ISSUES" | jq -r ".[$i].finding")
+      PROBLEM=$(printf '%s' "$DISP_ISSUES" | jq -r ".[$i].problem")
+      echo "  ✗ $FINDING" >&2
+      echo "    → $PROBLEM" >&2
+    done
+  fi
+
   echo "" >&2
-  echo "  Or if this bead has no integration test (docs-only, config-only):" >&2
-  echo "     touch .claude/.integration-stamp && br close <id>" >&2
+  echo "  Write disposition to: $DISP_FILE" >&2
+  echo "  Format: {\"bead_id\":\"$BEAD_ID\",\"reviewer\":\"subagent\",\"findings\":[...]}" >&2
+  echo "  Each finding needs: id, description, severity, disposition (fix|bead|not-a-bug), action" >&2
   exit 2
 fi
 
-exit 0
+# ── Step 2: Parse test contract from bead spec ───────────────────────────
+
+REQUIREMENTS=""
+CONTRACT=$(bash "$SCRIPTS_DIR/parse-test-contract.sh" "$BEAD_ID" 2>/dev/null) || CONTRACT="[]"
+NUM_CONTRACT=$(printf '%s' "$CONTRACT" | jq 'length' 2>/dev/null) || NUM_CONTRACT=0
+
+if [ "$NUM_CONTRACT" -gt 0 ]; then
+  REQUIREMENTS="$CONTRACT"
+  SOURCE="test-contract"
+else
+  # ── Step 3: Classify with Haiku ──────────────────────────────────────
+  REQUIREMENTS=$(bash "$SCRIPTS_DIR/classify-bead.sh" "$BEAD_ID" 2>/dev/null) || REQUIREMENTS='[{"type":"none","evidence":""}]'
+  SOURCE="haiku-classifier"
+fi
+
+# ── Step 4: Verify evidence in command log ────────────────────────────────
+
+LOG_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.command-log-${_SESSION}.jsonl"
+
+RESULT=$(bash "$SCRIPTS_DIR/verify-evidence.sh" "$LOG_FILE" "$REQUIREMENTS" 2>/dev/null) || true
+
+# Validate result is parseable JSON
+if [ -z "$RESULT" ] || ! printf '%s' "$RESULT" | jq -e '.pass' &>/dev/null; then
+  echo "BLOCKED: Evidence verification crashed for $BEAD_ID. Run scripts/verify-evidence.sh manually to debug." >&2
+  exit 2
+fi
+
+PASS=$(printf '%s' "$RESULT" | jq -r '.pass' 2>/dev/null) || PASS="false"
+
+if [ "$PASS" = "true" ]; then
+  # Also touch the stamp for backward compatibility with other hooks
+  touch_stamp "integration"
+  exit 0
+fi
+
+# ── Step 5: Block with specific guidance ──────────────────────────────────
+
+echo "BLOCKED: Missing integration evidence for $BEAD_ID (source: $SOURCE)" >&2
+echo "" >&2
+
+# Show what's missing with specific hints
+NUM_MISSING=$(printf '%s' "$RESULT" | jq '.missing | length' 2>/dev/null) || NUM_MISSING=0
+for i in $(seq 0 $((NUM_MISSING - 1))); do
+  TYPE=$(printf '%s' "$RESULT" | jq -r ".missing[$i].type")
+  HINT=$(printf '%s' "$RESULT" | jq -r ".missing[$i].hint")
+  echo "  ✗ $TYPE: $HINT" >&2
+done
+
+echo "" >&2
+
+# Show what was found (for encouragement)
+NUM_FOUND=$(printf '%s' "$RESULT" | jq '.found | length' 2>/dev/null) || NUM_FOUND=0
+if [ "$NUM_FOUND" -gt 0 ]; then
+  for i in $(seq 0 $((NUM_FOUND - 1))); do
+    TYPE=$(printf '%s' "$RESULT" | jq -r ".found[$i].type")
+    echo "  ✓ $TYPE: evidence found" >&2
+  done
+  echo "" >&2
+fi
+
+echo "Run the missing tests, then retry: br close $BEAD_ID" >&2
+exit 2

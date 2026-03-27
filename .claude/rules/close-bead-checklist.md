@@ -47,4 +47,7 @@ Session 2026-03-27 post-mortem:
 
 No single gate catches everything. All five together do.
 
-Enforcement: `close-bead-gate.sh` hook (level 1) blocks `br close` without `.integration-stamp` (10 min TTL). The other gates are enforced by discipline and cross-review.
+Enforcement: `close-bead-gate.sh` hook blocks `br close` with three checks:
+1. **Review disposition** (Gate 4): Requires `.claude/.review-disposition-{session}.json` with every finding dispositioned as fix/bead/not-a-bug. "pre-existing" is rejected. Lazy one-liners are rejected.
+2. **Integration evidence** (Gate 2): Checks command log JSONL against test-contract patterns or Haiku-classified requirements. No more timestamp stamps to bypass.
+3. **Verify stamp** (Gate 1): `bun run verify` enforced by `pre-commit-gate.sh`.

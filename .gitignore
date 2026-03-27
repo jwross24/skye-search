@@ -52,6 +52,8 @@ next-env.d.ts
 !.claude/
 !.claude/**
 .claude/.*-stamp*
+.claude/.command-log-*
+.claude/.review-disposition-*
 .claude/.cross-review-results.json
 .claude/.bead-close-count*
 .claude/settings.local.json
