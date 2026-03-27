@@ -367,11 +367,15 @@ async function processUserCheckpoint(
     }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-    await db.updateCronLog(logId, {
-      status: 'failed',
-      completed_at: new Date().toISOString(),
-      error_message: errorMsg,
-    })
+    try {
+      await db.updateCronLog(logId, {
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        error_message: errorMsg,
+      })
+    } catch {
+      // Best-effort — DB may be down (which caused the original error)
+    }
     return { userId, targetDate, action: 'error', error: errorMsg }
   }
 }
