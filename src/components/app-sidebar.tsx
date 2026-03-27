@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -10,6 +11,7 @@ import {
   Users,
   Settings,
   Coffee,
+  Inbox,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -21,12 +23,15 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuBadge,
 } from '@/components/ui/sidebar'
+import { createClient } from '@/db/supabase'
 
 const navItems = [
   { title: "Today's Picks", href: '/jobs', icon: Sparkles },
   { title: 'Tracker', href: '/tracker', icon: LayoutGrid },
   { title: 'Immigration HQ', href: '/immigration', icon: Shield },
+  { title: 'Inbox', href: '/emails', icon: Inbox },
   { title: 'Documents', href: '/documents', icon: FileText },
   { title: 'Network', href: '/network', icon: Users },
   { title: 'Settings', href: '/settings', icon: Settings },
@@ -34,6 +39,18 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const [unprocessedCount, setUnprocessedCount] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('raw_inbound_email')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'unprocessed')
+      .then(({ count }) => {
+        setUnprocessedCount(count ?? 0)
+      })
+  }, [pathname]) // Re-fetch when navigating (classification changes count)
 
   return (
     <Sidebar>
@@ -70,6 +87,11 @@ export function AppSidebar() {
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
+                    {item.href === '/emails' && unprocessedCount > 0 && (
+                      <SidebarMenuBadge className="bg-ocean/10 text-ocean text-xs font-medium">
+                        {unprocessedCount}
+                      </SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 )
               })}
