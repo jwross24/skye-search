@@ -36,7 +36,11 @@ begin
 end;
 $$;
 
--- 5. Dequeue RPC — atomically claim tasks for processing
+-- 5. Enable extensions for scheduled invocation
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- 6. Dequeue RPC — atomically claim tasks for processing
 -- Uses FOR UPDATE SKIP LOCKED to prevent double-processing across concurrent workers
 create or replace function public.dequeue_task(batch_size int default 1)
 returns setof public.task_queue
@@ -62,3 +66,25 @@ begin
   returning *;
 end;
 $$;
+
+-- 7. Schedule queue-worker invocation every minute via pg_cron + pg_net
+-- Requires Vault secrets 'project_url' and 'cron_secret' to be set:
+--   SELECT vault.create_secret('https://<ref>.supabase.co', 'project_url');
+--   SELECT vault.create_secret('<cron-secret-value>', 'cron_secret');
+--
+-- Uncomment after Vault secrets are configured:
+-- SELECT cron.schedule(
+--   'invoke-queue-worker',
+--   '* * * * *',
+--   $$
+--   SELECT net.http_post(
+--     url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'project_url')
+--            || '/functions/v1/queue-worker',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
+--     ),
+--     body := '{}'::jsonb
+--   ) AS request_id;
+--   $$
+-- );

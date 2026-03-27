@@ -3,9 +3,8 @@ import { getSupabaseAdmin } from '../_shared/supabase-admin.ts'
 import { createTaskQueueDb } from '../_shared/task-queue-db.ts'
 import { processTaskBatch } from '../_shared/worker.ts'
 
-// Import handler registrations here as downstream beads add them:
-// import '../_shared/handlers/tailor-docs.ts'
-// import '../_shared/handlers/ai-scoring.ts'
+// Register task handlers here as downstream beads add them.
+// Example: import '../_shared/handlers/tailor-docs.ts'
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET')
 
@@ -29,13 +28,16 @@ Deno.serve(async (req) => {
   try {
     // Parse optional batch size from body
     let batchSize = 10
-    try {
-      const body = await req.json()
-      if (body?.batchSize && typeof body.batchSize === 'number') {
-        batchSize = Math.min(body.batchSize, 50)
+    const contentLength = req.headers.get('content-length')
+    if (contentLength && parseInt(contentLength) > 0) {
+      try {
+        const body = await req.json()
+        if (body?.batchSize && typeof body.batchSize === 'number') {
+          batchSize = Math.min(body.batchSize, 50)
+        }
+      } catch {
+        // Invalid JSON — use default
       }
-    } catch {
-      // No body or invalid JSON — use default
     }
 
     const supabase = getSupabaseAdmin()
