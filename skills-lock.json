@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-email-inbox": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "computedHash": "77c68e08a3c42760cfa9757debcc5be35fec7db908a82dfc62638afb8695a5f2"
+    },
+    "resend": {
+      "source": "resend/resend-skills",
+      "sourceType": "github",
+      "computedHash": "e756972f463d161f3c227eab41d119fd7430249736bc770d00b21c3eeb68f91a"
+    },
+    "resend-cli": {
+      "source": "resend/resend-cli",
+      "sourceType": "github",
+      "computedHash": "14373617c2c2b8a5990c01bdfda10f9c81d2b2eddc7f48ba3e7cd862189fd435"
+    }
+  }
+}

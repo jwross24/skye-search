@@ -44,8 +44,12 @@ next-env.d.ts
 # bv (beads viewer) local config and caches
 .bv/
 
+# Agent skill cache (generated, mirrors .claude/skills/)
+.agents/
+
 # Track project-specific Claude config (overrides global .claude/* ignore)
 !.claude/
 !.claude/**
-.claude/.verify-stamp
+.claude/.*-stamp
 .claude/settings.local.json
+supabase/.temp/
