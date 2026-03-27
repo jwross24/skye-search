@@ -237,10 +237,12 @@ export function ClockDisplay({
             fraction={Math.max(0, expiryDays / 365)}
             color="ocean"
             size={120}
-            label={`STEM OPT valid for ${expiryDays} more days, expires ${formatDate(optExpiry)}`}
+            label={expiryDays > 0
+              ? `STEM OPT valid for ${expiryDays} more days, expires ${formatDate(optExpiry)}`
+              : `STEM OPT expired ${formatDate(optExpiry)}`}
           >
             <span className="text-2xl font-semibold tracking-tight text-ocean tabular-nums">
-              {expiryDays}
+              {expiryDays > 0 ? expiryDays : 0}
             </span>
             <span className="text-[10px] text-muted-foreground/70">days</span>
           </ProgressArc>
@@ -252,7 +254,9 @@ export function ClockDisplay({
               {formatDate(optExpiry)}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Valid for {expiryDays} more days
+              {expiryDays > 0
+                ? `Valid for ${expiryDays} more days`
+                : 'Expired'}
             </p>
           </div>
         </div>
