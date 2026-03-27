@@ -55,8 +55,10 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "SUPABASE_SECRET_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
 
-      - name: Apply migrations
-        run: supabase db reset --debug 2>&1 | tail -5
+      - name: Apply migrations and seed test user
+        run: |
+          supabase db reset --debug 2>&1 | tail -5
+          bun run src/db/seed-to-supabase.ts
 
       # Immigration-critical tests (unemployment clock, urgency scoring,
       # cap-exempt classification, dedup) all run here and block on failure
