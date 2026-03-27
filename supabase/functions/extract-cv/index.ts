@@ -84,11 +84,17 @@ Deno.serve(async (req) => {
       }],
     })
 
-    // Parse Claude's response
-    const responseText = message.content
+    // Parse Claude's response — strip markdown fences if present
+    let responseText = message.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('')
+      .trim()
+
+    // Claude sometimes wraps JSON in ```json ... ``` despite instructions
+    if (responseText.startsWith('```')) {
+      responseText = responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    }
 
     let extraction: Record<string, unknown>
     try {
@@ -113,8 +119,8 @@ Deno.serve(async (req) => {
       // Non-fatal: extraction succeeded, just couldn't save to documents table
     }
 
-    // Log API usage
-    await supabase.from('api_usage_log').insert({
+    // Log API usage (best-effort, don't fail extraction if logging fails)
+    const { error: logError } = await supabase.from('api_usage_log').insert({
       user_id: user.id,
       model: message.model,
       input_tokens: message.usage.input_tokens,
@@ -123,7 +129,8 @@ Deno.serve(async (req) => {
         (message.usage.input_tokens * 0.08 + message.usage.output_tokens * 0.4) / 100,
       ),
       task_type: 'cv_extraction',
-    }).catch((err: Error) => console.error('Failed to log API usage:', err.message))
+    })
+    if (logError) console.error('Failed to log API usage:', logError.message)
 
     return jsonResponse({ ok: true, extraction })
   } catch (err) {
