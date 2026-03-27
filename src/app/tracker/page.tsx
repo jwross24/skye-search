@@ -87,7 +87,7 @@ export default async function TrackerPage() {
     })
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="min-w-0 w-full px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Application Tracker

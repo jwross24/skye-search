@@ -157,10 +157,10 @@ function StatusMenu({
 }) {
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — stopPropagation prevents the click from reaching the card's onSelect */}
       <div
         className="fixed inset-0 z-40"
-        onClick={onClose}
+        onClick={(e) => { e.stopPropagation(); onClose() }}
         role="presentation"
       />
       {/* Menu */}

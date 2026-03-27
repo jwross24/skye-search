@@ -179,7 +179,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       {/* Board view */}
       {resolvedViewMode === 'board' && (
         <div
-          className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 lg:mx-0 lg:px-0"
+          className="flex gap-4 overflow-x-auto pb-4"
           data-testid="board-view"
         >
           {visibleColumns.map((column) => (

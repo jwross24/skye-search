@@ -35,7 +35,7 @@ export function ImmigrationHQ({
   const [employed, setEmployed] = useState(immigrationStatus?.employment_active ?? false)
   const [employmentOverride, setEmploymentOverride] = useState(false)
   const [haltedSince, setHaltedSince] = useState<string | null>(
-    immigrationStatus?.employment_active ? (immigrationStatus?.postdoc_end_date ?? today) : null,
+    immigrationStatus?.employment_active ? (immigrationStatus?.calibration_date ?? today) : null,
   )
   const [haltSource, setHaltSource] = useState<string | null>(
     immigrationStatus?.employment_active ? 'PostDoc' : null,

@@ -31,14 +31,14 @@ export default function RootLayout({
         <TooltipProvider>
           <SidebarProvider>
             <AppSidebar />
-            <SidebarInset>
+            <SidebarInset className="min-w-0 overflow-hidden">
               <header className="flex h-12 items-center gap-2 border-b border-border px-4 md:hidden">
                 <SidebarTrigger />
                 <span className="text-sm font-semibold text-ocean-deep">
                   SkyeSearch
                 </span>
               </header>
-              <main className="flex-1 pb-16 md:pb-0">{children}</main>
+              <main className="flex-1 min-w-0 pb-16 md:pb-0">{children}</main>
             </SidebarInset>
           </SidebarProvider>
           <MobileNav />
