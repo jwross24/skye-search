@@ -52,5 +52,7 @@ next-env.d.ts
 !.claude/
 !.claude/**
 .claude/.*-stamp
+.claude/.cross-review-results.json
+.claude/.bead-close-count
 .claude/settings.local.json
 supabase/.temp/

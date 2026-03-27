@@ -46,12 +46,9 @@ fi
 
 echo "BLOCKED: Cross-agent review is due ($COUNT beads closed since last review)." >&2
 echo "" >&2
-echo "  Spin up a review agent to check recently changed files:" >&2
-echo "    - Bugs, type errors, missing error handling" >&2
-echo "    - Inconsistent patterns, broken imports" >&2
-echo "    - Untested edge cases, security issues" >&2
-echo "    - Run /simplify on changed code" >&2
+echo "  Run the independent review:" >&2
+echo "    bash scripts/cross-review.sh" >&2
 echo "" >&2
-echo "  Then: touch .claude/.cross-review-stamp" >&2
-echo "  Then: pick the next bead" >&2
+echo "  This runs claude -p (Haiku, independent session) on the last 3 commits." >&2
+echo "  Fix any CRITICAL/HIGH findings before picking the next bead." >&2
 exit 2
