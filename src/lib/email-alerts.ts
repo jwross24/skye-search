@@ -289,16 +289,34 @@ async function checkCronFailure(
     .eq('execution_date', yesterdayStr)
     .single()
 
-  // No log entry = cron didn't run at all
-  if (!logRow) return null
-  // Completed without critical alert = all good
-  if (logRow.status === 'completed' && !logRow.error_message?.includes('CRITICAL')) return null
+  let errorMessage: string
+  let triggerSource = 'unknown'
 
-  // Alert on: failed, stale "started" (never completed), or CRITICAL in completed
-  const isFailure = logRow.status === 'failed'
-  const isStale = logRow.status === 'started' // started but never completed = stuck
-  const isCritical = logRow.error_message?.includes('CRITICAL')
-  if (!isFailure && !isStale && !isCritical) return null
+  if (!logRow) {
+    // No log entry — check if cron has ever run for this user
+    const { count } = await supabase
+      .from('cron_execution_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+
+    if ((count ?? 0) === 0) return null // Bootstrap — cron has never run, don't alert
+
+    // Cron has run before but missed yesterday
+    errorMessage = `No cron execution found for ${yesterdayStr} — checkpoint may have been missed`
+    triggerSource = 'missing'
+  } else if (logRow.status === 'completed' && !logRow.error_message?.includes('CRITICAL')) {
+    return null // Completed without critical alert = all good
+  } else {
+    // Alert on: failed, stale "started" (never completed), or CRITICAL in completed
+    const isFailure = logRow.status === 'failed'
+    const isStale = logRow.status === 'started'
+    const isCritical = logRow.error_message?.includes('CRITICAL')
+    if (!isFailure && !isStale && !isCritical) return null
+
+    errorMessage = logRow.error_message ?? 'Unknown error'
+    triggerSource = logRow.trigger_source ?? 'unknown'
+  }
 
   // Send to developer email (not user email)
   const developerEmail = process.env.DEVELOPER_ALERT_EMAIL ?? process.env.RESEND_FROM_EMAIL
@@ -314,8 +332,8 @@ async function checkCronFailure(
       subject: `CRON FAILURE — unemployment checkpoint missed for ${yesterdayStr}`,
       react: CronFailureAlert({
         executionDate: yesterdayStr,
-        errorMessage: logRow.error_message ?? 'Unknown error',
-        triggerSource: logRow.trigger_source ?? 'unknown',
+        errorMessage,
+        triggerSource,
         userId,
       }),
       idempotencyKey,

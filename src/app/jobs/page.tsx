@@ -14,7 +14,7 @@ export default async function JobsPage() {
 
   // ─── Parallel queries ────────────────────────────────────────────────
 
-  const [jobsResult, votesResult, appsResult, immResult] = await Promise.all([
+  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult] = await Promise.all([
     supabase.from('jobs').select('*').eq('user_id', user.id),
     supabase.from('votes').select('job_id').eq('user_id', user.id),
     supabase.from('applications').select('job_id').eq('user_id', user.id),
@@ -23,6 +23,22 @@ export default async function JobsPage() {
       .select('*')
       .eq('user_id', user.id)
       .single(),
+    // Accurate days_remaining from checkpoint data (returns null during postdoc)
+    supabase
+      .from('immigration_clock')
+      .select('days_remaining')
+      .eq('user_id', user.id)
+      .single(),
+    // Check for accepted offers that haven't started (start_date in future)
+    supabase
+      .from('applications')
+      .select('start_date')
+      .eq('user_id', user.id)
+      .eq('kanban_status', 'offer_accepted')
+      .not('start_date', 'is', null)
+      .gt('start_date', today)
+      .limit(1)
+      .maybeSingle(),
   ])
 
   // ─── Filter out already-voted / already-applied jobs ─────────────────
@@ -61,17 +77,32 @@ export default async function JobsPage() {
       indexed_date: row.indexed_date,
     }))
 
-  // ─── Compute user state from immigration_status ──────────────────────
+  // ─── Compute user state from immigration_status + checkpoint data ────
 
   const immRow = immResult.data
 
+  // Use checkpoint-tracked days if available (immigration_clock view),
+  // fall back to calibration baseline during postdoc (view returns null)
+  const daysRemaining = clockResult.data?.days_remaining
+    ?? (immRow ? 150 - (immRow.initial_days_used ?? 0) : 150)
+
+  // Grace period: OPT expired AND not employed (no bridge job, no postdoc)
+  const inGracePeriod = !!(
+    immRow?.opt_expiry
+    && today > immRow.opt_expiry
+    && !immRow.employment_active
+  )
+
+  // Accepted offer with future start date (halves bridge job urgency)
+  const offerAcceptedNotStarted = !!pendingOfferResult.data
+
   const userState: UserState = immRow
     ? {
-        days_remaining: 150 - (immRow.initial_days_used ?? 0),
+        days_remaining: daysRemaining,
         is_employed: immRow.employment_active,
-        offer_accepted_not_started: false,
+        offer_accepted_not_started: offerAcceptedNotStarted,
         employment_end_date: immRow.postdoc_end_date ?? null,
-        in_grace_period: false,
+        in_grace_period: inGracePeriod,
         today,
       }
     : {

@@ -91,9 +91,10 @@ async function handleInboundEmail(
   if (!userId) return
 
   // Extract attachment metadata (store metadata, not file content in Phase 0)
-  // email.attachments is InboundAttachment[] from Resend SDK
-  const attachmentsJson = email.attachments.length > 0
-    ? email.attachments.map((a) => ({
+  // email.attachments may be undefined when no attachments (SDK returns void 0)
+  const attachments = email.attachments ?? []
+  const attachmentsJson = attachments.length > 0
+    ? attachments.map((a) => ({
         id: a.id,
         filename: a.filename,
         content_type: a.content_type,
