@@ -22,9 +22,14 @@ const SUPABASE_URL = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
 const SERVICE_KEY = requireEnv('SUPABASE_SECRET_KEY')
 const ANON_KEY = requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 
-const TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
+const DEFAULT_TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_EMAIL = 'dev@skye-search.test'
 const TEST_PASSWORD = 'testpass123'
+
+// Accept --user-id flag to seed for an existing user (e.g., production)
+const userIdArg = process.argv.find(a => a.startsWith('--user-id='))
+const EXISTING_USER_ID = userIdArg?.split('=')[1]
+const USER_ID = EXISTING_USER_ID ?? DEFAULT_TEST_USER_ID
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -32,36 +37,39 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 
 async function main() {
   console.log(`Target: ${SUPABASE_URL}`)
+  console.log(`User:   ${EXISTING_USER_ID ? `existing ${USER_ID}` : `new test user ${TEST_EMAIL}`}`)
 
-  // ─── Step 1: Create auth user via GoTrue admin API ─────────────────────
-  // This triggers handle_new_user() → creates public.users row automatically.
+  // ─── Step 1: Create auth user (skipped when --user-id is provided) ─────
+  if (!EXISTING_USER_ID) {
+    // Delete existing user first (idempotent reset)
+    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${DEFAULT_TEST_USER_ID}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` },
+    })
 
-  // Delete existing user first (idempotent reset)
-  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${TEST_USER_ID}`, {
-    method: 'DELETE',
-    headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` },
-  })
+    const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SERVICE_KEY,
+        'Authorization': `Bearer ${SERVICE_KEY}`,
+      },
+      body: JSON.stringify({
+        id: DEFAULT_TEST_USER_ID,
+        email: TEST_EMAIL,
+        password: TEST_PASSWORD,
+        email_confirm: true,
+      }),
+    })
 
-  const authRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-    },
-    body: JSON.stringify({
-      id: TEST_USER_ID,
-      email: TEST_EMAIL,
-      password: TEST_PASSWORD,
-      email_confirm: true,
-    }),
-  })
-
-  if (!authRes.ok) {
-    const err = await authRes.json()
-    throw new Error(`Auth user creation failed: ${JSON.stringify(err)}`)
+    if (!authRes.ok) {
+      const err = await authRes.json()
+      throw new Error(`Auth user creation failed: ${JSON.stringify(err)}`)
+    }
+    console.log(`Auth user created: ${TEST_EMAIL}`)
+  } else {
+    console.log('Skipping auth user creation (--user-id provided)')
   }
-  console.log(`Auth user created: ${TEST_EMAIL}`)
 
   // ─── Step 2: Update user profile ───────────────────────────────────────
 
@@ -72,7 +80,7 @@ async function main() {
       skills: seedProfile.skills,
       preferences: seedProfile.preferences,
     })
-    .eq('id', TEST_USER_ID)
+    .eq('id', USER_ID)
 
   if (profileErr) throw new Error(`Profile update failed: ${profileErr.message}`)
   console.log('Profile updated')
@@ -82,7 +90,7 @@ async function main() {
   const { error: immErr } = await supabase
     .from('immigration_status')
     .upsert({
-      user_id: TEST_USER_ID,
+      user_id: USER_ID,
       visa_type: seedImmigrationStatus.visa_type,
       opt_expiry: seedImmigrationStatus.opt_expiry,
       employment_active: seedImmigrationStatus.employment_active,
@@ -106,7 +114,7 @@ async function main() {
       .from('plans')
       .upsert({
         id: plan.id,
-        user_id: TEST_USER_ID,
+        user_id: USER_ID,
         status: plan.status,
         next_action: plan.next_action,
         notes: plan.notes,
@@ -119,13 +127,13 @@ async function main() {
   // ─── Step 5: Contacts ──────────────────────────────────────────────────
 
   // Delete existing contacts first (idempotent)
-  await supabase.from('contacts').delete().eq('user_id', TEST_USER_ID)
+  await supabase.from('contacts').delete().eq('user_id', USER_ID)
 
   for (const contact of seedContacts) {
     const { error } = await supabase
       .from('contacts')
       .insert({
-        user_id: TEST_USER_ID,
+        user_id: USER_ID,
         name: contact.name,
         affiliation: contact.affiliation,
         relationship_type: contact.relationship_type,
@@ -139,8 +147,8 @@ async function main() {
   // ─── Step 6: Jobs ──────────────────────────────────────────────────────
 
   // Delete existing jobs + applications (cascade)
-  await supabase.from('applications').delete().eq('user_id', TEST_USER_ID)
-  await supabase.from('jobs').delete().eq('user_id', TEST_USER_ID)
+  await supabase.from('applications').delete().eq('user_id', USER_ID)
+  await supabase.from('jobs').delete().eq('user_id', USER_ID)
 
   const jobIds: Map<number, string> = new Map()
 
@@ -149,7 +157,7 @@ async function main() {
     const { data, error } = await supabase
       .from('jobs')
       .insert({
-        user_id: TEST_USER_ID,
+        user_id: USER_ID,
         title: job.title,
         company: job.company,
         company_domain: job.company_domain,
@@ -190,7 +198,7 @@ async function main() {
     const { error } = await supabase
       .from('applications')
       .insert({
-        user_id: TEST_USER_ID,
+        user_id: USER_ID,
         job_id: jobId,
         kanban_status: 'applied',
         applied_date: job.pre_applied_date ?? '2026-03-24',
@@ -201,19 +209,21 @@ async function main() {
   }
   console.log(`Applications seeded: ${appCount}`)
 
-  // ─── Step 8: Verify login ─────────────────────────────────────────────
+  // ─── Step 8: Verify login (test user only) ────────────────────────────
 
-  const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
-    body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
-  })
+  if (!EXISTING_USER_ID) {
+    const loginRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON_KEY },
+      body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
+    })
 
-  if (loginRes.ok) {
-    console.log('Login verified: OK')
-  } else {
-    console.error('Login verification FAILED:', await loginRes.text())
-    process.exit(1)
+    if (loginRes.ok) {
+      console.log('Login verified: OK')
+    } else {
+      console.error('Login verification FAILED:', await loginRes.text())
+      process.exit(1)
+    }
   }
 
   // ─── Summary ───────────────────────────────────────────────────────────
@@ -223,7 +233,7 @@ async function main() {
   console.log(`  Applications:  ${appCount}`)
   console.log(`  Plans:         ${seedPlans.length}`)
   console.log(`  Contacts:      ${seedContacts.length}`)
-  console.log(`  Auth user:     ${TEST_EMAIL} / ${TEST_PASSWORD}`)
+  console.log(`  User:          ${EXISTING_USER_ID ?? `${TEST_EMAIL} / ${TEST_PASSWORD}`}`)
 }
 
 main().catch((err) => {
