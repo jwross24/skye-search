@@ -28,7 +28,7 @@ export default async function JobsPage() {
       .from('immigration_clock')
       .select('days_remaining')
       .eq('user_id', user.id)
-      .single(),
+      .maybeSingle(),
     // Check for accepted offers that haven't started (start_date in future)
     supabase
       .from('applications')

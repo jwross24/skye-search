@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -25,7 +24,6 @@ import {
   SidebarMenuItem,
   SidebarMenuBadge,
 } from '@/components/ui/sidebar'
-import { createClient } from '@/db/supabase'
 
 const navItems = [
   { title: "Today's Picks", href: '/jobs', icon: Sparkles },
@@ -37,20 +35,12 @@ const navItems = [
   { title: 'Settings', href: '/settings', icon: Settings },
 ]
 
-export function AppSidebar() {
-  const pathname = usePathname()
-  const [unprocessedCount, setUnprocessedCount] = useState(0)
+interface AppSidebarProps {
+  unprocessedEmailCount?: number
+}
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('raw_inbound_email')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'unprocessed')
-      .then(({ count }) => {
-        setUnprocessedCount(count ?? 0)
-      })
-  }, [pathname]) // Re-fetch when navigating (classification changes count)
+export function AppSidebar({ unprocessedEmailCount = 0 }: AppSidebarProps) {
+  const pathname = usePathname()
 
   return (
     <Sidebar>
@@ -87,9 +77,9 @@ export function AppSidebar() {
                       <item.icon />
                       <span>{item.title}</span>
                     </SidebarMenuButton>
-                    {item.href === '/emails' && unprocessedCount > 0 && (
+                    {item.href === '/emails' && unprocessedEmailCount > 0 && (
                       <SidebarMenuBadge className="bg-ocean/10 text-ocean text-xs font-medium">
-                        {unprocessedCount}
+                        {unprocessedEmailCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>

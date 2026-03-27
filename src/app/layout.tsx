@@ -3,7 +3,7 @@ import '@fontsource-variable/plus-jakarta-sans'
 import { Geist_Mono } from 'next/font/google'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { AppSidebar } from '@/components/app-sidebar'
+import { AppSidebarServer } from '@/components/app-sidebar-server'
 import { MobileNav } from '@/components/mobile-nav'
 import './globals.css'
 
@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <TooltipProvider>
           <SidebarProvider>
-            <AppSidebar />
+            <AppSidebarServer />
             <SidebarInset>
               <header className="flex h-12 items-center gap-2 border-b border-border px-4 md:hidden">
                 <SidebarTrigger />
