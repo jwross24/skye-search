@@ -12,8 +12,9 @@ set -euo pipefail
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 
-# Only track actual br close commands (not commit messages)
-if ! echo "$CMD" | grep -Eq '^br\s+close|;\s*br\s+close|&&\s*br\s+close'; then
+# Only track actual br close commands (first line only, not heredoc body)
+FIRST_LINE=$(echo "$CMD" | head -1)
+if ! echo "$FIRST_LINE" | grep -Eq '^br\s+close|;\s*br\s+close|&&\s*br\s+close'; then
   exit 0
 fi
 

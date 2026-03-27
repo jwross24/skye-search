@@ -51,8 +51,8 @@ next-env.d.ts
 # Track project-specific Claude config (overrides global .claude/* ignore)
 !.claude/
 !.claude/**
-.claude/.*-stamp
+.claude/.*-stamp*
 .claude/.cross-review-results.json
-.claude/.bead-close-count
+.claude/.bead-close-count*
 .claude/settings.local.json
 supabase/.temp/
