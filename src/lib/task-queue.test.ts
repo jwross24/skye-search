@@ -75,7 +75,7 @@ describe('enqueueTask', () => {
 
     vi.mocked(createClient).mockReturnValueOnce({
       from: () => chainWithCount(1),
-    } as ReturnType<typeof createClient>)
+    } as unknown as ReturnType<typeof createClient>)
 
     const result = await enqueueTask({
       userId: 'user-1',
