@@ -20,7 +20,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --max-warnings 0",
+      "eslint --no-warn-ignored --max-warnings 0",
       "vitest related --run"
     ]
   },
