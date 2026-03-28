@@ -54,14 +54,29 @@ describe('Golden set data integrity', () => {
 
     for (const entry of GOLDEN_SET) {
       expect(validVisaPaths).toContain(entry.expected.visa_path)
-      expect(validConfidences).toContain(entry.expected.cap_exempt_confidence)
+
+      // cap_exempt_confidence can be string or string[]
+      const confidences = Array.isArray(entry.expected.cap_exempt_confidence)
+        ? entry.expected.cap_exempt_confidence
+        : [entry.expected.cap_exempt_confidence]
+      for (const c of confidences) {
+        expect(validConfidences).toContain(c)
+      }
+
       expect(validEmployerTypes).toContain(entry.expected.employer_type)
       expect(entry.expected.match_score_min).toBeGreaterThanOrEqual(0)
       expect(entry.expected.match_score_max).toBeLessThanOrEqual(1)
       expect(entry.expected.match_score_min).toBeLessThanOrEqual(entry.expected.match_score_max)
       expect(typeof entry.expected.requires_security_clearance).toBe('boolean')
       expect(typeof entry.expected.requires_citizenship).toBe('boolean')
-      expect(validTimelines).toContain(entry.expected.hiring_timeline_estimate)
+
+      // hiring_timeline_estimate can be string or string[]
+      const timelines = Array.isArray(entry.expected.hiring_timeline_estimate)
+        ? entry.expected.hiring_timeline_estimate
+        : [entry.expected.hiring_timeline_estimate]
+      for (const t of timelines) {
+        expect(validTimelines).toContain(t)
+      }
     }
   })
 

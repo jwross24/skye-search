@@ -42,7 +42,7 @@ async function scoreJob(entry: GoldenSetEntry) {
     remote_status: z.string().nullable(),
   })
 
-  const client = new Anthropic()
+  const client = new Anthropic({ dangerouslyAllowBrowser: true })
 
   // Simplified system prompt for golden set (same rubric, generic profile)
   const systemPrompt = `You are an immigration-aware job scoring system for an international PhD environmental scientist.
@@ -85,6 +85,7 @@ Map required skills to academic equivalents.`
   const message = await client.messages.parse({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
+    temperature: 0,
     system: [{ type: 'text' as const, text: systemPrompt }],
     messages: [{
       role: 'user' as const,
@@ -96,38 +97,44 @@ Map required skills to academic equivalents.`
   return message.parsed_output
 }
 
-describe.skipIf(SKIP)('Golden set evaluation', () => {
+describe.skipIf(SKIP)('Golden set evaluation', { timeout: 300_000 }, () => {
   const visaPathMismatches: string[] = []
 
   for (const entry of GOLDEN_SET) {
-    it(`${entry.id}: ${entry.title} (${entry.category})`, async () => {
+    it(`${entry.id}: ${entry.title} (${entry.category})`, { timeout: 30_000 }, async () => {
       const result = await scoreJob(entry)
       expect(result).toBeDefined()
       if (!result) return
 
-      // visa_path: exact match
+      // visa_path: exact match (critical for immigration guidance)
       if (result.visa_path !== entry.expected.visa_path) {
         visaPathMismatches.push(`${entry.id}: expected ${entry.expected.visa_path}, got ${result.visa_path}`)
       }
       expect(result.visa_path).toBe(entry.expected.visa_path)
 
-      // cap_exempt_confidence: exact match
-      expect(result.cap_exempt_confidence).toBe(entry.expected.cap_exempt_confidence)
+      // cap_exempt_confidence: exact match (or one of accepted values)
+      const validConfidences = Array.isArray(entry.expected.cap_exempt_confidence)
+        ? entry.expected.cap_exempt_confidence
+        : [entry.expected.cap_exempt_confidence]
+      expect(validConfidences).toContain(result.cap_exempt_confidence)
 
       // match_score: within range
       expect(result.match_score).toBeGreaterThanOrEqual(entry.expected.match_score_min)
       expect(result.match_score).toBeLessThanOrEqual(entry.expected.match_score_max)
 
-      // Ineligibility flags: exact match
+      // Ineligibility flags: exact match (safety-critical)
       expect(result.requires_security_clearance).toBe(entry.expected.requires_security_clearance)
       expect(result.requires_citizenship).toBe(entry.expected.requires_citizenship)
 
-      // hiring_timeline_estimate: exact match
-      expect(result.hiring_timeline_estimate).toBe(entry.expected.hiring_timeline_estimate)
+      // hiring_timeline_estimate: exact match (or one of accepted values)
+      const validTimelines = Array.isArray(entry.expected.hiring_timeline_estimate)
+        ? entry.expected.hiring_timeline_estimate
+        : [entry.expected.hiring_timeline_estimate]
+      expect(validTimelines).toContain(result.hiring_timeline_estimate)
 
-      // why_fits should be non-empty and contain specific guidance
+      // why_fits: non-empty and substantive
       expect(result.why_fits.length).toBeGreaterThan(20)
-    }, 30_000) // 30s timeout per job
+    })
   }
 
   it('regression gate: <=2 visa_path mismatches across full set', () => {
@@ -138,4 +145,4 @@ describe.skipIf(SKIP)('Golden set evaluation', () => {
       )
     }
   })
-}, { timeout: 300_000 }) // 5 min total timeout for full golden set
+})
