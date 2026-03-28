@@ -39,13 +39,8 @@ else
   BEAD_ID=""
 fi
 if [ -z "$BEAD_ID" ]; then
-  # Can't parse bead ID — fall back to old stamp behavior
-  if ! stamp_is_fresh "integration" 600; then
-    echo "BLOCKED: Cannot parse bead ID and no integration stamp found." >&2
-    echo "  Touch .claude/.integration-stamp manually if this is a docs/config bead." >&2
-    exit 2
-  fi
-  exit 0
+  echo "BLOCKED: Cannot parse bead ID from command. Use: br close <bead-id> --reason \"...\"" >&2
+  exit 2
 fi
 
 # ── Step 1b: Validate review disposition (universal requirement) ──────────
@@ -54,6 +49,15 @@ DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}.json
 DISP_RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$DISP_FILE" 2>/dev/null) || true
 
 DISP_PASS=$(printf '%s' "$DISP_RESULT" | jq -r '.pass // false' 2>/dev/null) || DISP_PASS="false"
+
+# Verify the disposition is for THIS bead, not a stale one from an earlier close
+if [ "$DISP_PASS" = "true" ]; then
+  DISP_BEAD=$(jq -r '.bead_id // ""' "$DISP_FILE" 2>/dev/null) || DISP_BEAD=""
+  if [ "$DISP_BEAD" != "$BEAD_ID" ]; then
+    DISP_PASS="false"
+    DISP_RESULT='{"pass":false,"error":"Disposition file is for bead '"'$DISP_BEAD'"', not '"'$BEAD_ID'"'. Write a new disposition for this bead."}'
+  fi
+fi
 
 if [ "$DISP_PASS" != "true" ]; then
   DISP_ERROR=$(printf '%s' "$DISP_RESULT" | jq -r '.error // empty' 2>/dev/null) || DISP_ERROR=""

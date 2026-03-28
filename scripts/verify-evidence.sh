@@ -61,13 +61,6 @@ for i in $(seq 0 $((NUM_REQS - 1))); do
     pattern=$(echo "$pattern" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     [ -z "$pattern" ] && continue
 
-    # Validate regex before using it
-    if ! echo "" | grep -qE "$pattern" 2>/dev/null && [ $? -eq 2 ]; then
-      ALL_MATCHED=false
-      FIRST_MISS="$pattern (invalid regex)"
-      break
-    fi
-
     if echo "$ALL_CMDS" | grep -qE "$pattern" 2>/dev/null; then
       : # matched
     else

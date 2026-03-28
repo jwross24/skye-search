@@ -2,7 +2,11 @@
 set -euo pipefail
 
 # Cross-agent review via claude -p (non-interactive, independent session).
-# Runs after every 3 bead closures. Uses Haiku for cost efficiency.
+# Runs after every 3 bead closures. Uses Sonnet for quality.
+#
+# IMPORTANT: Run this from a MANUAL TERMINAL, not from within Claude Code.
+# Running claude -p inside a Claude Code Bash tool causes recursive invocation
+# issues. When inside Claude Code, use the Agent tool to spawn a subagent instead.
 #
 # Usage: bash scripts/cross-review.sh [num_commits]
 # Default: reviews last 3 commits
@@ -18,7 +22,7 @@ DIFF=$(git diff "HEAD~${NUM_COMMITS}..HEAD" --no-color 2>/dev/null || git diff H
 
 if [ -z "$DIFF" ]; then
   echo "No changes to review."
-  touch "$STAMP"
+  echo "0" > "$PROJECT_DIR/.claude/.bead-close-count-global"
   exit 0
 fi
 
@@ -31,9 +35,8 @@ echo ""
 echo "Running review with claude -p (Sonnet, independent session)..."
 REVIEW=$(echo "$DIFF" | claude -p \
   --model sonnet \
-  --bare \
-  --max-turns 3 \
   --output-format json \
+  --max-budget-usd 0.50 \
   "You are a staff engineer reviewing code written by an AI agent. This diff represents the last $NUM_COMMITS commits.
 
 Review for:
@@ -66,6 +69,7 @@ echo "════════════════════════�
 if echo "$REVIEW" | jq -e '.result' &>/dev/null; then
   echo "$REVIEW" | jq -r '.result'
 else
+  # Fallback: if not JSON, print raw output
   echo "$REVIEW"
 fi
 
