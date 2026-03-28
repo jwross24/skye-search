@@ -86,6 +86,30 @@ if [ "$DISP_PASS" != "true" ]; then
   exit 2
 fi
 
+# ── Step 1c: Production readiness check ───────────────────────────────────
+# Infers required prod steps from git diff (migrations → db push, functions → deploy,
+# env vars → vercel env). Checks command log for evidence they ran.
+
+LOG_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.command-log-${_SESSION}.jsonl"
+PROD_RESULT=$(bash "$SCRIPTS_DIR/check-prod-readiness.sh" "$LOG_FILE" 1 2>/dev/null) || true
+PROD_PASS=$(printf '%s' "$PROD_RESULT" | jq -r '.pass // false' 2>/dev/null) || PROD_PASS="false"
+
+if [ "$PROD_PASS" != "true" ] && [ -n "$PROD_RESULT" ]; then
+  NUM_PROD_MISSING=$(printf '%s' "$PROD_RESULT" | jq '.missing | length' 2>/dev/null) || NUM_PROD_MISSING=0
+  if [ "$NUM_PROD_MISSING" -gt 0 ]; then
+    echo "BLOCKED: Production deployment steps missing for $BEAD_ID" >&2
+    echo "" >&2
+    for i in $(seq 0 $((NUM_PROD_MISSING - 1))); do
+      STEP=$(printf '%s' "$PROD_RESULT" | jq -r ".missing[$i].reason")
+      HINT=$(printf '%s' "$PROD_RESULT" | jq -r ".missing[$i].hint")
+      echo "  ✗ $STEP" >&2
+      echo "    → $HINT" >&2
+    done
+    echo "" >&2
+    exit 2
+  fi
+fi
+
 # ── Step 2: Parse test contract from bead spec ───────────────────────────
 
 REQUIREMENTS=""
