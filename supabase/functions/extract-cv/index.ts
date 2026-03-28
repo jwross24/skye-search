@@ -1,18 +1,48 @@
 /// <reference lib="deno.ns" />
 import { getSupabaseAdmin } from '../_shared/supabase-admin.ts'
-import Anthropic from 'npm:@anthropic-ai/sdk@0.39'
+import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
+import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.80/helpers/zod'
+import { z } from 'npm:zod@3'
+import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 
-const EXTRACTION_PROMPT = `You are a CV/resume parser. Extract structured data from this document and return ONLY valid JSON matching this schema:
+// ─── Zod schema for structured output ────────────────────────────────────────
+// Mirrors src/types/cv-extraction.ts but uses Zod 3 (SDK requirement).
 
-{
-  "name": string | null,
-  "field": string | null,
-  "skills": string[],
-  "research_areas": string[],
-  "publications": [{ "title": string, "authors": string, "venue": string | null, "year": string | null }],
-  "education": [{ "degree": string, "field": string, "institution": string, "year": string | null }],
-  "employment_history": [{ "title": string, "organization": string, "start_date": string | null, "end_date": string | null, "description": string | null }]
-}
+const PublicationSchema = z.object({
+  title: z.string(),
+  authors: z.string(),
+  venue: z.string().nullable(),
+  year: z.string().nullable(),
+})
+
+const EducationSchema = z.object({
+  degree: z.string(),
+  field: z.string(),
+  institution: z.string(),
+  year: z.string().nullable(),
+})
+
+const EmploymentSchema = z.object({
+  title: z.string(),
+  organization: z.string(),
+  start_date: z.string().nullable(),
+  end_date: z.string().nullable(),
+  description: z.string().nullable(),
+})
+
+const CvExtractionSchema = z.object({
+  name: z.string().nullable(),
+  field: z.string().nullable(),
+  skills: z.array(z.string()),
+  research_areas: z.array(z.string()),
+  publications: z.array(PublicationSchema),
+  education: z.array(EducationSchema),
+  employment_history: z.array(EmploymentSchema),
+})
+
+// ─── Extraction prompt (still guides quality even with structured output) ────
+
+const EXTRACTION_PROMPT = `You are a CV/resume parser. Extract structured data from this document.
 
 Rules:
 - Extract ONLY what is present in the document. Do NOT invent or hallucinate data.
@@ -21,8 +51,7 @@ Rules:
 - For publications: extract all listed publications, conference papers, and presentations.
 - For dates: use ISO format (YYYY-MM-DD) when possible, or just the year (YYYY).
 - Return null for fields not found in the document.
-- Return empty arrays ([]) for list fields with no matches.
-- Return ONLY the JSON object, no markdown fences, no explanation.`
+- Return empty arrays ([]) for list fields with no matches.`
 
 Deno.serve(async (req) => {
   try {
@@ -59,31 +88,23 @@ Deno.serve(async (req) => {
 
     // Convert to base64 for Claude document block
     const arrayBuffer = await fileData.arrayBuffer()
-    const bytes = new Uint8Array(arrayBuffer)
-
-    // Chunked base64 encoding — spread operator crashes on >64KB arrays
-    let binary = ''
-    const CHUNK = 32768
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
-    }
-    const base64 = btoa(binary)
+    const base64 = encodeBase64(new Uint8Array(arrayBuffer))
 
     // Determine media type from file extension
     const mediaType = filePath.endsWith('.pdf')
       ? 'application/pdf'
       : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
-    // Call Claude Haiku for extraction
+    // Call Claude Haiku with structured output
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
       return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500)
     }
     const anthropic = new Anthropic({ apiKey })
 
-    const message = await anthropic.messages.create({
+    const message = await anthropic.messages.parse({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{
         role: 'user',
         content: [
@@ -94,26 +115,23 @@ Deno.serve(async (req) => {
           { type: 'text', text: EXTRACTION_PROMPT },
         ],
       }],
+      output_config: {
+        format: zodOutputFormat(CvExtractionSchema),
+      },
     })
 
-    // Parse Claude's response — strip markdown fences if present
-    let responseText = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('')
-      .trim()
-
-    // Claude sometimes wraps JSON in ```json ... ``` despite instructions
-    if (responseText.startsWith('```')) {
-      responseText = responseText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    // Check stop_reason — truncated responses (max_tokens hit) have null parsed_output
+    if (message.stop_reason !== 'end_turn') {
+      console.error('extract-cv: unexpected stop_reason:', message.stop_reason)
+      return jsonResponse({
+        error: `Extraction incomplete (stop_reason: ${message.stop_reason}). The document may be too large.`,
+      }, 500)
     }
 
-    let extraction: Record<string, unknown>
-    try {
-      extraction = JSON.parse(responseText)
-    } catch {
-      console.error('Failed to parse extraction response:', responseText.slice(0, 200))
-      return jsonResponse({ error: 'Failed to parse extraction response' }, 500)
+    // parsed_output is already validated by the SDK — no manual JSON.parse needed
+    const extraction = message.parsed_output
+    if (!extraction) {
+      return jsonResponse({ error: 'Extraction returned empty result' }, 500)
     }
 
     // Update the documents row with extracted data
@@ -137,7 +155,6 @@ Deno.serve(async (req) => {
       input_tokens: message.usage.input_tokens,
       output_tokens: message.usage.output_tokens,
       // Haiku 4.5: $0.80/MTok input, $4.00/MTok output
-      // 0.00008 cents/input token, 0.0004 cents/output token (already in cents)
       estimated_cost_cents: Math.ceil(
         message.usage.input_tokens * 0.00008 + message.usage.output_tokens * 0.0004,
       ),
@@ -151,9 +168,9 @@ Deno.serve(async (req) => {
       documentUpdated: !updateError,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('extract-cv error:', message)
-    return jsonResponse({ ok: false, error: message }, 500)
+    const errMessage = err instanceof Error ? err.message : String(err)
+    console.error('extract-cv error:', errMessage)
+    return jsonResponse({ ok: false, error: errMessage }, 500)
   }
 })
 

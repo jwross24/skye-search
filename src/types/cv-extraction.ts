@@ -48,7 +48,9 @@ export interface CvExtraction {
   employment_history: ExtractedEmployment[]
 }
 
-// ─── Zod Schemas (validate Claude's unstructured output) ────────────────────
+// ─── Zod Schemas (client-side defense-in-depth) ─────────────────────────────
+// SYNC: Must match supabase/functions/extract-cv/index.ts CvExtractionSchema (Zod 3).
+// Changes here require a corresponding update to the Edge Function schema.
 
 export const educationSchema = z.object({
   degree: z.string(),
