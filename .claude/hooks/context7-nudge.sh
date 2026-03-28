@@ -51,7 +51,7 @@ STALE_LIBS=(
 
 for lib in "${STALE_LIBS[@]}"; do
   if grep -q "$lib" "$FILE" 2>/dev/null; then
-    echo "{\"systemMessage\":\"📚 This file uses $lib — check Context7 for current docs. Training data may be stale. (Rule: context7-before-api-code)\"}"
+    echo "{\"systemMessage\":\"⚠️ CONTEXT7 NEEDED: This file uses $lib — fetch current docs with Context7 MCP before committing. Your training data for this library may be WRONG. Run: resolve-library-id + query-docs\"}"
     exit 0  # One nudge per file write, not one per import
   fi
 done

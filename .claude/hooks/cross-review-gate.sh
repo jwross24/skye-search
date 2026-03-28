@@ -27,6 +27,9 @@ COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
 COUNT=$((COUNT + 1))
 echo "$COUNT" > "$COUNTER_FILE"
 
+# Learn nudge — fires every bead close
+echo '{"systemMessage":"Step 17 — Learn: Did you discover anything surprising this bead? Save to .claude/rules/ (patterns) or memory (facts). Skip only if nothing was novel."}'
+
 # Remind when 3+ beads closed since last review reset
 if [ "$COUNT" -ge 3 ]; then
   cat <<'REMIND'

@@ -15,7 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "bun run typecheck && bun run lint && vitest run --coverage && playwright test",
-    "verify": "bun run build && bun run lint && bun run test",
+    "verify": "bun run build && bun run lint && bun run test && (which ntm >/dev/null 2>&1 && ntm scan --diff || echo 'ntm not installed, skipping scan')",
     "prepare": "husky"
   },
   "lint-staged": {

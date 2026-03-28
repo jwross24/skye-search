@@ -20,19 +20,17 @@ fi
 
 # Block --no-verify
 if echo "$CMD" | grep -Eq '\-\-no-verify'; then
-  echo "BLOCKED: --no-verify is not allowed in this project. Fix the issue instead." >&2
+  echo "BLOCKED: --no-verify is not allowed." >&2
+  echo "" >&2
+  echo "  → Fix the hook issue instead of bypassing it" >&2
   exit 2
 fi
 
-# Check for session-scoped verify stamp
+# Check for session-scoped verify stamp (bun run verify now includes ntm scan)
 if ! stamp_is_fresh "verify" 600; then
-  echo "BLOCKED: No fresh verify stamp for this session. Run 'bun run verify' before committing." >&2
+  echo "BLOCKED: No fresh verify stamp for this session." >&2
   echo "" >&2
-  echo "The bead checklist requires:" >&2
-  echo "  1. bun run verify  (build + lint + test)" >&2
-  echo "  2. ntm scan --diff (bug scan)" >&2
-  echo "  3. git pull" >&2
-  echo "  4. Then commit" >&2
+  echo "  → bun run verify" >&2
   exit 2
 fi
 

@@ -165,6 +165,34 @@ if [ "$PROD_PASS" != "true" ] && [ -n "$PROD_RESULT" ]; then
   fi
 fi
 
+# ── Step 1e: Push check — verify HEAD is on remote ───────────────────────
+
+UNPUSHED=$(git -C "${CLAUDE_PROJECT_DIR:-.}" rev-list --count origin/main..HEAD 2>/dev/null) || UNPUSHED=""
+if [ -n "$UNPUSHED" ] && [ "$UNPUSHED" -gt 0 ]; then
+  echo "BLOCKED: $UNPUSHED commit(s) not pushed to origin." >&2
+  echo "" >&2
+  echo "  → git push" >&2
+  exit 2
+fi
+
+# ── Step 1f: CI status check ─────────────────────────────────────────────
+
+if command -v gh &>/dev/null; then
+  CI_JSON=$(gh run list --commit "$(git rev-parse HEAD 2>/dev/null)" --json status,conclusion --limit 1 2>/dev/null) || CI_JSON="[]"
+  CI_STATUS=$(printf '%s' "$CI_JSON" | jq -r '.[0].status // ""' 2>/dev/null) || CI_STATUS=""
+  CI_CONCLUSION=$(printf '%s' "$CI_JSON" | jq -r '.[0].conclusion // ""' 2>/dev/null) || CI_CONCLUSION=""
+
+  if [ "$CI_STATUS" = "completed" ] && [ "$CI_CONCLUSION" = "failure" ]; then
+    echo "BLOCKED: CI failed on HEAD commit." >&2
+    echo "" >&2
+    echo "  → Fix CI failures, push, then retry: br close $BEAD_ID" >&2
+    exit 2
+  fi
+  if [ "$CI_STATUS" = "in_progress" ] || [ "$CI_STATUS" = "queued" ]; then
+    echo '{"systemMessage":"CI is still running on HEAD. Consider waiting for it to complete before closing."}' >&2
+  fi
+fi
+
 # ── Step 2: Parse test contract from bead spec ───────────────────────────
 
 REQUIREMENTS=""
@@ -176,9 +204,16 @@ if [ "$NUM_CONTRACT" -gt 0 ]; then
   SOURCE="test-contract"
 else
   # No test-contract — skip evidence check entirely.
-  # The disposition file (checked above) is the primary gate.
-  # Test contracts are opt-in for beads that need specific integration proof.
   touch_stamp "integration"
+  # Reflection prompt — forces agent to pause before closing
+  cat >&2 <<'REFLECT'
+
+  Before closing, reflect:
+    1. Did I implement everything in the acceptance criteria?
+    2. What assumption am I most uncertain about?
+    3. If reviewing someone else's code, what would I question?
+    4. Is there anything I deferred that should be addressed now?
+REFLECT
   exit 0
 fi
 
@@ -197,8 +232,15 @@ fi
 PASS=$(printf '%s' "$RESULT" | jq -r '.pass' 2>/dev/null) || PASS="false"
 
 if [ "$PASS" = "true" ]; then
-  # Also touch the stamp for backward compatibility with other hooks
   touch_stamp "integration"
+  cat >&2 <<'REFLECT'
+
+  Before closing, reflect:
+    1. Did I implement everything in the acceptance criteria?
+    2. What assumption am I most uncertain about?
+    3. If reviewing someone else's code, what would I question?
+    4. Is there anything I deferred that should be addressed now?
+REFLECT
   exit 0
 fi
 
