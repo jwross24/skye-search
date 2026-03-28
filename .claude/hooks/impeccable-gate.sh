@@ -26,10 +26,12 @@ if ! echo "$CMD" | grep -Eq 'br-'; then
   exit 0
 fi
 
-# Check if any staged files are .tsx
+# Check if any .tsx files are being committed.
+# Two paths: (1) already staged via earlier git add, or (2) staged in the same command (git add ... && git commit)
 STAGED_TSX=$(git diff --cached --name-only 2>/dev/null | grep -c '\.tsx$' || true)
-if [ "$STAGED_TSX" = "0" ]; then
-  exit 0  # No .tsx files staged — not a UI bead
+CMD_TSX=$(echo "$CMD" | grep -c '\.tsx' || true)
+if [ "$STAGED_TSX" = "0" ] && [ "$CMD_TSX" = "0" ]; then
+  exit 0  # No .tsx files staged or in the command — not a UI bead
 fi
 
 # This is a UI bead with .tsx files — check for impeccable stamp (5 min TTL)

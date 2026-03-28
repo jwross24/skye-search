@@ -26,10 +26,12 @@ if ! echo "$CMD" | grep -Eq 'br-'; then
   exit 0
 fi
 
-# Check if any staged files are email-related
+# Check if any email files are being committed.
+# Two paths: (1) already staged, or (2) staged in the same command (git add ... && git commit)
 STAGED_EMAIL=$(git diff --cached --name-only 2>/dev/null | grep -cE '(email-templates/|email-alerts|resend)' || true)
-if [ "$STAGED_EMAIL" = "0" ]; then
-  exit 0  # No email files staged
+CMD_EMAIL=$(echo "$CMD" | grep -cE '(email-templates|email-alerts|resend)' || true)
+if [ "$STAGED_EMAIL" = "0" ] && [ "$CMD_EMAIL" = "0" ]; then
+  exit 0  # No email files staged or in the command
 fi
 
 # Email files staged — check for resend stamp (5 min TTL)
