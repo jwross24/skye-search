@@ -17,8 +17,31 @@ Deno.serve(async (req) => {
     )
   }
 
-  const token = req.headers.get('authorization')?.replace('Bearer ', '')
-  if (token !== CRON_SECRET) {
+  // Auth: accept cron secret from body (pg_cron) or Authorization header (manual curl)
+  let batchSize = 10
+  let authenticated = false
+
+  try {
+    const body = await req.json().catch(() => ({}))
+    if (body?.cronSecret === CRON_SECRET) {
+      authenticated = true
+    }
+    if (body?.batchSize && typeof body.batchSize === 'number') {
+      batchSize = Math.min(body.batchSize, 50)
+    }
+  } catch {
+    // Empty body is fine
+  }
+
+  // Fallback: check Authorization header (for manual curl triggers)
+  if (!authenticated) {
+    const token = req.headers.get('x-cron-secret') || req.headers.get('authorization')?.replace('Bearer ', '')
+    if (token === CRON_SECRET) {
+      authenticated = true
+    }
+  }
+
+  if (!authenticated) {
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
@@ -26,19 +49,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Parse optional batch size from body
-    let batchSize = 10
-    const contentLength = req.headers.get('content-length')
-    if (contentLength && parseInt(contentLength) > 0) {
-      try {
-        const body = await req.json()
-        if (body?.batchSize && typeof body.batchSize === 'number') {
-          batchSize = Math.min(body.batchSize, 50)
-        }
-      } catch {
-        // Invalid JSON — use default
-      }
-    }
 
     const supabase = getSupabaseAdmin()
     const db = createTaskQueueDb(supabase)
