@@ -18,17 +18,20 @@ vi.mock('@supabase/supabase-js', () => {
     })
   }
 
+  const listUsersMock = vi.fn().mockResolvedValue({
+    data: { users: [{ id: 'user-1', email: 'test@example.com' }] },
+  })
+
   return {
     createClient: vi.fn(() => ({
       from: () => queryBuilder({ data: [{ id: 'user-1' }] }),
       auth: {
         admin: {
-          listUsers: vi.fn().mockResolvedValue({
-            data: { users: [{ id: 'user-1', email: 'test@example.com' }] },
-          }),
+          listUsers: listUsersMock,
         },
       },
     })),
+    __listUsersMock: listUsersMock,
   }
 })
 
@@ -110,5 +113,14 @@ describe('POST /api/alerts', () => {
       'test@example.com',
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     )
+  })
+
+  it('calls listUsers with pagination params', async () => {
+    const { __listUsersMock } = await import('@supabase/supabase-js') as unknown as { __listUsersMock: ReturnType<typeof vi.fn> }
+    vi.mocked(checkAndSendAlerts).mockResolvedValue([])
+
+    await POST(makeRequest({ secret: CRON_SECRET }))
+
+    expect(__listUsersMock).toHaveBeenCalledWith({ page: 1, perPage: 50 })
   })
 })

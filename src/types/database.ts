@@ -1103,6 +1103,9 @@ export type Database = {
         Row: {
           attachments_json: Json | null
           body_text: string | null
+          classification_type:
+            | Database["public"]["Enums"]["email_classification_type"]
+            | null
           created_at: string
           id: string
           sender: string | null
@@ -1115,6 +1118,7 @@ export type Database = {
         Insert: {
           attachments_json?: Json | null
           body_text?: string | null
+          classification_type?: string | null
           created_at?: string
           id?: string
           sender?: string | null
@@ -1127,6 +1131,7 @@ export type Database = {
         Update: {
           attachments_json?: Json | null
           body_text?: string | null
+          classification_type?: string | null
           created_at?: string
           id?: string
           sender?: string | null
@@ -1547,6 +1552,7 @@ export type Database = {
         | "unknown"
       employment_type_type: "full_time" | "part_time" | "contract" | "unknown"
       i140_status_type: "not_filed" | "filed" | "approved" | "denied"
+      email_classification_type: "job_alert" | "application_update"
       inbound_email_status_type: "unprocessed" | "classified" | "ignored"
       initial_days_source_type: "dso_confirmed" | "user_reported"
       kanban_status_type:
@@ -1748,6 +1754,7 @@ export const Constants = {
       ],
       employment_type_type: ["full_time", "part_time", "contract", "unknown"],
       i140_status_type: ["not_filed", "filed", "approved", "denied"],
+      email_classification_type: ["job_alert", "application_update"],
       inbound_email_status_type: ["unprocessed", "classified", "ignored"],
       initial_days_source_type: ["dso_confirmed", "user_reported"],
       kanban_status_type: [

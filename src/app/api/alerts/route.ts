@@ -55,14 +55,25 @@ export async function POST(req: NextRequest) {
     const { data: users } = await userQuery
 
     if (!users || users.length === 0) {
-      return NextResponse.json({ ok: true, summary: { processed: 0, alerts: [] } })
+      return NextResponse.json({ ok: true, summary: { processed: 0, sent: 0, suppressed: 0, failed: 0 }, results: [] })
     }
 
-    // Get emails from auth.users via admin API
-    const { data: authData } = await supabase.auth.admin.listUsers()
+    // Get emails from auth.users via admin API (paginated to handle >50 users)
     const emailMap = new Map<string, string>()
-    for (const u of authData?.users ?? []) {
-      if (u.email) emailMap.set(u.id, u.email)
+    let page = 1
+    const perPage = 50
+    let hasMore = true
+    while (hasMore) {
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({ page, perPage })
+      if (authError) {
+        return NextResponse.json({ error: 'Failed to fetch user emails', message: authError.message }, { status: 500 })
+      }
+      const batch = authData?.users ?? []
+      for (const u of batch) {
+        if (u.email) emailMap.set(u.id, u.email)
+      }
+      hasMore = batch.length === perPage
+      page++
     }
 
     const allResults = []

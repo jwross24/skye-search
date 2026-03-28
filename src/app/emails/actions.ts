@@ -14,14 +14,12 @@ export async function classifyEmail(
 
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // Phase 0: store triage result only (unprocessed → classified | ignored).
-  // The specific classification type (job_alert vs application_update) is not
-  // persisted — Phase 1b smart routing (bead nob) will add proper categories.
   const newStatus = classification === 'ignore' ? 'ignored' : 'classified'
+  const classificationType = classification === 'ignore' ? null : classification
 
   const { error } = await supabase
     .from('raw_inbound_email')
-    .update({ status: newStatus })
+    .update({ status: newStatus, classification_type: classificationType })
     .eq('id', emailId)
     .eq('user_id', user.id)
 

@@ -13,16 +13,22 @@ export async function GET() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return NextResponse.json({ count: 0 })
+    if (!user) {
+      return NextResponse.json({ count: 0, error: 'unauthenticated' }, { status: 401 })
+    }
 
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('raw_inbound_email')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('status', 'unprocessed')
 
+    if (error) {
+      return NextResponse.json({ count: 0, error: 'db_error' }, { status: 500 })
+    }
+
     return NextResponse.json({ count: count ?? 0 })
   } catch {
-    return NextResponse.json({ count: 0 })
+    return NextResponse.json({ count: 0, error: 'internal_error' }, { status: 500 })
   }
 }
