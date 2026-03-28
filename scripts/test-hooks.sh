@@ -171,6 +171,62 @@ fi
 
 echo ""
 
+# ── compact-reinject.sh ─────────────────────────────────────────────────
+echo "compact-reinject.sh:"
+
+OUTPUT=$(CLAUDE_PROJECT_DIR="$HOOKS_DIR/../.." bash "$HOOKS_DIR/compact-reinject.sh" 2>/dev/null) || OUTPUT=""
+if echo "$OUTPUT" | grep -q "Post-Compaction Context"; then
+  pass "outputs post-compaction context header"
+else
+  fail "outputs post-compaction context header" "missing header"
+fi
+
+if echo "$OUTPUT" | grep -q "Recent commits"; then
+  pass "includes recent commits"
+else
+  fail "includes recent commits" "missing commits section"
+fi
+
+echo ""
+
+# ── inject-review-context.sh ────────────────────────────────────────────
+echo "inject-review-context.sh:"
+
+# Explore agent should be skipped (no review context)
+RESULT=$(echo '{"agent_type":"Explore"}' | CLAUDE_PROJECT_DIR="$HOOKS_DIR/../.." bash "$HOOKS_DIR/inject-review-context.sh" 2>/dev/null) || RESULT=""
+if [ -z "$RESULT" ]; then
+  pass "skips Explore agents (no review context)"
+else
+  fail "skips Explore agents" "expected no output"
+fi
+
+# General-purpose agent should get context (if template exists)
+if [ -f "$HOOKS_DIR/../evaluator-template.md" ]; then
+  RESULT=$(echo '{"agent_type":"general-purpose"}' | CLAUDE_PROJECT_DIR="$HOOKS_DIR/../.." bash "$HOOKS_DIR/inject-review-context.sh" 2>/dev/null) || RESULT=""
+  if echo "$RESULT" | grep -q "additionalContext"; then
+    pass "injects context for general-purpose agents"
+  else
+    fail "injects context for general-purpose agents" "missing additionalContext"
+  fi
+else
+  pass "skips when evaluator template missing (expected in test env)"
+fi
+
+echo ""
+
+# ── session-end-check.sh (stop_hook_active) ──────────────────────────────
+echo "session-end-check.sh:"
+
+# With stop_hook_active=true, should NOT block (allow retry)
+RESULT=$(echo '{"stop_hook_active":true}' | CLAUDE_PROJECT_DIR="$HOOKS_DIR/../.." bash "$HOOKS_DIR/session-end-check.sh" 2>/dev/null) || RESULT=""
+if ! echo "$RESULT" | grep -q '"decision":"block"'; then
+  pass "allows stop when stop_hook_active=true (retry)"
+else
+  fail "allows stop on retry" "should not block when stop_hook_active=true"
+fi
+
+echo ""
+
 # ── Summary ─────────────────────────────────────────────────────────────
 echo "=== Results: $PASS passed, $FAIL failed (of $TOTAL) ==="
 if [ "$FAIL" -gt 0 ]; then

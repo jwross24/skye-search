@@ -2,12 +2,18 @@
 set -euo pipefail
 
 # Stop hook — runs when the session ends.
-# Checks for dangling state that could cause problems.
+# Blocks once if dangling beads or uncommitted changes exist.
+# Allows on retry (stop_hook_active = true).
 #
 # Hook: Stop
-# Outputs systemMessage JSON with warnings.
+# Uses decision:block to prevent premature session abandonment.
 
+INPUT=$(cat)
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+
+# If already blocked once this turn, allow stopping
+STOP_ACTIVE=$(printf '%s' "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/null) || STOP_ACTIVE="false"
+
 WARNINGS=""
 
 # Check for beads left in_progress
@@ -73,6 +79,16 @@ if [ -n "$LOG_FILES" ]; then
     PCT=$(( STEPS_HIT * 100 / STEPS_TOTAL ))
     WARNINGS="${WARNINGS}📊 Session compliance: ${STEPS_HIT}/${STEPS_TOTAL} steps (${PCT}%) —${COMPLIANCE}\n"
   fi
+fi
+
+# Determine if we should block or just warn
+HAS_DANGLING=$([ "$IN_PROGRESS" -gt 0 ] || [ "$DIRTY" -gt 0 ] && echo "true" || echo "false")
+
+if [ "$HAS_DANGLING" = "true" ] && [ "$STOP_ACTIVE" != "true" ]; then
+  # First stop attempt with dangling state — block
+  ESCAPED=$(printf '%s' "$WARNINGS" | sed 's/"/\\"/g' | tr '\n' ' ')
+  echo "{\"decision\":\"block\",\"reason\":\"SESSION WARNINGS: ${ESCAPED} Address these before stopping, or stop again to proceed.\"}"
+  exit 0
 fi
 
 if [ -n "$WARNINGS" ]; then
