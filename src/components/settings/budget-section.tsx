@@ -63,16 +63,22 @@ export function BudgetSection({
   const [alertThreshold, setAlertThreshold] = useState(weeklyAlertCents / 100)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   async function handleSave() {
     setSaving(true)
     setSaved(false)
-    await updateBudgetCaps({
+    setSaveError('')
+    const result = await updateBudgetCaps({
       dailyCapCents: Math.round(dailyCap * 100),
       weeklyCapCents: Math.round(weeklyCap * 100),
       weeklyAlertCents: Math.round(alertThreshold * 100),
     })
     setSaving(false)
+    if (!result.success) {
+      setSaveError(result.error ?? 'Something went wrong')
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -128,6 +134,9 @@ export function BudgetSection({
             <span className="text-sm text-jade animate-in fade-in duration-300">
               Saved
             </span>
+          )}
+          {saveError && (
+            <span className="text-sm text-amber-warm">{saveError}</span>
           )}
         </div>
       </div>

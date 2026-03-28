@@ -58,6 +58,21 @@ if ! jq -e '.findings' "$DISP_FILE" &>/dev/null; then
   exit 1
 fi
 
+# Validate reviewer is a subagent, not self
+REVIEWER=$(jq -r '.reviewer // ""' "$DISP_FILE")
+if [ -z "$REVIEWER" ]; then
+  echo '{"pass":false,"error":"Missing reviewer field. The disposition must be written by a subagent, not the implementing agent."}'
+  exit 1
+fi
+case "$REVIEWER" in
+  subagent|subagent-*)
+    ;; # valid
+  *)
+    echo '{"pass":false,"error":"Reviewer is \"'"$REVIEWER"'\". Disposition must come from a subagent (reviewer field must start with \"subagent\"). Spin up a review agent via the Agent tool."}'
+    exit 1
+    ;;
+esac
+
 NUM_FINDINGS=$(jq '.findings | length' "$DISP_FILE")
 
 # Zero findings = clean review, that's fine

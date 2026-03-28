@@ -116,8 +116,14 @@ registerHandler({
       return { success: false, error: 'Missing query in payload', permanent: true }
     }
 
-    // Budget check before API call
-    const verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    // Budget check before API call — distinguish pause (permanent) from DB error (retryable)
+    let verdict: Awaited<ReturnType<typeof checkBudget>>
+    try {
+      verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { success: false, error: `Budget check failed: ${msg}` } // retryable
+    }
     if (verdict.action === 'pause') {
       return { success: false, error: verdict.reason, permanent: true }
     }
@@ -157,8 +163,14 @@ registerHandler({
       return { success: false, error: 'Missing seed_url in payload', permanent: true }
     }
 
-    // Budget check before API call
-    const verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    // Budget check before API call — distinguish pause (permanent) from DB error (retryable)
+    let verdict: Awaited<ReturnType<typeof checkBudget>>
+    try {
+      verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      return { success: false, error: `Budget check failed: ${msg}` } // retryable
+    }
     if (verdict.action === 'pause') {
       return { success: false, error: verdict.reason, permanent: true }
     }

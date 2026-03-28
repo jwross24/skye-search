@@ -40,17 +40,20 @@ export async function checkBudget(params: {
   }
 
   const supabase = getSupabaseAdmin()
-
-  // Get today's date in ET
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
-  // Parallel: daily spend + caps
-  const [dailyResult, capsResult] = await Promise.all([
+  // Parallel: daily + weekly spend + caps
+  const [dailyResult, weeklyResult, capsResult] = await Promise.all([
     supabase
       .from('daily_spend')
       .select('total_cents')
       .eq('user_id', params.userId)
       .eq('spend_date', today)
+      .maybeSingle(),
+    supabase
+      .from('weekly_spend')
+      .select('total_cents')
+      .eq('user_id', params.userId)
       .maybeSingle(),
     supabase
       .from('users')
@@ -60,9 +63,11 @@ export async function checkBudget(params: {
   ])
 
   const dailyCents = dailyResult.data?.total_cents ?? 0
+  const weeklyCents = weeklyResult.data?.total_cents ?? 0
   const budget = (capsResult.data?.user_preferences as Record<string, unknown> | null)?.budget as BudgetCaps | undefined
   const caps = budget ?? DEFAULT_CAPS
 
+  // Hard cap: daily spend exceeded
   if (dailyCents >= caps.daily_cap_cents) {
     return {
       action: 'pause',
@@ -70,6 +75,15 @@ export async function checkBudget(params: {
     }
   }
 
+  // Weekly soft cap exceeded
+  if (weeklyCents >= caps.weekly_soft_cap_cents) {
+    return {
+      action: 'pause',
+      reason: `Weekly spend cap reached ($${(weeklyCents / 100).toFixed(2)} / $${(caps.weekly_soft_cap_cents / 100).toFixed(2)})`,
+    }
+  }
+
+  // Approaching daily cap: within pause_buffer
   if (dailyCents >= caps.daily_cap_cents - caps.pause_buffer_cents) {
     return {
       action: 'reduce_batch',

@@ -24,7 +24,7 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 
 ## After completing each bead (EVERY step, in order)
 
-11. **Self-review via subagent**: Spin up a review agent to read ALL new/modified files with fresh eyes. The implementing agent is biased — a separate agent catches more. The subagent should check: bugs, type errors, missing edge cases, test assertions matching components, accessibility, dead code, hardcoded values. Fix CRITICAL and MEDIUM issues. Run tests after fixes.
+11. **Self-review via subagent**: Spin up a review agent (model: sonnet) to read ALL new/modified files with fresh eyes. The implementing agent is biased — a separate agent catches more. The subagent checks: bugs, type errors, missing edge cases, test assertions, accessibility, dead code, hardcoded values. **The subagent writes the disposition file** (`.claude/.review-disposition-{session}-{bead}.json`) — the parent agent is blocked from writing it directly. Fix CRITICAL and HIGH issues the subagent finds. Run tests after fixes.
 12. **E2E verify** (UI beads): Sign in via agent-browser, navigate to route, snapshot, interact, check errors
 13. `bun run verify` — build + lint + test (creates .verify-stamp for pre-commit hook)
 14. `ntm scan --diff` — bug scan

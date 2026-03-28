@@ -117,7 +117,9 @@ export async function checkBudget(params: {
     return { action: 'allow' }
   }
 
+  // Single fetch: spend + caps together (no double round-trip)
   const summary = await getSpendSummary(params.userId)
+  const pauseBuffer = (await getUserBudgetCaps(params.userId)).pause_buffer_cents
 
   // Hard cap: daily spend exceeded
   if (summary.dailyCents >= summary.dailyCapCents) {
@@ -127,9 +129,16 @@ export async function checkBudget(params: {
     }
   }
 
-  // Approaching cap: within pause_buffer
-  const caps = await getUserBudgetCaps(params.userId)
-  if (summary.dailyCents >= summary.dailyCapCents - caps.pause_buffer_cents) {
+  // Weekly soft cap exceeded
+  if (summary.weeklyCents >= summary.weeklyCapCents) {
+    return {
+      action: 'pause',
+      reason: `Weekly spend cap reached ($${(summary.weeklyCents / 100).toFixed(2)} / $${(summary.weeklyCapCents / 100).toFixed(2)})`,
+    }
+  }
+
+  // Approaching daily cap: within pause_buffer
+  if (summary.dailyCents >= summary.dailyCapCents - pauseBuffer) {
     return {
       action: 'reduce_batch',
       maxBatchSize: 3,

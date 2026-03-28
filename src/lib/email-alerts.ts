@@ -370,7 +370,12 @@ async function checkBudgetAlert(
     // Only alert when weekly spend exceeds the alert threshold
     if (summary.weeklyCents < summary.weeklyAlertCents) return null
 
-    const idempotencyKey = `budget-alert/${userId}/${today}`
+    // Week-scoped: only one budget alert per week (Monday-based)
+    const d = new Date(today)
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const weekStart = monday.toISOString().split('T')[0]
+    const idempotencyKey = `budget-alert/${userId}/week-${weekStart}`
 
     const { id } = await sendEmail({
       to: userEmail,
