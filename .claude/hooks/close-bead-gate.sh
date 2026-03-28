@@ -44,7 +44,7 @@ fi
 
 # ── Step 1b: Validate review disposition (universal requirement) ──────────
 
-DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}.json"
+DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-${BEAD_ID}.json"
 DISP_RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$DISP_FILE" 2>/dev/null) || true
 
 DISP_PASS=$(printf '%s' "$DISP_RESULT" | jq -r '.pass // false' 2>/dev/null) || DISP_PASS="false"
