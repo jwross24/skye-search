@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/unemployment",
+      "schedule": "15 5 * * *"
+    },
+    {
+      "path": "/api/cron/discover",
+      "schedule": "15 8 * * 2,5"
+    },
+    {
+      "path": "/api/alerts",
+      "schedule": "30 5 * * *"
+    }
+  ]
+}

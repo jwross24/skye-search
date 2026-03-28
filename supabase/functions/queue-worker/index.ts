@@ -3,8 +3,8 @@ import { getSupabaseAdmin } from '../_shared/supabase-admin.ts'
 import { createTaskQueueDb } from '../_shared/task-queue-db.ts'
 import { processTaskBatch } from '../_shared/worker.ts'
 
-// Register task handlers here as downstream beads add them.
-// Example: import '../_shared/handlers/tailor-docs.ts'
+// Register task handlers — side-effect imports register via registerHandler()
+import '../_shared/handlers/exa-search.ts'
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET')
 
