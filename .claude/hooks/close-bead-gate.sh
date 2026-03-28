@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Close-bead gate v2 — evidence-based verification.
-# Replaces timestamp stamps with command log evidence verified against
-# test contracts (Layer 2) or Haiku classification (Layer 3).
+# Close-bead gate v2 — disposition + evidence verification.
 #
-# Flow:
-#   1. Extract bead ID from `br close <id>` command
-#   2. Read bead spec → parse test-contract block (Layer 2)
-#   3. If no contract → classify with Haiku (Layer 3)
-#   4. Verify evidence in command log (Layer 1)
-#   5. Block with specific, actionable guidance if missing
+# Two layers:
+#   1. Disposition file (universal): every bead close requires a per-bead
+#      review disposition file with all findings dispositioned.
+#   2. Evidence check (opt-in): beads with test-contract blocks in their
+#      description get command log evidence verified against patterns.
+#
+# No API calls. No LLM classification. Zero cost.
 #
 # Hook: PreToolUse[Bash]
 # Exit 0 = allow, Exit 2 = block
@@ -97,9 +96,11 @@ if [ "$NUM_CONTRACT" -gt 0 ]; then
   REQUIREMENTS="$CONTRACT"
   SOURCE="test-contract"
 else
-  # ── Step 3: Classify with Haiku ──────────────────────────────────────
-  REQUIREMENTS=$(bash "$SCRIPTS_DIR/classify-bead.sh" "$BEAD_ID" 2>/dev/null) || REQUIREMENTS='[{"type":"none","evidence":""}]'
-  SOURCE="haiku-classifier"
+  # No test-contract — skip evidence check entirely.
+  # The disposition file (checked above) is the primary gate.
+  # Test contracts are opt-in for beads that need specific integration proof.
+  touch_stamp "integration"
+  exit 0
 fi
 
 # ── Step 4: Verify evidence in command log ────────────────────────────────

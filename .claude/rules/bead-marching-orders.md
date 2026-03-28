@@ -37,16 +37,18 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 ## Every 3-5 beads: Cross-agent review
 
 After completing 3-5 beads, run a deep review pass before starting the next batch.
+Use the Agent tool (subagent) — NOT `claude -p` from Bash (that uses API billing, not subscription).
+
 Spin up a subagent with this prompt:
 
 > Pick 3-5 recently changed files, deeply investigate each one, trace execution
 > flows through imports and dependencies. Check for: bugs, type errors, missing
 > error handling, inconsistent patterns, broken imports, untested edge cases.
 > Run `/simplify` on changed code. Fix anything you find. Run `bun run verify`
-> after fixes.
+> after fixes. Write results to .claude/.cross-review-results.json
 
-This mirrors the swarm-supervisor's cross-agent review (triggered every N beads).
-In single-agent mode, do it yourself between bead batches.
+The enforce hook checks for a fresh results file (< 10 min) before allowing new beads.
+For manual terminal use (outside Claude Code): `bash scripts/cross-review.sh`
 
 ## What NOT to do
 
