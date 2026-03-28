@@ -44,6 +44,17 @@ export async function POST(req: NextRequest) {
     }
     const userId = users[0].id
 
+    // Budget check — skip task generation if daily cap reached
+    const { checkBudget } = await import('@/lib/budget-guard')
+    const budgetVerdict = await checkBudget({ userId, taskType: 'discover_cron' })
+    if (budgetVerdict.action === 'pause') {
+      return NextResponse.json({
+        ok: true,
+        tasks_created: 0,
+        reason: `Budget paused: ${budgetVerdict.reason}`,
+      })
+    }
+
     // Check for existing pending exa tasks (idempotency — skip if already queued)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { count: pendingCount } = await supabase

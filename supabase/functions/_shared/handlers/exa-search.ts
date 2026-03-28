@@ -5,13 +5,28 @@
 
 import { registerHandler } from '../handler-registry.ts'
 import { getSupabaseAdmin } from '../supabase-admin.ts'
+import { checkBudget } from '../budget-guard.ts'
 import type { TaskRow, TaskResult } from '../task-types.ts'
 import Exa from 'npm:exa-js@2'
 
 function getExa(): Exa {
   const key = Deno.env.get('EXA_API_KEY')
   if (!key) throw new Error('EXA_API_KEY not configured')
-  return new ExaSDK(key)
+  return new Exa(key)
+}
+
+async function logExaCost(userId: string, taskType: string, resultCount: number): Promise<void> {
+  const supabase = getSupabaseAdmin()
+  const costCents = Math.ceil(0.5 + resultCount * 0.1)
+  const { error } = await supabase.from('api_usage_log').insert({
+    user_id: userId,
+    model: 'exa-search',
+    input_tokens: 0,
+    output_tokens: 0,
+    estimated_cost_cents: costCents,
+    task_type: taskType,
+  })
+  if (error) console.error('Failed to log Exa API cost:', error.message)
 }
 
 interface DiscoveredJobRow {
@@ -101,14 +116,23 @@ registerHandler({
       return { success: false, error: 'Missing query in payload', permanent: true }
     }
 
+    // Budget check before API call
+    const verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    if (verdict.action === 'pause') {
+      return { success: false, error: verdict.reason, permanent: true }
+    }
+
+    const numResults = verdict.action === 'reduce_batch' ? verdict.maxBatchSize : 10
     const exa = getExa()
     const response = await exa.searchAndContents(payload.query, {
       text: { maxCharacters: 3000 },
-      numResults: 10,
+      numResults,
       type: 'neural',
       includeDomains: payload.domains?.length ? payload.domains : undefined,
       startPublishedDate: thirtyDaysAgo(),
     })
+
+    await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
       mapToRow(r, task.user_id, payload.source_type ?? 'academic'),
@@ -133,11 +157,20 @@ registerHandler({
       return { success: false, error: 'Missing seed_url in payload', permanent: true }
     }
 
+    // Budget check before API call
+    const verdict = await checkBudget({ userId: task.user_id, taskType: task.task_type })
+    if (verdict.action === 'pause') {
+      return { success: false, error: verdict.reason, permanent: true }
+    }
+
+    const numResults = verdict.action === 'reduce_batch' ? verdict.maxBatchSize : 5
     const exa = getExa()
     const response = await exa.findSimilarAndContents(payload.seed_url, {
       text: { maxCharacters: 3000 },
-      numResults: 5,
+      numResults,
     })
+
+    await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
       mapToRow(r, task.user_id, payload.source_type ?? 'academic'),

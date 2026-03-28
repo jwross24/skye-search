@@ -95,6 +95,13 @@ Deno.serve(async (req) => {
       ? 'application/pdf'
       : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
+    // Budget check before API call (cv_extraction is non-critical)
+    const { checkBudget } = await import('../_shared/budget-guard.ts')
+    const budgetVerdict = await checkBudget({ userId: user.id, taskType: 'cv_extraction' })
+    if (budgetVerdict.action === 'pause') {
+      return jsonResponse({ error: 'API spend cap reached for today. Try again tomorrow.' }, 429)
+    }
+
     // Call Claude Haiku with structured output
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) {
