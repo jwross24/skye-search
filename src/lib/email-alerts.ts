@@ -109,6 +109,14 @@ export async function checkAndSendAlerts(
   )
   if (cronResult) results.push(cronResult)
 
+  // ─── Check 3b: Queue worker staleness (pending tasks >24h) ────────────
+  const queueResult = await checkQueueWorkerHealth(supabase, userId)
+  if (queueResult) results.push(queueResult)
+
+  // ─── Check 3c: Exa pipeline staleness (>8 days since last discovery) ──
+  const exaResult = await checkExaPipelineHealth(supabase, userId)
+  if (exaResult) results.push(exaResult)
+
   // ─── Check 4: Budget alert (operational — always bypass break mode) ────
   const budgetResult = await checkBudgetAlert(userId, userEmail, today)
   if (budgetResult) results.push(budgetResult)
@@ -354,6 +362,93 @@ async function checkCronFailure(
       sent: false,
       reason: err instanceof Error ? err.message : String(err),
     }
+  }
+}
+
+// ─── Check 3b: Queue worker health ──────────────────────────────────────────
+
+async function checkQueueWorkerHealth(
+  supabase: ReturnType<typeof createAlertClient>,
+  userId: string,
+): Promise<AlertResult | null> {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { count: stalePending } = await supabase
+      .from('task_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing'])
+      .lt('created_at', twentyFourHoursAgo)
+
+    if (!stalePending || stalePending === 0) return null
+
+    const developerEmail = process.env.DEVELOPER_ALERT_EMAIL ?? process.env.RESEND_FROM_EMAIL
+    if (!developerEmail) {
+      return { userId, alertType: 'cron_failure', sent: false, reason: 'no_developer_email' }
+    }
+
+    const idempotencyKey = `queue-stale/${userId}/${new Date().toISOString().split('T')[0]}`
+
+    const { id } = await sendEmail({
+      to: developerEmail,
+      subject: `SkyeSearch: ${stalePending} tasks stuck in queue >24h`,
+      react: CronFailureAlert({
+        errorMessage: `Queue worker has ${stalePending} task(s) pending for over 24 hours. The queue-worker Edge Function may not be running.`,
+        triggerSource: 'queue_worker',
+        executionDate: new Date().toISOString().split('T')[0],
+        userId,
+      }),
+      idempotencyKey,
+    })
+
+    return { userId, alertType: 'cron_failure', sent: true, messageId: id }
+  } catch {
+    return null // Don't fail the alert pipeline for queue health check errors
+  }
+}
+
+// ─── Check 3c: Exa pipeline health ─────────────────────────────────────────
+
+async function checkExaPipelineHealth(
+  supabase: ReturnType<typeof createAlertClient>,
+  userId: string,
+): Promise<AlertResult | null> {
+  try {
+    const { data: lastDiscovery } = await supabase
+      .from('discovered_jobs')
+      .select('created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!lastDiscovery) return null // Bootstrap — no discoveries yet
+
+    const ageDays = (Date.now() - new Date(lastDiscovery.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    if (ageDays < 8) return null // Bi-weekly schedule — 8 days is the staleness threshold
+
+    const developerEmail = process.env.DEVELOPER_ALERT_EMAIL ?? process.env.RESEND_FROM_EMAIL
+    if (!developerEmail) {
+      return { userId, alertType: 'cron_failure', sent: false, reason: 'no_developer_email' }
+    }
+
+    const idempotencyKey = `exa-stale/${userId}/${new Date().toISOString().split('T')[0]}`
+
+    const { id } = await sendEmail({
+      to: developerEmail,
+      subject: `SkyeSearch: Exa discovery pipeline stale (${Math.round(ageDays)} days)`,
+      react: CronFailureAlert({
+        errorMessage: `No new job discoveries in ${Math.round(ageDays)} days. The Exa discovery pipeline (bi-weekly Tue/Fri) may have stopped running.`,
+        triggerSource: 'exa_pipeline',
+        executionDate: new Date().toISOString().split('T')[0],
+        userId,
+      }),
+      idempotencyKey,
+    })
+
+    return { userId, alertType: 'cron_failure', sent: true, messageId: id }
+  } catch {
+    return null
   }
 }
 

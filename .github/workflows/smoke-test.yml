@@ -87,3 +87,22 @@ jobs:
             exit 1
           fi
           echo "Alerts endpoint is reachable"
+
+      - name: Deep health check (cron + pipeline staleness)
+        run: |
+          RESPONSE=$(curl -s --max-time 15 \
+            "https://skye-search.vercel.app/api/health?ready=true")
+          STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
+          echo "Health status: $STATUS"
+          echo "$RESPONSE" | jq '.checks'
+
+          if [ "$STATUS" = "degraded" ]; then
+            # Extract stale systems
+            STALE=$(echo "$RESPONSE" | jq -r '
+              .checks | to_entries[]
+              | select(.value.stale == true)
+              | "\(.key): \(.value.detail // "stale")"
+            ')
+            echo "::warning::Production health degraded"
+            echo "$STALE"
+          fi

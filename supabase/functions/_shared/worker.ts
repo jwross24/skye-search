@@ -1,6 +1,7 @@
 import type { TaskQueueDb, TaskRow, WorkerResult } from './task-types.ts'
 import { getHandler } from './handler-registry.ts'
 import { computeNextRetryAt } from './backoff.ts'
+import { getSupabaseAdmin } from './supabase-admin.ts'
 
 export async function processTaskBatch(
   db: TaskQueueDb,
@@ -58,6 +59,7 @@ async function processOneTask(
         taskType: task.task_type,
         error: taskResult.error ?? 'Permanent failure',
       })
+      await persistError(task, taskResult.error ?? 'Permanent failure', 'validation_failed')
     } else {
       await handleRetryOrDeadLetter(db, task, taskResult.error ?? 'Task failed', result)
     }
@@ -81,10 +83,27 @@ async function handleRetryOrDeadLetter(
     await db.deadLetterTask(task.id, errorMsg)
     result.deadLettered++
     result.errors.push({ taskId: task.id, taskType: task.task_type, error: errorMsg })
+    await persistError(task, errorMsg, 'dead_lettered')
   } else {
     // Use nextRetryCount for backoff: matches the post-increment DB state
     const nextRetryAt = computeNextRetryAt(nextRetryCount)
     await db.retryTask(task.id, errorMsg, nextRetryAt)
     result.retried++
+  }
+}
+
+async function persistError(task: TaskRow, errorMsg: string, errorType: string): Promise<void> {
+  try {
+    const supabase = getSupabaseAdmin()
+    await supabase.from('api_usage_log').insert({
+      user_id: task.user_id,
+      model: `error:${errorType}`,
+      input_tokens: 0,
+      output_tokens: 0,
+      estimated_cost_cents: 0,
+      task_type: task.task_type,
+    })
+  } catch {
+    // Best-effort — don't fail the worker if error logging fails
   }
 }
