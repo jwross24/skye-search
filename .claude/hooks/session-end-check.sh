@@ -49,12 +49,22 @@ if [ -n "$LOG_FILES" ]; then
   check_step "push" "git push"
   check_step "self-review" "Self-review\\|self.review\\|review.*disposition"
 
-  # Check for learn activity (writes to rules or memory)
-  LEARN_WRITES=$(grep -c "rules/\\|memory/" $LOG_GLOB 2>/dev/null || echo 0)
+  # Check for learn activity — Write tool doesn't appear in command log,
+  # so check for recently modified files in rules/ and memory/ directories
+  LEARN_WRITES=0
+  if [ -d "$PROJECT_DIR/.claude/rules" ]; then
+    RULES_MODIFIED=$(find "$PROJECT_DIR/.claude/rules" -type f -newer "$LOG_FILES" 2>/dev/null | wc -l | tr -d ' ')
+    LEARN_WRITES=$((LEARN_WRITES + RULES_MODIFIED))
+  fi
+  MEMORY_DIR="$HOME/.claude/projects/-Users-${USER}-Documents-skye-search/memory"
+  if [ -d "$MEMORY_DIR" ]; then
+    MEMORY_MODIFIED=$(find "$MEMORY_DIR" -type f -newer "$LOG_FILES" 2>/dev/null | wc -l | tr -d ' ')
+    LEARN_WRITES=$((LEARN_WRITES + MEMORY_MODIFIED))
+  fi
   STEPS_TOTAL=$((STEPS_TOTAL + 1))
   if [ "$LEARN_WRITES" -gt 0 ]; then
     STEPS_HIT=$((STEPS_HIT + 1))
-    COMPLIANCE="${COMPLIANCE} ✓ learn"
+    COMPLIANCE="${COMPLIANCE} ✓ learn(${LEARN_WRITES})"
   else
     COMPLIANCE="${COMPLIANCE} ✗ learn"
   fi
