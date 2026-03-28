@@ -74,7 +74,7 @@ export function SettingsPageContent({
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">

@@ -45,19 +45,21 @@ export default async function SettingsPage() {
   } | undefined
 
   return (
-    <div className="p-6 space-y-8">
-      <SettingsPageContent
-        profile={(userData.data?.profile ?? {}) as UserProfile}
-        skills={(userData.data?.skills ?? []) as string[]}
-        latestCv={latestCv.data}
-      />
-      <BudgetSection
-        dailyCents={dailySpend.data?.total_cents ?? 0}
-        weeklyCents={weeklySpend.data?.total_cents ?? 0}
-        dailyCapCents={budgetCaps?.daily_cap_cents ?? 300}
-        weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? 1200}
-        weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? 800}
-      />
+    <div className="p-6">
+      <div className="mx-auto max-w-2xl space-y-8">
+        <SettingsPageContent
+          profile={(userData.data?.profile ?? {}) as UserProfile}
+          skills={(userData.data?.skills ?? []) as string[]}
+          latestCv={latestCv.data}
+        />
+        <BudgetSection
+          dailyCents={dailySpend.data?.total_cents ?? 0}
+          weeklyCents={weeklySpend.data?.total_cents ?? 0}
+          dailyCapCents={budgetCaps?.daily_cap_cents ?? 300}
+          weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? 1200}
+          weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? 800}
+        />
+      </div>
     </div>
   )
 }

@@ -41,7 +41,7 @@ function SpendBar({ label, cents, capCents }: { label: string; cents: number; ca
           )}
         </span>
       </div>
-      <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-out ${barClass}`}
           style={{ width: `${pct}%` }}
@@ -86,8 +86,8 @@ export function BudgetSection({
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Your API spend</h2>
-        <p className="text-sm text-foreground/50 mt-1 leading-relaxed">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Your API spend</h2>
+        <p className="text-sm text-foreground/50 mt-2 leading-relaxed">
           Job searches and document analysis use paid APIs.
           These limits keep things predictable so there are no surprises.
         </p>
