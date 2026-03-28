@@ -120,7 +120,13 @@ for i in $(seq 0 $((NUM_FINDINGS - 1))); do
       fi
       ;;
     not-a-bug)
-      if [ "${#ACTION}" -lt 20 ]; then
+      # Hard threshold: CRITICAL/HIGH findings need stronger justification (50+ chars)
+      if echo "$SEVERITY" | grep -qiE 'CRITICAL|HIGH'; then
+        if [ "${#ACTION}" -lt 50 ]; then
+          ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID ($SEVERITY): $DESC" --arg a "$ACTION" \
+            '. + [{"finding": $f, "problem": "CRITICAL/HIGH findings marked not-a-bug require detailed justification (>50 chars). Either fix it or create a bead."}]')
+        fi
+      elif [ "${#ACTION}" -lt 20 ]; then
         ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID: $DESC" --arg a "$ACTION" \
           '. + [{"finding": $f, "problem": "not-a-bug needs a real justification (>20 chars). Explain WHY it is not a bug.", "action": $a}]')
       fi
