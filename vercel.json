@@ -9,6 +9,10 @@
       "schedule": "15 8 * * 2,5"
     },
     {
+      "path": "/api/cron/score",
+      "schedule": "15 4 * * *"
+    },
+    {
       "path": "/api/alerts",
       "schedule": "30 5 * * *"
     }
