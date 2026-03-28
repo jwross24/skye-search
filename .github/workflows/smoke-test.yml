@@ -90,14 +90,19 @@ jobs:
 
       - name: Deep health check (cron + pipeline staleness)
         run: |
-          RESPONSE=$(curl -s --max-time 15 \
-            "https://skye-search.vercel.app/api/health?ready=true")
+          RESPONSE=$(curl -sf --max-time 15 \
+            "https://skye-search.vercel.app/api/health?ready=true" \
+            || echo '{"status":"unreachable","checks":{}}')
           STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
           echo "Health status: $STATUS"
           echo "$RESPONSE" | jq '.checks'
 
+          if [ "$STATUS" = "unreachable" ]; then
+            echo "::error::Health endpoint unreachable — cannot verify production health"
+            exit 1
+          fi
+
           if [ "$STATUS" = "degraded" ]; then
-            # Extract stale systems
             STALE=$(echo "$RESPONSE" | jq -r '
               .checks | to_entries[]
               | select(.value.stale == true)

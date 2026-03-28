@@ -198,6 +198,76 @@ describe('GET /api/health', () => {
     expect(body.checks.unemployment_cron.detail).toContain('bootstrap')
   })
 
+  it('detects stale scoring pipeline (unscored + no recent scoring run)', async () => {
+    setupHealthyMocks()
+    const staleTime = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString() // 30h ago
+    const originalImpl = mockFrom.getMockImplementation()!
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'task_queue') {
+        return {
+          select: (_col: string, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.head) {
+              return chainable({ count: 0 }) // No stale pending tasks
+            }
+            // Return stale last completed for scoring pipeline
+            return chainable({ data: { updated_at: staleTime } })
+          },
+        }
+      }
+      if (table === 'discovered_jobs') {
+        return {
+          select: (_col: string, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.head) {
+              return chainable({ count: 20 }) // 20 unscored jobs
+            }
+            return chainable({ data: { created_at: new Date().toISOString() } })
+          },
+        }
+      }
+      return originalImpl(table)
+    })
+
+    const response = await GET(makeRequest(true))
+    const body = await response.json()
+    expect(response.status).toBe(503)
+    expect(body.checks.scoring_pipeline.healthy).toBe(false)
+    expect(body.checks.scoring_pipeline.stale).toBe(true)
+    expect(body.checks.scoring_pipeline.detail).toContain('20 unscored')
+  })
+
+  it('treats no scoring runs as bootstrap (healthy)', async () => {
+    setupHealthyMocks()
+    const originalImpl = mockFrom.getMockImplementation()!
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'task_queue') {
+        return {
+          select: (_col: string, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.head) {
+              return chainable({ count: 0 })
+            }
+            return chainable({ data: null }) // No completed scoring tasks
+          },
+        }
+      }
+      if (table === 'discovered_jobs') {
+        return {
+          select: (_col: string, opts?: { count?: string; head?: boolean }) => {
+            if (opts?.head) {
+              return chainable({ count: 10 })
+            }
+            return chainable({ data: { created_at: new Date().toISOString() } })
+          },
+        }
+      }
+      return originalImpl(table)
+    })
+
+    const response = await GET(makeRequest(true))
+    const body = await response.json()
+    expect(body.checks.scoring_pipeline.healthy).toBe(true)
+    expect(body.checks.scoring_pipeline.detail).toContain('no scoring runs yet')
+  })
+
   it('includes timestamp in all responses', async () => {
     const liveness = await GET(makeRequest())
     const livenessBody = await liveness.json()
