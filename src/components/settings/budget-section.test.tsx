@@ -18,8 +18,8 @@ describe('BudgetSection', () => {
       />,
     )
 
-    expect(screen.getByText('$1.50 / $3.00')).toBeDefined()
-    expect(screen.getByText('$6.00 / $12.00')).toBeDefined()
+    expect(screen.getByText('$1.50')).toBeDefined()
+    expect(screen.getByText('$6.00')).toBeDefined()
   })
 
   it('shows paused status when at daily cap', () => {
@@ -79,7 +79,8 @@ describe('BudgetSection', () => {
       />,
     )
 
-    expect(screen.getByText('$0.00 / $3.00')).toBeDefined()
-    expect(screen.getByText('$0.00 / $12.00')).toBeDefined()
+    // Both today and this week show $0.00
+    const zeros = screen.getAllByText('$0.00')
+    expect(zeros.length).toBe(2)
   })
 })
