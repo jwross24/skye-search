@@ -104,6 +104,33 @@ describe('checkBudget', () => {
     expect(verdict.action).toBe('pause')
   })
 
+  it('allows at exactly one below reduce_batch threshold (249)', async () => {
+    setupMocks({ dailyCents: 249 }) // 300 - 50 = 250 threshold, 249 is below
+    const verdict = await checkBudget({ userId: 'u1', taskType: 'exa_search_query' })
+    expect(verdict.action).toBe('allow')
+  })
+
+  it('reduces batch at exactly the threshold boundary (250)', async () => {
+    setupMocks({ dailyCents: 250 }) // exactly daily_cap - pause_buffer
+    const verdict = await checkBudget({ userId: 'u1', taskType: 'exa_search_query' })
+    expect(verdict.action).toBe('reduce_batch')
+  })
+
+  it('pauses when weekly cap exceeded', async () => {
+    setupMocks({ dailyCents: 100, weeklyCents: 1200 })
+    const verdict = await checkBudget({ userId: 'u1', taskType: 'cv_extraction' })
+    expect(verdict.action).toBe('pause')
+    if (verdict.action === 'pause') {
+      expect(verdict.reason).toContain('Weekly')
+    }
+  })
+
+  it('allows when weekly spend below cap', async () => {
+    setupMocks({ dailyCents: 100, weeklyCents: 800 })
+    const verdict = await checkBudget({ userId: 'u1', taskType: 'cv_extraction' })
+    expect(verdict.action).toBe('allow')
+  })
+
   it('always allows critical tasks regardless of spend', async () => {
     setupMocks({ dailyCents: 9999 })
 

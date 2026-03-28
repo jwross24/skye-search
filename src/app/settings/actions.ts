@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/db/supabase-server'
 import type { CvExtraction, UserProfile } from '@/types/cv-extraction'
+import { DEFAULT_CAPS } from '@/lib/budget-guard'
 
 /** Deduplicate arrays of objects by a key function */
 function deduplicateByKey<T>(
@@ -171,7 +172,7 @@ export async function updateBudgetCaps(caps: {
           daily_cap_cents: caps.dailyCapCents,
           weekly_soft_cap_cents: caps.weeklyCapCents,
           weekly_alert_threshold_cents: caps.weeklyAlertCents,
-          pause_buffer_cents: 50,
+          pause_buffer_cents: DEFAULT_CAPS.pause_buffer_cents,
         },
       },
     })
