@@ -12,7 +12,11 @@ import { checkAndSendAlerts } from '@/lib/email-alerts'
  * Body (optional JSON):
  *   { userId?: string }
  */
-export async function POST(req: NextRequest) {
+// Vercel Cron sends GET; manual triggers use POST. Handle both.
+export const GET = handler
+export const POST = handler
+
+async function handler(req: NextRequest) {
   // ─── Auth ──────────────────────────────────────────────────────────────
   const secret = req.headers.get('authorization')?.replace('Bearer ', '')
 

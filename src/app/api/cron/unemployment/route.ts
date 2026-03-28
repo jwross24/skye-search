@@ -12,7 +12,11 @@ import { runDailyCheckpoint, type TriggerSource } from '@/db/unemployment-cron'
  * Body (optional JSON):
  *   { userId?: string, targetDate?: "YYYY-MM-DD", triggerSource?: TriggerSource }
  */
-export async function POST(req: NextRequest) {
+// Vercel Cron sends GET; manual triggers use POST. Handle both.
+export const GET = handler
+export const POST = handler
+
+async function handler(req: NextRequest) {
   // ─── Auth ──────────────────────────────────────────────────────────────
   const secret = req.headers.get('authorization')?.replace('Bearer ', '')
 

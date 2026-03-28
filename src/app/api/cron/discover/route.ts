@@ -17,7 +17,11 @@ import {
  * Secured with CRON_SECRET — triggered by Vercel Cron (bi-weekly Tue/Fri).
  * Idempotent: skips if pending exa tasks already exist from the last 24 hours.
  */
-export async function POST(req: NextRequest) {
+// Vercel Cron sends GET; manual triggers use POST. Handle both.
+export const GET = handler
+export const POST = handler
+
+async function handler(req: NextRequest) {
   // ─── Auth ──────────────────────────────────────────────────────────────
   const secret = req.headers.get('authorization')?.replace('Bearer ', '')
 
