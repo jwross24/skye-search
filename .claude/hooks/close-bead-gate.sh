@@ -45,7 +45,14 @@ fi
 # ── Step 1b: Validate review disposition (universal requirement) ──────────
 
 DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-${BEAD_ID}.json"
-DISP_RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$DISP_FILE" 2>/dev/null) || true
+
+# Compute lines changed for complexity check
+STAT_LINE=$(git diff --stat origin/main...HEAD 2>/dev/null | tail -1 || echo "")
+_INS=$(echo "$STAT_LINE" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+_DEL=$(echo "$STAT_LINE" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+' || echo 0)
+LINES_CHANGED=$(( ${_INS:-0} + ${_DEL:-0} ))
+
+DISP_RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$DISP_FILE" "$LINES_CHANGED" 2>/dev/null) || true
 
 DISP_PASS=$(printf '%s' "$DISP_RESULT" | jq -r '.pass // false' 2>/dev/null) || DISP_PASS="false"
 
@@ -79,14 +86,62 @@ if [ "$DISP_PASS" != "true" ]; then
     done
   fi
 
-  echo "" >&2
-  echo "  Write disposition to: $DISP_FILE" >&2
-  echo "  Format: {\"bead_id\":\"$BEAD_ID\",\"reviewer\":\"subagent\",\"findings\":[...]}" >&2
-  echo "  Each finding needs: id, description, severity, disposition (fix|bead|not-a-bug), action" >&2
+  # Build structured evaluator prompt for the agent
+  EVAL_PROMPT=$(bash "$SCRIPTS_DIR/build-evaluator-prompt.sh" "$BEAD_ID" "$_SESSION" "$DISP_FILE" 2>/dev/null) || EVAL_PROMPT=""
+  if [ -n "$EVAL_PROMPT" ]; then
+    echo "" >&2
+    echo "  Spawn a self-review subagent:" >&2
+    echo "" >&2
+    echo '  Agent tool call:' >&2
+    echo "    description: \"Self-review $BEAD_ID\"" >&2
+    echo '    model: "sonnet"' >&2
+    echo "    prompt: (see evaluator prompt below)" >&2
+    echo "" >&2
+    echo "  ─── Evaluator Prompt ───" >&2
+    echo "$EVAL_PROMPT" | head -60 | sed 's/^/  /' >&2
+    echo "  ────────────────────────" >&2
+  else
+    echo "" >&2
+    echo "  Write disposition to: $DISP_FILE" >&2
+    echo "  Format: {\"bead_id\":\"$BEAD_ID\",\"reviewer\":\"subagent\",\"findings\":[...]}" >&2
+    echo "  Each finding needs: id, description, severity, disposition (fix|bead|not-a-bug), action" >&2
+  fi
   exit 2
 fi
 
-# ── Step 1c: Production readiness check ───────────────────────────────────
+# ── Step 1c: Plan traceability (if plan file exists) ──────────────────────
+
+PLAN_RESULT=$(bash "$SCRIPTS_DIR/validate-plan-traceability.sh" "$BEAD_ID" "$_SESSION" 2>/dev/null) || true
+PLAN_PASS=$(printf '%s' "$PLAN_RESULT" | jq -r '.pass // true' 2>/dev/null) || PLAN_PASS="true"
+
+if [ "$PLAN_PASS" != "true" ]; then
+  PLAN_FILE=$(printf '%s' "$PLAN_RESULT" | jq -r '.plan_file // ""' 2>/dev/null) || PLAN_FILE=""
+  echo "BLOCKED: Plan traceability check failed for $BEAD_ID" >&2
+  echo "" >&2
+  if [ -n "$PLAN_FILE" ]; then
+    echo "  Plan file: $PLAN_FILE" >&2
+  fi
+  NUM_PLAN_MISSING=$(printf '%s' "$PLAN_RESULT" | jq '.files.missing | length' 2>/dev/null) || NUM_PLAN_MISSING=0
+  for i in $(seq 0 $((NUM_PLAN_MISSING - 1))); do
+    FILE=$(printf '%s' "$PLAN_RESULT" | jq -r ".files.missing[$i]")
+    echo "  ✗ $FILE — listed in plan but not found in git diff" >&2
+  done
+  # Show verification warnings (non-blocking)
+  NUM_VERIFY_MISSING=$(printf '%s' "$PLAN_RESULT" | jq '.verification.missing | length' 2>/dev/null) || NUM_VERIFY_MISSING=0
+  if [ "$NUM_VERIFY_MISSING" -gt 0 ]; then
+    echo "" >&2
+    echo "  Verification steps not found in command log (warning):" >&2
+    for i in $(seq 0 $((NUM_VERIFY_MISSING - 1))); do
+      CMD=$(printf '%s' "$PLAN_RESULT" | jq -r ".verification.missing[$i]")
+      echo "    ? $CMD" >&2
+    done
+  fi
+  echo "" >&2
+  echo "  Implement the missing deliverables, or update the plan if scope changed." >&2
+  exit 2
+fi
+
+# ── Step 1d: Production readiness check ───────────────────────────────────
 # Infers required prod steps from git diff (migrations → db push, functions → deploy,
 # env vars → vercel env). Checks command log for evidence they ran.
 

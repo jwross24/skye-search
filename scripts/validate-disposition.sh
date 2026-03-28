@@ -45,7 +45,9 @@ set -euo pipefail
 # Output: JSON with pass/fail and details
 # Exit: 0 = pass, 1 = fail
 
-DISP_FILE="${1:?Usage: validate-disposition.sh <disposition-file>}"
+DISP_FILE="${1:?Usage: validate-disposition.sh <disposition-file> [lines_changed]}"
+LINES_CHANGED="${2:-0}"
+COMPLEXITY_THRESHOLD=200
 
 if [ ! -f "$DISP_FILE" ]; then
   echo '{"pass":false,"error":"Disposition file not found. Run self-review and write disposition before closing."}'
@@ -137,6 +139,19 @@ for i in $(seq 0 $((NUM_FINDINGS - 1))); do
       ;;
   esac
 done
+
+# ── Smart complexity check: >200 lines + CRITICAL/HIGH findings → require pass 2 ──
+
+if [ "$LINES_CHANGED" -gt "$COMPLEXITY_THRESHOLD" ]; then
+  PASS_NUM=$(jq -r 'if (.pass | type) == "number" then .pass else 1 end' "$DISP_FILE" 2>/dev/null) || PASS_NUM=1
+  # Count CRITICAL/HIGH findings in this disposition
+  CRIT_HIGH_COUNT=$(jq '[.findings[] | select(.severity == "CRITICAL" or .severity == "HIGH")] | length' "$DISP_FILE" 2>/dev/null) || CRIT_HIGH_COUNT=0
+
+  if [ "$CRIT_HIGH_COUNT" -gt 0 ] && [ "$PASS_NUM" -lt 2 ]; then
+    ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg lc "$LINES_CHANGED" --arg ch "$CRIT_HIGH_COUNT" \
+      '. + [{"finding": "Complex bead (" + $lc + " lines) with " + $ch + " CRITICAL/HIGH findings", "problem": "Beads with >200 lines and CRITICAL/HIGH findings require a second review pass. Fix the issues, then spawn another review subagent with pass: 2."}]')
+  fi
+fi
 
 NUM_ISSUES=$(printf '%s' "$ISSUES" | jq 'length')
 
