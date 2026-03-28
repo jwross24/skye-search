@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/db/supabase-server'
 import { SettingsPageContent } from '@/components/settings/settings-page-content'
+import { BudgetSection } from '@/components/settings/budget-section'
 import type { UserProfile } from '@/types/cv-extraction'
 
 export default async function SettingsPage() {
@@ -8,27 +9,54 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('profile, skills')
-    .eq('id', user.id)
-    .single()
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
-  const { data: latestCv } = await supabase
-    .from('documents')
-    .select('id, file_path, structured_data_json, status, created_at')
-    .eq('user_id', user.id)
-    .eq('type', 'cv')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  const [userData, latestCv, dailySpend, weeklySpend] = await Promise.all([
+    supabase
+      .from('users')
+      .select('profile, skills, user_preferences')
+      .eq('id', user.id)
+      .single(),
+    supabase
+      .from('documents')
+      .select('id, file_path, structured_data_json, status, created_at')
+      .eq('user_id', user.id)
+      .eq('type', 'cv')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single(),
+    supabase
+      .from('daily_spend')
+      .select('total_cents, api_call_count')
+      .eq('user_id', user.id)
+      .eq('spend_date', today)
+      .maybeSingle(),
+    supabase
+      .from('weekly_spend')
+      .select('total_cents, api_call_count')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
+
+  const budgetCaps = (userData.data?.user_preferences as Record<string, unknown> | null)?.budget as {
+    daily_cap_cents: number
+    weekly_soft_cap_cents: number
+    weekly_alert_threshold_cents: number
+  } | undefined
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-8">
       <SettingsPageContent
-        profile={(userData?.profile ?? {}) as UserProfile}
-        skills={(userData?.skills ?? []) as string[]}
-        latestCv={latestCv}
+        profile={(userData.data?.profile ?? {}) as UserProfile}
+        skills={(userData.data?.skills ?? []) as string[]}
+        latestCv={latestCv.data}
+      />
+      <BudgetSection
+        dailyCents={dailySpend.data?.total_cents ?? 0}
+        weeklyCents={weeklySpend.data?.total_cents ?? 0}
+        dailyCapCents={budgetCaps?.daily_cap_cents ?? 300}
+        weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? 1200}
+        weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? 800}
       />
     </div>
   )

@@ -3,10 +3,12 @@ import { sendEmail } from './resend'
 import { UnemploymentDigest } from './email-templates/templates/unemployment-digest'
 import { DeadlineAlert } from './email-templates/templates/deadline-alert'
 import { CronFailureAlert } from './email-templates/templates/cron-failure'
+import { BudgetAlert } from './email-templates/templates/budget-alert'
+import { getSpendSummary } from './budget-guard'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type AlertType = 'unemployment_digest' | 'deadline_72h' | 'cron_failure'
+export type AlertType = 'unemployment_digest' | 'deadline_72h' | 'cron_failure' | 'budget_alert'
 
 export interface AlertResult {
   userId: string
@@ -46,9 +48,10 @@ export function shouldSuppressForBreakMode(
   const breakEnd = new Date(breakModeUntil)
   if (now >= breakEnd) return false // Break mode expired
 
-  // Critical alerts bypass break mode
+  // Critical/operational alerts bypass break mode
   if (alertType === 'cron_failure') return false
   if (alertType === 'deadline_72h') return false
+  if (alertType === 'budget_alert') return false
   if (alertType === 'unemployment_digest' && daysRemaining !== undefined && daysRemaining <= 15) {
     return false
   }
@@ -105,6 +108,10 @@ export async function checkAndSendAlerts(
     supabase, userId, today,
   )
   if (cronResult) results.push(cronResult)
+
+  // ─── Check 4: Budget alert (operational — always bypass break mode) ────
+  const budgetResult = await checkBudgetAlert(userId, userEmail, today)
+  if (budgetResult) results.push(budgetResult)
 
   return results
 }
@@ -344,6 +351,44 @@ async function checkCronFailure(
     return {
       userId,
       alertType: 'cron_failure',
+      sent: false,
+      reason: err instanceof Error ? err.message : String(err),
+    }
+  }
+}
+
+// ─── Check 4: Budget alert ──────────────────────────────────────────────────
+
+async function checkBudgetAlert(
+  userId: string,
+  userEmail: string,
+  today: string,
+): Promise<AlertResult | null> {
+  try {
+    const summary = await getSpendSummary(userId)
+
+    // Only alert when weekly spend exceeds the alert threshold
+    if (summary.weeklyCents < summary.weeklyAlertCents) return null
+
+    const idempotencyKey = `budget-alert/${userId}/${today}`
+
+    const { id } = await sendEmail({
+      to: userEmail,
+      subject: `API spend this week: $${(summary.weeklyCents / 100).toFixed(2)}`,
+      react: BudgetAlert({
+        dailyCents: summary.dailyCents,
+        weeklyCents: summary.weeklyCents,
+        dailyCapCents: summary.dailyCapCents,
+        weeklyCapCents: summary.weeklyCapCents,
+      }),
+      idempotencyKey,
+    })
+
+    return { userId, alertType: 'budget_alert', sent: true, messageId: id }
+  } catch (err) {
+    return {
+      userId,
+      alertType: 'budget_alert',
       sent: false,
       reason: err instanceof Error ? err.message : String(err),
     }

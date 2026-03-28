@@ -145,6 +145,43 @@ export async function saveExtractedProfile(extraction: CvExtraction) {
   return { success: true }
 }
 
+export async function updateBudgetCaps(caps: {
+  dailyCapCents: number
+  weeklyCapCents: number
+  weeklyAlertCents: number
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { data: current } = await supabase
+    .from('users')
+    .select('user_preferences')
+    .eq('id', user.id)
+    .single()
+
+  const prefs = (current?.user_preferences ?? {}) as Record<string, unknown>
+
+  const { error } = await supabase
+    .from('users')
+    .update({
+      user_preferences: {
+        ...prefs,
+        budget: {
+          daily_cap_cents: caps.dailyCapCents,
+          weekly_soft_cap_cents: caps.weeklyCapCents,
+          weekly_alert_threshold_cents: caps.weeklyAlertCents,
+          pause_buffer_cents: 50,
+        },
+      },
+    })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/settings')
+  return { success: true }
+}
+
 export async function getUserProfile() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
