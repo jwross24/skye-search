@@ -19,8 +19,9 @@ set -euo pipefail
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 
-# Only gate bead-starting commands
-if ! echo "$CMD" | grep -Eq 'bv\s+--robot-next|br\s+update.*in_progress'; then
+# Only gate bead-starting commands (first line only — heredoc body can contain anything)
+FIRST_LINE=$(echo "$CMD" | head -1)
+if ! echo "$FIRST_LINE" | grep -Eq 'bv\s+--robot-next|br\s+update.*in_progress'; then
   exit 0
 fi
 
