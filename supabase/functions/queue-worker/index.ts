@@ -17,27 +17,23 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Auth: accept cron secret from body (pg_cron) or Authorization header (manual curl)
+  // Auth: check header first (cheap), fall back to body (pg_cron sends cronSecret in body)
   let batchSize = 10
   let authenticated = false
 
-  try {
+  const token = req.headers.get('x-cron-secret') || req.headers.get('authorization')?.replace('Bearer ', '')
+  if (token === CRON_SECRET) {
+    authenticated = true
+  }
+
+  // Fallback: check body auth (pg_cron) — only consume stream if header auth failed
+  if (!authenticated) {
     const body = await req.json().catch(() => ({}))
     if (body?.cronSecret === CRON_SECRET) {
       authenticated = true
     }
     if (body?.batchSize && typeof body.batchSize === 'number') {
       batchSize = Math.min(body.batchSize, 50)
-    }
-  } catch {
-    // Empty body is fine
-  }
-
-  // Fallback: check Authorization header (for manual curl triggers)
-  if (!authenticated) {
-    const token = req.headers.get('x-cron-secret') || req.headers.get('authorization')?.replace('Bearer ', '')
-    if (token === CRON_SECRET) {
-      authenticated = true
     }
   }
 
@@ -49,7 +45,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-
     const supabase = getSupabaseAdmin()
     const db = createTaskQueueDb(supabase)
     const result = await processTaskBatch(db, batchSize)

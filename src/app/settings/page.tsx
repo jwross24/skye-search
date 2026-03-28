@@ -3,6 +3,7 @@ import { createClient } from '@/db/supabase-server'
 import { SettingsPageContent } from '@/components/settings/settings-page-content'
 import { BudgetSection } from '@/components/settings/budget-section'
 import type { UserProfile } from '@/types/cv-extraction'
+import { DEFAULT_CAPS } from '@/lib/budget-guard'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -27,13 +28,13 @@ export default async function SettingsPage() {
       .single(),
     supabase
       .from('daily_spend')
-      .select('total_cents, api_call_count')
+      .select('total_cents')
       .eq('user_id', user.id)
       .eq('spend_date', today)
       .maybeSingle(),
     supabase
       .from('weekly_spend')
-      .select('total_cents, api_call_count')
+      .select('total_cents')
       .eq('user_id', user.id)
       .maybeSingle(),
   ])
@@ -55,9 +56,9 @@ export default async function SettingsPage() {
         <BudgetSection
           dailyCents={dailySpend.data?.total_cents ?? 0}
           weeklyCents={weeklySpend.data?.total_cents ?? 0}
-          dailyCapCents={budgetCaps?.daily_cap_cents ?? 300}
-          weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? 1200}
-          weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? 800}
+          dailyCapCents={budgetCaps?.daily_cap_cents ?? DEFAULT_CAPS.daily_cap_cents}
+          weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? DEFAULT_CAPS.weekly_soft_cap_cents}
+          weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? DEFAULT_CAPS.weekly_alert_threshold_cents}
         />
       </div>
     </div>

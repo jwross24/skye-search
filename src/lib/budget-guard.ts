@@ -31,6 +31,7 @@ export interface SpendSummary {
   dailyCapCents: number
   weeklyCapCents: number
   weeklyAlertCents: number
+  pauseBufferCents: number
   dailyRemaining: number
   weeklyRemaining: number
 }
@@ -102,6 +103,7 @@ export async function getSpendSummary(userId: string): Promise<SpendSummary> {
     dailyCapCents: caps.daily_cap_cents,
     weeklyCapCents: caps.weekly_soft_cap_cents,
     weeklyAlertCents: caps.weekly_alert_threshold_cents,
+    pauseBufferCents: caps.pause_buffer_cents,
     dailyRemaining: Math.max(0, caps.daily_cap_cents - dailyCents),
     weeklyRemaining: Math.max(0, caps.weekly_soft_cap_cents - weeklyCents),
   }
@@ -117,9 +119,7 @@ export async function checkBudget(params: {
     return { action: 'allow' }
   }
 
-  // Single fetch: spend + caps together (no double round-trip)
   const summary = await getSpendSummary(params.userId)
-  const pauseBuffer = (await getUserBudgetCaps(params.userId)).pause_buffer_cents
 
   // Hard cap: daily spend exceeded
   if (summary.dailyCents >= summary.dailyCapCents) {
@@ -138,7 +138,7 @@ export async function checkBudget(params: {
   }
 
   // Approaching daily cap: within pause_buffer
-  if (summary.dailyCents >= summary.dailyCapCents - pauseBuffer) {
+  if (summary.dailyCents >= summary.dailyCapCents - summary.pauseBufferCents) {
     return {
       action: 'reduce_batch',
       maxBatchSize: 3,

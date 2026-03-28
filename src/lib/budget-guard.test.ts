@@ -179,6 +179,7 @@ describe('getSpendSummary', () => {
     expect(summary.dailyCents).toBe(0)
     expect(summary.weeklyCents).toBe(0)
     expect(summary.dailyRemaining).toBe(DEFAULT_CAPS.daily_cap_cents)
+    expect(summary.pauseBufferCents).toBe(DEFAULT_CAPS.pause_buffer_cents)
   })
 
   it('calculates remaining correctly', async () => {

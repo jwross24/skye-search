@@ -45,7 +45,7 @@ fi
 # Count findings mentioned (rough heuristic — look for severity markers)
 FINDING_COUNT=0
 for severity in CRITICAL HIGH MEDIUM; do
-  MATCHES=$(echo "$RESPONSE" | grep -oi "$severity" | wc -l | tr -d ' ')
+  MATCHES=$(echo "$RESPONSE" | grep -oi "$severity" | wc -l | tr -d ' ' || echo 0)
   FINDING_COUNT=$((FINDING_COUNT + MATCHES))
 done
 
@@ -78,6 +78,7 @@ jq -nc \
     reviewer: ("subagent-" + $model),
     source: "harness-hook",
     findings_detected: '"$FINDING_COUNT"',
+    findings: [range('"$FINDING_COUNT"')] | map({id: ("F" + (. + 1 | tostring)), severity: "detected"}),
     verdict: $verdict,
     raw_output_truncated: $response
   }' > "$RESULTS_FILE"
