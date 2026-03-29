@@ -31,6 +31,7 @@ Current bead: $CURRENT_BEAD
 Bead close counter: $CLOSE_COUNT (cross-review due at 3)
 Recent commits:
 $RECENT
-${DIRTY:+Uncommitted changes:\n$DIRTY}
+${DIRTY:+Uncommitted changes:
+$DIRTY}
 Follow the bead marching orders in CLAUDE.md for the current bead.
 EOF

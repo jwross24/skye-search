@@ -203,10 +203,10 @@ fi
 # General-purpose agent should get context (if template exists)
 if [ -f "$HOOKS_DIR/../evaluator-template.md" ]; then
   RESULT=$(echo '{"agent_type":"general-purpose"}' | CLAUDE_PROJECT_DIR="$HOOKS_DIR/../.." bash "$HOOKS_DIR/inject-review-context.sh" 2>/dev/null) || RESULT=""
-  if echo "$RESULT" | grep -q "additionalContext"; then
+  if echo "$RESULT" | grep -q "skeptical code reviewer\|evaluator-template\|Current Context"; then
     pass "injects context for general-purpose agents"
   else
-    fail "injects context for general-purpose agents" "missing additionalContext"
+    fail "injects context for general-purpose agents" "missing evaluator template content"
   fi
 else
   pass "skips when evaluator template missing (expected in test env)"

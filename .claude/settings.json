@@ -40,27 +40,12 @@
           {
             "type": "command",
             "if": "Bash(git commit*)",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-gate.sh"
-          },
-          {
-            "type": "command",
-            "if": "Bash(git commit*)",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/agent-browser-gate.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/commit-gate.sh"
           },
           {
             "type": "command",
             "if": "Bash(bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/prereq-gate.sh"
-          },
-          {
-            "type": "command",
-            "if": "Bash(git commit*)",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/impeccable-gate.sh"
-          },
-          {
-            "type": "command",
-            "if": "Bash(git commit*)",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/resend-gate.sh"
           },
           {
             "type": "command",

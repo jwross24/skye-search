@@ -33,8 +33,8 @@ CURRENT_BEAD=$(br list --limit 0 --json 2>/dev/null | jq -r '[.[] | select(.stat
 # Read template
 EVAL_TEMPLATE=$(cat "$TEMPLATE")
 
-# Output as additionalContext
-jq -nc --arg ctx "$(cat << EOF
+# SubagentStart: stdout is injected as raw text into subagent context
+cat << EOF
 $EVAL_TEMPLATE
 
 ## Current Context
@@ -45,4 +45,3 @@ $FILES_CHANGED
 Diff summary:
 $DIFF_STAT
 EOF
-)" '{hookSpecificOutput: {hookEventName: "SubagentStart", additionalContext: $ctx}}'
