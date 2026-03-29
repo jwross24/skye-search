@@ -39,22 +39,22 @@
           },
           {
             "type": "command",
-            "if": "Bash(git commit*)",
+            "if": "Bash(*git commit*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/commit-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(bv *)",
+            "if": "Bash(*bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/prereq-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(br close*)",
+            "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/close-bead-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(bv *)",
+            "if": "Bash(*bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-enforce.sh"
           }
         ]
@@ -70,17 +70,17 @@
           },
           {
             "type": "command",
-            "if": "Bash(bun run verify*)",
+            "if": "Bash(*bun run verify*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-verify-stamp.sh"
           },
           {
             "type": "command",
-            "if": "Bash(agent-browser *)",
+            "if": "Bash(*agent-browser *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-agent-browser-stamp.sh"
           },
           {
             "type": "command",
-            "if": "Bash(br close*)",
+            "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-gate.sh"
           }
         ]
