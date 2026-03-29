@@ -13,9 +13,17 @@ set -euo pipefail
 INPUT=$(cat)
 AGENT_TYPE=$(printf '%s' "$INPUT" | jq -r '.agent_type // ""' 2>/dev/null) || exit 0
 
-# Only inject for general-purpose agents (reviews use this type)
-# Explore/Plan agents don't need review context
+# Only inject for general-purpose agents that are doing reviews
+# Check the agent description/prompt for review-related keywords
+AGENT_DESC=$(printf '%s' "$INPUT" | jq -r '.description // ""' 2>/dev/null) || true
+AGENT_PROMPT=$(printf '%s' "$INPUT" | jq -r '.prompt // ""' 2>/dev/null) || true
+
 if [ "$AGENT_TYPE" = "Explore" ] || [ "$AGENT_TYPE" = "Plan" ]; then
+  exit 0
+fi
+
+# Only inject review context when the subagent is actually doing a review
+if ! echo "$AGENT_DESC $AGENT_PROMPT" | grep -iqE 'review|audit|disposition|finding|cross.?review|self.?review'; then
   exit 0
 fi
 

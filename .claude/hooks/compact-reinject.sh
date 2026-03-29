@@ -23,7 +23,7 @@ CLOSE_COUNT=$(cat "$PROJECT_DIR/.claude/.bead-close-count-global" 2>/dev/null ||
 RECENT=$(git log --oneline -5 2>/dev/null || echo "(no git history)")
 
 # Uncommitted changes
-DIRTY=$(git status --porcelain 2>/dev/null | head -5 || echo "")
+DIRTY=$(git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | head -5 || echo "")
 
 cat << EOF
 === Post-Compaction Context ===

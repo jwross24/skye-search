@@ -7,8 +7,8 @@ set -euo pipefail
 # With "if": "Bash(git commit*)" in settings.json, this only fires on git commit.
 #
 # Checks (in order):
-#   1. Verify stamp (bun run verify ran recently — includes ntm scan)
-#   2. --no-verify flag (always blocked)
+#   1. --no-verify flag (always blocked)
+#   2. Verify stamp (bun run verify ran recently — includes ntm scan)
 #   3. Agent-browser stamp (if UI bead with .tsx files)
 #   4. Impeccable stamp (if UI bead with .tsx files)
 #   5. Resend stamp (if email bead)
@@ -22,9 +22,8 @@ INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 init_session_id "$INPUT"
 
-# Only gate git commit commands (if field in settings.json may not work for hooks)
-FIRST_LINE=$(echo "$CMD" | head -1)
-if ! echo "$FIRST_LINE" | grep -Eq 'git\s+commit'; then
+# Only gate git commit commands (search full command — compound cmds put commit on line 2+)
+if ! echo "$CMD" | grep -Eq 'git\s+commit'; then
   exit 0
 fi
 
