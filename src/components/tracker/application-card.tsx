@@ -14,6 +14,7 @@ const VISA_BADGE: Record<string, { label: string; className: string }> = {
 
 const STATUS_OPTIONS: { value: KanbanStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
+  { value: 'tailoring', label: 'Tailoring' },
   { value: 'applied', label: 'Applied' },
   { value: 'phone_screen', label: 'Phone Screen' },
   { value: 'interview', label: 'Interview' },

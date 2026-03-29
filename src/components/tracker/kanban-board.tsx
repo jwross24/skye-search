@@ -13,7 +13,7 @@ import type { SeedJob } from '@/db/seed'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type KanbanStatus = 'interested' | 'applied' | 'phone_screen' | 'interview' | 'offer' | 'rejected'
+export type KanbanStatus = 'interested' | 'tailoring' | 'applied' | 'phone_screen' | 'interview' | 'offer' | 'rejected'
 
 export type RejectionType = 'form_email' | 'personalized' | 'ghosted'
 
@@ -34,6 +34,7 @@ export interface TrackedApplication {
 
 const COLUMNS: { id: KanbanStatus; label: string; emptyMessage: string }[] = [
   { id: 'interested', label: 'Interested', emptyMessage: 'Check your daily picks for ideas' },
+  { id: 'tailoring', label: 'Tailoring', emptyMessage: 'Move cards here to tailor your application' },
   { id: 'applied', label: 'Applied', emptyMessage: 'Ready to submit? Move a card here' },
   { id: 'phone_screen', label: 'Phone Screen', emptyMessage: 'First conversations land here' },
   { id: 'interview', label: 'Interview', emptyMessage: 'Responses will show up here' },
@@ -49,7 +50,7 @@ const REJECTED_COLUMN = {
   emptyMessage: 'Rejections are data, not failure',
 }
 
-const ALL_STATUSES: KanbanStatus[] = ['interested', 'applied', 'phone_screen', 'interview', 'offer', 'rejected']
+const ALL_STATUSES: KanbanStatus[] = ['interested', 'tailoring', 'applied', 'phone_screen', 'interview', 'offer', 'rejected']
 
 // ─── Board ──────────────────────────────────────────────────────────────────
 

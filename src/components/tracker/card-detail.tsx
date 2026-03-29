@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { X, ExternalLink } from 'lucide-react'
 import type { TrackedApplication, KanbanStatus } from './kanban-board'
 import { STATUS_OPTIONS, VISA_BADGE } from './application-card'
+import { CoverLetterPanel } from './cover-letter-panel'
 
 interface CardDetailProps {
   application: TrackedApplication
@@ -114,6 +115,15 @@ export function CardDetail({ application, onClose, onUpdate, onMove }: CardDetai
             ))}
           </div>
         </div>
+
+        {/* Cover Letter (Tailoring column) */}
+        {(application.status === 'tailoring' || application.status === 'applied') && (
+          <CoverLetterPanel
+            applicationId={application.id}
+            companyName={application.job.company}
+            onStatusChange={(newStatus) => onMove(newStatus as KanbanStatus)}
+          />
+        )}
 
         {/* Notes */}
         <div className="px-5 py-3 border-t border-border/50">

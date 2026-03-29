@@ -6,6 +6,7 @@ import { processTaskBatch } from '../_shared/worker.ts'
 // Register task handlers — side-effect imports register via registerHandler()
 import '../_shared/handlers/exa-search.ts'
 import '../_shared/handlers/ai-scoring.ts'
+import '../_shared/handlers/cover-letter.ts'
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET')
 

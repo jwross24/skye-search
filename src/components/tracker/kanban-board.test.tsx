@@ -16,6 +16,14 @@ vi.mock('@/app/tracker/actions', () => ({
   captureRejection: vi.fn().mockResolvedValue({ success: true }),
 }))
 
+vi.mock('@/app/tracker/cover-letter-actions', () => ({
+  generateCoverLetter: vi.fn().mockResolvedValue({ success: true, skipped: false, taskId: 'task-1' }),
+  getCoverLetterStatus: vi.fn().mockResolvedValue({ status: 'none' }),
+  saveCoverLetterEdit: vi.fn().mockResolvedValue({ success: true }),
+  approveCoverLetter: vi.fn().mockResolvedValue({ success: true }),
+  quickApply: vi.fn().mockResolvedValue({ success: true }),
+}))
+
 // ─── Mobile mock ──────────────────────────────────────────────────────────
 
 let mockIsMobile = false
@@ -85,16 +93,17 @@ const SEED_APPS: TrackedApplication[] = [
 // ─── Column Rendering ───────────────────────────────────────────────────────
 
 describe('Kanban columns', () => {
-  it('renders 5 columns when Phone Screen is unlocked: Interested, Applied, Phone Screen, Interview, Offer + Rejected', () => {
+  it('renders 6 columns when Phone Screen is unlocked: Interested, Tailoring, Applied, Phone Screen, Interview, Offer + Rejected', () => {
     log('Step 1', 'Rendering board with seed data (has interview card → Phone Screen visible)')
     render(<KanbanBoard initialApplications={SEED_APPS} />)
 
     expect(screen.getByTestId('column-interested')).toBeDefined()
+    expect(screen.getByTestId('column-tailoring')).toBeDefined()
     expect(screen.getByTestId('column-applied')).toBeDefined()
     expect(screen.getByTestId('column-phone_screen')).toBeDefined()
     expect(screen.getByTestId('column-interview')).toBeDefined()
     expect(screen.getByTestId('column-offer')).toBeDefined()
-    log('Step 2', 'All 5 columns + Rejected rendered')
+    log('Step 2', 'All 6 columns + Rejected rendered')
   })
 
   it('renders Rejected column always visible', () => {
