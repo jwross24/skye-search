@@ -59,3 +59,4 @@ next-env.d.ts
 .claude/.review-write-authorized
 .claude/settings.local.json
 supabase/.temp/
+.DS_Store
