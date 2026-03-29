@@ -261,14 +261,27 @@ async function execute(task: TaskRow): Promise<TaskResult> {
     return { success: false, error: 'Generated cover letter too short or empty', permanent: false }
   }
 
-  // 6. Store as Document
+  // 6. Determine next version number
+  const { data: maxVersionRow } = await supabase
+    .from('documents')
+    .select('version')
+    .eq('user_id', task.user_id)
+    .eq('type', 'cover_letter')
+    .eq('parent_job_id', job.id)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextVersion = (maxVersionRow?.version ?? 0) + 1
+
+  // 7. Store as Document
   const { data: docRow, error: docError } = await supabase
     .from('documents')
     .insert({
       user_id: task.user_id,
       type: 'cover_letter',
       parent_job_id: job.id,
-      version: 1,
+      version: nextVersion,
       is_master: false,
       status: 'pending_review',
       content_md: coverLetterMd,

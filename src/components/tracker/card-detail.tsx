@@ -48,6 +48,7 @@ export function CardDetail({ application, onClose, onUpdate, onMove }: CardDetai
         className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-2xl shadow-lg overflow-hidden"
         data-testid="card-detail"
         role="dialog"
+        aria-modal="true"
         aria-label={`${application.job.title} at ${application.job.company}`}
       >
         {/* Header */}

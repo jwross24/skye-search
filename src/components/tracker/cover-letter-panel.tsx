@@ -74,6 +74,8 @@ export function CoverLetterPanel({ applicationId, companyName, onStatusChange }:
       // Clear any existing poll before starting a new one
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = setInterval(fetchStatus, 3000)
+    } else {
+      setState({ status: 'error', error: result.error ?? 'Could not start generation.' })
     }
     setGenerating(false)
   }
