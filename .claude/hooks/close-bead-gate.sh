@@ -205,6 +205,8 @@ if [ "$NUM_CONTRACT" -gt 0 ]; then
 else
   # No test-contract — skip evidence check entirely.
   touch_stamp "integration"
+  # Clean up disposition file for this bead (no longer needed post-close)
+  rm -f "$DISP_FILE" 2>/dev/null || true
   # Reflection prompt — forces agent to pause before closing
   cat >&2 <<'REFLECT'
 
@@ -233,6 +235,8 @@ PASS=$(printf '%s' "$RESULT" | jq -r '.pass' 2>/dev/null) || PASS="false"
 
 if [ "$PASS" = "true" ]; then
   touch_stamp "integration"
+  # Clean up disposition file for this bead (no longer needed post-close)
+  rm -f "$DISP_FILE" 2>/dev/null || true
   cat >&2 <<'REFLECT'
 
   Before closing, reflect:
