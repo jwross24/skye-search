@@ -120,6 +120,13 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-skill-stamp.sh"
+          },
+          {
+            "type": "prompt",
+            "if": "Skill(*impeccable*)",
+            "prompt": "The /impeccable skill was just invoked. Verify it produced a REAL audit — not a rubber stamp. Check $ARGUMENTS for evidence of: (1) specific .tsx files READ and critiqued, (2) at least one concrete finding (change made, or justified 'no changes needed' with specific reasoning), (3) navigation check (can users reach this page?). If the output was just 'Design context loaded. Stamped.' or similar hand-waving without file reads, respond {\"ok\": false, \"reason\": \"Impeccable was rubber-stamped. Read the actual .tsx files, critique against .impeccable.md guidelines, and make or justify changes.\"}. If real audit evidence exists, respond {\"ok\": true}.",
+            "model": "haiku",
+            "statusMessage": "Verifying /impeccable audit quality..."
           }
         ]
       }
