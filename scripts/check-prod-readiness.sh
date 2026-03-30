@@ -88,7 +88,7 @@ fi
 
 # 3b: Supabase Edge Functions → supabase secrets set
 if [ -n "$(echo "$SUPA_ENV_REFS" | xargs)" ]; then
-  if ! echo "$ALL_CMDS" | grep -qE 'supabase secrets set'; then
+  if ! echo "$ALL_CMDS" | grep -qE 'supabase secrets (set|list)'; then
     UNIQUE_VARS=$(echo "$SUPA_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
     if [ -n "$UNIQUE_VARS" ]; then
       VAR_LIST=$(echo "$UNIQUE_VARS" | tr '\n' ', ' | sed 's/,$//')
