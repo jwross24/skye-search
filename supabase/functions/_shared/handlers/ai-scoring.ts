@@ -17,7 +17,7 @@ import type { TaskRow, TaskResult } from '../task-types.ts'
 import type { VisaPath, CapExemptConfidence, EmployerType, EmploymentType, SourceType, UserState } from '../urgency-scoring.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
 import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.80/helpers/zod'
-import { z } from 'npm:zod@3'
+import { z } from 'npm:zod@4'
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 

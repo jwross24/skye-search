@@ -2,7 +2,7 @@
 import { getSupabaseAdmin } from '../_shared/supabase-admin.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
 import { zodOutputFormat } from 'npm:@anthropic-ai/sdk@0.80/helpers/zod'
-import { z } from 'npm:zod@3'
+import { z } from 'npm:zod@4'
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
 
 // ─── Zod schema for structured output ────────────────────────────────────────
