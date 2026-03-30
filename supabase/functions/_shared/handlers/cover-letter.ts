@@ -145,7 +145,23 @@ ${toneInstruction}
 - If the job requires skills not in the CV, acknowledge the gap honestly (e.g., "While my experience is primarily in X, my work with Y provides a strong foundation for learning Z").
 - Do NOT use generic filler phrases like "I am excited to apply" or "I believe I would be a great fit."
 - Do NOT include a letterhead, address block, or "Dear Hiring Manager" — start with the opening paragraph. The user will add formatting later.
-- Output clean markdown. Use no headers — just flowing paragraphs.`
+- Output clean markdown. Use no headers — just flowing paragraphs.
+
+## Writing Style (CRITICAL — avoid AI patterns)
+
+The output must read like a human wrote it, not an AI. Specifically:
+- NO em dashes (—). Use commas, periods, or "and" instead.
+- NO rule of three lists. Don't force ideas into groups of three.
+- NO negative parallelisms ("It's not just X; it's Y"). Just state what it is.
+- NO copula avoidance ("serves as", "stands as", "functions as"). Use "is" or "are".
+- NO significance inflation ("pivotal", "crucial", "vital role", "testament to", "underscores").
+- NO promotional language ("groundbreaking", "vibrant", "showcasing", "renowned").
+- NO -ing superficial analysis ("highlighting...", "underscoring...", "reflecting...").
+- NO filler ("In order to", "It is important to note", "At its core", "In today's").
+- NO generic conclusions ("I look forward to the opportunity to discuss" or similar).
+- VARY sentence length. Mix short and long. Not all medium.
+- Use "is/are/has" naturally instead of elaborate substitutions.
+- Write like a real person who cares about this job, not like a template.`
 }
 
 // ─── Build User Message ─────────────────────────────────────────────────────
