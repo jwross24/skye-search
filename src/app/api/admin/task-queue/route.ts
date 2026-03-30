@@ -1,17 +1,18 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { NextResponse } from 'next/server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * GET /api/admin/task-queue?status=pending&type=usajobs_search&range=24h
  *
  * Filtered view of the task queue with pagination.
  */
-export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')

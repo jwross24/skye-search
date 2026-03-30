@@ -1,17 +1,18 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { NextResponse } from 'next/server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * GET /api/admin/cron-history?range=30d
  *
  * Cron execution history for the calendar heatmap.
  */
-export async function GET(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const range = new URL(req.url).searchParams.get('range') ?? '30d'
   const days = range === '7d' ? 7 : range === '14d' ? 14 : 30

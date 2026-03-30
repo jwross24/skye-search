@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * GET /api/admin/scoring-stats
  *
  * Score distribution, employer type breakdown, visa path breakdown.
  */
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const { data: jobs } = await supabase
     .from('jobs')

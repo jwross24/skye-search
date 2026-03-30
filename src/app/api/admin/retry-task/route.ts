@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { NextResponse } from 'next/server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * POST /api/admin/retry-task
@@ -7,12 +7,13 @@ import { createClient } from '@/db/supabase-server'
  *
  * Retries a dead-lettered or failed task by resetting its status to pending.
  */
-export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function POST(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const body = await req.json().catch(() => null)
   const taskId = body?.taskId

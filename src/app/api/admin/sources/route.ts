@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * GET /api/admin/sources
  *
  * Per-source discovery statistics: job counts, error rates, last fetch.
  */
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const now = new Date()
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()

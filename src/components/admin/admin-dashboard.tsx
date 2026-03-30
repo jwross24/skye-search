@@ -16,14 +16,17 @@ interface PipelineHealthData {
   alerts: { status: string; recentCount: number; lastSent: string | null }
 }
 
-export function AdminDashboard() {
+export function AdminDashboard({ adminToken }: { adminToken?: string } = {}) {
   const [health, setHealth] = useState<PipelineHealthData | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastRefreshLabel, setLastRefreshLabel] = useState('')
 
   const fetchHealth = useCallback(async () => {
+    const headers: HeadersInit = adminToken
+      ? { Authorization: `Bearer ${adminToken}` }
+      : {}
     try {
-      const res = await fetch('/api/admin/pipeline-health')
+      const res = await fetch('/api/admin/pipeline-health', { headers })
       if (res.ok) {
         setHealth(await res.json())
         setLastRefreshLabel(new Date().toLocaleTimeString())
@@ -33,11 +36,11 @@ export function AdminDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [adminToken])
 
   useEffect(() => {
     fetchHealth()
-    const interval = setInterval(fetchHealth, 30000) // refresh every 30s
+    const interval = setInterval(fetchHealth, 30000)
     return () => clearInterval(interval)
   }, [fetchHealth])
 

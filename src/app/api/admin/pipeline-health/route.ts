@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/db/supabase-server'
+import { authenticateAdmin } from '../auth'
 
 /**
  * GET /api/admin/pipeline-health
@@ -7,12 +7,13 @@ import { createClient } from '@/db/supabase-server'
  * Aggregated health status for all 5 pipeline components.
  * Each returns: status (green/yellow/red), lastRun, keyMetric.
  */
-export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+export async function GET(req: Request) {
+  const auth = await authenticateAdmin(req)
+  if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const { userId: _userId, supabase } = auth
+  const user = { id: _userId }
 
   const now = new Date()
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()

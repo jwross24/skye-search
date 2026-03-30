@@ -70,6 +70,14 @@ async function handleInboundEmail(
   const { email_id: emailId } = eventData as unknown as EmailReceivedEventData
   if (!emailId) return
 
+  // Skip emails sent by the app itself (prevents cron alerts from looping into inbox)
+  const fromAddress = (eventData as unknown as EmailReceivedEventData).from ?? ''
+  const appSendingAddress = process.env.RESEND_FROM_EMAIL?.replace(/^.*</, '').replace(/>$/, '') ?? ''
+  if (appSendingAddress && fromAddress.includes(appSendingAddress)) {
+    console.log(`[inbound-email] Skipping self-sent email from ${fromAddress}`)
+    return
+  }
+
   // Fetch full email content (webhook has metadata only)
   const { data: email } = await resend.emails.receiving.get(emailId)
   if (!email) return
