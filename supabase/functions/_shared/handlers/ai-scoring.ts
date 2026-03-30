@@ -13,7 +13,7 @@ import { registerHandler } from '../handler-registry.ts'
 import { getSupabaseAdmin } from '../supabase-admin.ts'
 import { checkBudget } from '../budget-guard.ts'
 import { computeUrgencyScore } from '../urgency-scoring.ts'
-import { CircuitBreaker, retryWithBackoff } from '../rate-limiter.ts'
+import { CircuitBreaker, retryWithBackoff, delay } from '../rate-limiter.ts'
 import type { TaskRow, TaskResult } from '../task-types.ts'
 import type { VisaPath, CapExemptConfidence, EmployerType, EmploymentType, SourceType, UserState } from '../urgency-scoring.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
@@ -340,19 +340,7 @@ async function fetchUserState(userId: string): Promise<UserState> {
   }
 }
 
-// ─── Chunked Batch Processing ───────────────────────────────────────────────
-
-function splitIntoChunks<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size))
-  }
-  return chunks
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+// ─── Batch Processing Utilities ─────────────────────────────────────────────
 
 interface BatchResult {
   scored: number
@@ -555,14 +543,13 @@ async function processBatch(
       result.totalCostCents += costCents
     }
 
-    result.circuitBreakerTrips = cb.tripCount
-
     // Inter-chunk delay for prompt cache TTL
     if (processed < scorable.length) {
       await delay(INTER_CHUNK_DELAY_MS)
     }
   }
 
+  result.circuitBreakerTrips = cb.tripCount
   return result
 }
 

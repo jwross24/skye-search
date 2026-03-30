@@ -124,7 +124,7 @@ export function isRateLimitError(err: unknown): { is429: boolean; is529: boolean
   }
 }
 
-function delay(ms: number): Promise<void> {
+export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
