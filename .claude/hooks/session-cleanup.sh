@@ -16,5 +16,6 @@ if [ -x "$SCRIPTS_DIR/cleanup-ephemeral.sh" ]; then
   fi
 fi
 
-# Reset the bead close counter for this session (cross-review tracks globally)
-echo "0" > "${CLAUDE_PROJECT_DIR:-.}/.claude/.bead-close-count-${SESSION_ID}" 2>/dev/null || true
+# NOTE: Do NOT reset .bead-close-count-global here.
+# Cross-review threshold is cumulative across sessions (3 beads total, not per-session).
+# The counter is only reset by the cross-review-enforce hook after a review completes.
