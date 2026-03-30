@@ -124,7 +124,7 @@ function nothingAugust(state: ImmigrationState): ScenarioResult {
     projectedStatus: exhausted
       ? '150 days reached — 60-day grace period begins'
       : `${projected} of 150 days used — ${Math.max(0, daysToExpiry)} days to OPT expiry`,
-    recommendation: "The plan shifts to a SEVIS transfer (Day 1 CPT) or Canada. Talk to your attorney about timing — grace period decisions can't be reversed.",
+    recommendation: "This is when the plan shifts — a SEVIS transfer or Canada become the active path. Your attorney can walk you through timing. These decisions are big, but you have them.",
     tone: 'urgent',
   }
 }

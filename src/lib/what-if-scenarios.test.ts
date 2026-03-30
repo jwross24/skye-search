@@ -101,6 +101,7 @@ describe('Scenario 4: Nothing by August', () => {
     const result = computeScenario(SKYE_STATE, 'nothing_august')
     expect(result.recommendation).toContain('SEVIS transfer')
     expect(result.recommendation).toContain('Canada')
+    expect(result.recommendation).toContain('attorney')
   })
 })
 

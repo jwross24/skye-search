@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ClockDisplay } from './clock-display'
 import { CalibrationFlow } from './calibration-flow'
 import { DisclaimerBanner } from './disclaimer-banner'
@@ -118,6 +119,19 @@ export function ImmigrationHQ({
               lastCronRun={lastCronRun}
               gapAlert={gapAlert}
             />
+
+            {/* What-if link */}
+            <div className="mt-6">
+              <Link
+                href="/immigration/what-if"
+                className="text-sm text-ocean hover:text-ocean-deep transition-colors"
+              >
+                What if... →
+              </Link>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                See how different scenarios play out
+              </p>
+            </div>
 
             {/* Employment toggle */}
             <div className="mt-8 border-t border-border/50 pt-6">

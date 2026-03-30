@@ -1,5 +1,3 @@
-'use client'
-
 import { Shield, Briefcase, Clock, AlertTriangle } from 'lucide-react'
 import type { ScenarioResult } from '@/lib/what-if-scenarios'
 
@@ -43,14 +41,12 @@ function ScenarioCard({ scenario }: { scenario: ScenarioResult }) {
           </p>
 
           {/* Projected outcome */}
-          <div className="mt-3 space-y-1.5">
-            <p className="text-xs text-foreground/80 tabular-nums">
-              {scenario.projectedStatus}
-            </p>
-            <p className="text-sm text-foreground leading-relaxed">
-              {scenario.recommendation}
-            </p>
-          </div>
+          <p className="text-xs text-foreground/80 tabular-nums mt-3">
+            {scenario.projectedStatus}
+          </p>
+          <p className="text-[13px] text-foreground/90 leading-relaxed mt-2">
+            {scenario.recommendation}
+          </p>
         </div>
       </div>
     </div>
