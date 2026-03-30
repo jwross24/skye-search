@@ -194,6 +194,7 @@ async function execute(task: TaskRow): Promise<TaskResult> {
   const { data: appRow, error: appError } = await supabase
     .from('applications')
     .select('id, user_id, jobs(id, title, company, company_domain, location, url, visa_path, employer_type, why_fits, skills_required, raw_description)')
+    // raw_description may be NULL for seed jobs — handler works without it
     .eq('id', payload.application_id)
     .eq('user_id', task.user_id)
     .single()

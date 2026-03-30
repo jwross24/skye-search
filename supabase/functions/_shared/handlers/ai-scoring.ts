@@ -477,6 +477,7 @@ async function processBatch(
         location: output.location,
         salary: output.salary,
         remote_status: output.remote_status,
+        raw_description: job.raw_description,
         discovered_job_id: job.id,
         indexed_date: job.indexed_date,
       }, { onConflict: 'discovered_job_id' })
