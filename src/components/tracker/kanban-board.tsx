@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import { AnimatePresence } from 'framer-motion'
 import { List, LayoutGrid } from 'lucide-react'
 import { ApplicationCard } from './application-card'
@@ -372,7 +373,7 @@ function DraggableCard({
     id: application.id,
   })
   const style = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
+    ? { transform: CSS.Transform.toString(transform) }
     : undefined
 
   return (
