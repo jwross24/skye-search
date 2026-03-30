@@ -44,8 +44,27 @@ Spin up a subagent with this prompt:
 > Pick 3-5 recently changed files, deeply investigate each one, trace execution
 > flows through imports and dependencies. Check for: bugs, type errors, missing
 > error handling, inconsistent patterns, broken imports, untested edge cases.
-> Run `/simplify` on changed code. Fix anything you find. Run `bun run verify`
-> after fixes. Write results to .claude/.cross-review-results.json
+> Run `/simplify` on changed code.
+>
+> For EVERY finding, take action — do not just report:
+> - **LOW**: Fix it directly in this subagent. Commit the fix.
+> - **MEDIUM**: If fixable in <15 min, fix it. Otherwise create a bead with full
+>   Implementation/Tests/Acceptance Criteria via `br create`.
+> - **HIGH/CRITICAL**: Fix it now. Do not defer.
+>
+> Produce a disposition table in the results JSON:
+> ```json
+> { "findings": [{ "id": 1, "finding": "...", "severity": "MEDIUM",
+>   "disposition": "fix"|"bead_created"|"not-a-bug", "action": "..." }] }
+> ```
+>
+> Run `bun run verify` after all fixes. Write results to
+> .claude/.cross-review-results.json
+
+**Parent agent responsibility:** After the subagent returns, verify EVERY finding
+has a disposition. If the subagent deferred a MEDIUM to "bead_created", confirm
+the bead exists with a full spec. Do not proceed to the next bead until all
+findings are resolved.
 
 The enforce hook checks for a fresh results file (< 10 min) before allowing new beads.
 For manual terminal use (outside Claude Code): `bash scripts/cross-review.sh`

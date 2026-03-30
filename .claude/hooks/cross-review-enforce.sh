@@ -55,6 +55,17 @@ if [ -f "$RESULTS_FILE" ]; then
     VERDICT=$(jq -r '.verdict // ""' "$RESULTS_FILE" 2>/dev/null) || VERDICT=""
 
     if [ "$COMMITS" -ge 1 ] && [ "$HAS_FINDINGS" = "true" ] && [ -n "$VERDICT" ]; then
+      # If findings exist, every one must have a disposition (fix, bead_created, not-a-bug)
+      FINDING_COUNT=$(jq '.findings | length' "$RESULTS_FILE" 2>/dev/null) || FINDING_COUNT=0
+      if [ "$FINDING_COUNT" -gt 0 ]; then
+        UNDISPOSITIONED=$(jq '[.findings[] | select(.disposition == null or .disposition == "")] | length' "$RESULTS_FILE" 2>/dev/null) || UNDISPOSITIONED=0
+        if [ "$UNDISPOSITIONED" -gt 0 ]; then
+          echo "BLOCKED: Cross-review has $UNDISPOSITIONED finding(s) without dispositions." >&2
+          echo "  Every finding needs: \"fix\", \"bead_created\", or \"not-a-bug\"" >&2
+          echo "  Fix the findings or update .cross-review-results.json via subagent." >&2
+          exit 2
+        fi
+      fi
       VALID=true
     fi
   fi
