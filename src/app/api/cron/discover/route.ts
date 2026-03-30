@@ -7,6 +7,7 @@ import {
   FIND_SIMILAR_SEEDS,
   ACADEMIC_JOB_DOMAINS,
 } from '@/lib/adapters/exa'
+import { USAJOBS_QUERIES } from '@/lib/adapters/usajobs'
 
 /**
  * POST /api/cron/discover
@@ -59,12 +60,12 @@ async function handler(req: NextRequest) {
       })
     }
 
-    // Check for existing pending exa tasks (idempotency — skip if already queued)
+    // Check for existing pending discovery tasks (idempotency — skip if already queued)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { count: pendingCount } = await supabase
       .from('task_queue')
       .select('*', { count: 'exact', head: true })
-      .in('task_type', ['exa_search_query', 'exa_find_similar'])
+      .in('task_type', ['exa_search_query', 'exa_find_similar', 'usajobs_search'])
       .in('status', ['pending', 'processing'])
       .gte('created_at', twentyFourHoursAgo)
 
@@ -72,7 +73,7 @@ async function handler(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         tasks_created: 0,
-        reason: `${pendingCount} exa tasks still pending from last 24h`,
+        reason: `${pendingCount} discovery tasks still pending from last 24h`,
       })
     }
 
@@ -124,6 +125,18 @@ async function handler(req: NextRequest) {
       })
     }
 
+    // USAJobs queries (government/contractor positions)
+    for (const query of USAJOBS_QUERIES) {
+      tasks.push({
+        user_id: userId,
+        task_type: 'usajobs_search',
+        payload_json: {
+          query,
+        },
+        max_retries: 3,
+      })
+    }
+
     // Bulk insert
     const { error: insertError } = await supabase.from('task_queue').insert(tasks)
     if (insertError) {
@@ -140,6 +153,7 @@ async function handler(req: NextRequest) {
         academic_search: ACADEMIC_QUERIES.length,
         industry_search: INDUSTRY_QUERIES.length,
         find_similar: FIND_SIMILAR_SEEDS.length,
+        usajobs_search: USAJOBS_QUERIES.length,
       },
     })
   } catch (err) {

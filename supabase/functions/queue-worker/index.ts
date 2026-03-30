@@ -7,6 +7,7 @@ import { processTaskBatch } from '../_shared/worker.ts'
 import '../_shared/handlers/exa-search.ts'
 import '../_shared/handlers/ai-scoring.ts'
 import '../_shared/handlers/cover-letter.ts'
+import '../_shared/handlers/usajobs-search.ts'
 
 const CRON_SECRET = Deno.env.get('CRON_SECRET')
 

@@ -40,6 +40,7 @@ vi.mock('@supabase/supabase-js', () => {
 
 import { POST } from './route'
 import { ACADEMIC_QUERIES, INDUSTRY_QUERIES, FIND_SIMILAR_SEEDS } from '@/lib/adapters/exa'
+import { USAJOBS_QUERIES } from '@/lib/adapters/usajobs'
 
 const CRON_SECRET = 'test-discover-secret'
 
@@ -75,11 +76,12 @@ describe('POST /api/cron/discover', () => {
     expect(res.status).toBe(200)
     expect(body.ok).toBe(true)
 
-    const expectedTotal = ACADEMIC_QUERIES.length + INDUSTRY_QUERIES.length + FIND_SIMILAR_SEEDS.length
+    const expectedTotal = ACADEMIC_QUERIES.length + INDUSTRY_QUERIES.length + FIND_SIMILAR_SEEDS.length + USAJOBS_QUERIES.length
     expect(body.tasks_created).toBe(expectedTotal)
     expect(body.breakdown.academic_search).toBe(ACADEMIC_QUERIES.length)
     expect(body.breakdown.industry_search).toBe(INDUSTRY_QUERIES.length)
     expect(body.breakdown.find_similar).toBe(FIND_SIMILAR_SEEDS.length)
+    expect(body.breakdown.usajobs_search).toBe(USAJOBS_QUERIES.length)
   })
 
   it('inserts tasks with correct structure', async () => {
@@ -94,10 +96,15 @@ describe('POST /api/cron/discover', () => {
     expect(tasks[0].user_id).toBe('user-1')
     expect(tasks[0].max_retries).toBe(3)
 
-    // Last tasks should be findSimilar
+    // Last tasks should be usajobs_search
     const lastTask = tasks[tasks.length - 1]
-    expect(lastTask.task_type).toBe('exa_find_similar')
-    expect(lastTask.payload_json.seed_url).toBeTruthy()
+    expect(lastTask.task_type).toBe('usajobs_search')
+    expect(lastTask.payload_json.query).toBeTruthy()
+
+    // findSimilar tasks should be before usajobs
+    const findSimilarTasks = tasks.filter((t: { task_type: string }) => t.task_type === 'exa_find_similar')
+    expect(findSimilarTasks.length).toBe(FIND_SIMILAR_SEEDS.length)
+    expect(findSimilarTasks[0].payload_json.seed_url).toBeTruthy()
   })
 
   it('skips when pending tasks exist (idempotent)', async () => {
