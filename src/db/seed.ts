@@ -34,6 +34,7 @@ export interface SeedJob {
   remote_status: string | null
   skills_required: string[]
   why_fits: string
+  raw_description?: string | null
   /** If true, Skye has already applied (pre-populate Application record) */
   pre_applied?: boolean
   pre_applied_date?: string
@@ -227,6 +228,7 @@ export const seedJobs: SeedJob[] = [
     remote_status: 'on_site',
     skills_required: ['Remote Sensing', 'Python', 'Satellite Data'],
     why_fits: 'Direct fit: remote sensing, Python, satellite data. Boston location.',
+    raw_description: 'The Hutyra Lab in the Department of Earth & Environment at Boston University seeks a Postdoctoral Research Fellow to work on solar-induced fluorescence (SIF) remote sensing and carbon cycling in urban ecosystems. The position involves satellite data analysis (MODIS, VIIRS, PACE), field validation campaigns, and integration of remote sensing products with ecosystem models. Requirements: PhD in environmental science, remote sensing, or related field; experience with Python/R for satellite data processing; familiarity with radiative transfer modeling; strong publication record. The lab studies urban biogeochemistry and land-atmosphere interactions using a combination of eddy covariance towers, satellite remote sensing, and ecosystem modeling. Position is for 2 years with possibility of extension.',
   },
   {
     title: 'Postdoctoral Research Fellow — Urban Climate Modeling',
@@ -287,6 +289,7 @@ export const seedJobs: SeedJob[] = [
     remote_status: 'on_site',
     skills_required: ['Remote Sensing', 'Landsat', 'GEDI', 'Satellite Data'],
     why_fits: 'Direct fit: remote sensing, Landsat, satellite data. NASA-funded.',
+    raw_description: 'The Institute at Brown for Environment and Society (IBES) seeks a Postdoctoral Research Fellow for a NASA-funded project studying global land surface dynamics using multi-sensor satellite remote sensing. The fellow will analyze vegetation structure and biomass using Landsat, GEDI lidar, and ICESat-2 data; develop novel algorithms for land cover change detection; and contribute to regional carbon budgets. Requirements: PhD in remote sensing, geography, or environmental science; strong programming skills (Python, R, or MATLAB); experience with satellite imagery processing (Google Earth Engine preferred); peer-reviewed publications. The position offers competitive salary and benefits through Brown University.',
     pre_applied: true,
     pre_applied_date: '2026-03-24',
   },
@@ -311,6 +314,7 @@ export const seedJobs: SeedJob[] = [
     remote_status: 'on_site',
     skills_required: ['Geospatial', 'Python', 'Climate Data', 'Data Science'],
     why_fits: 'Strong fit: geospatial + climate + data science + Python. 3-month Arctic project.',
+    raw_description: 'Woodwell Climate Research Center seeks a Temporary Research Assistant / Geospatial Data Scientist for a 3-month project focused on Arctic permafrost mapping. Responsibilities include processing satellite imagery (Landsat, Sentinel-2) to detect permafrost thaw features; developing geospatial analysis pipelines in Python (GeoPandas, Rasterio, xarray); creating visualizations for scientific publications; and supporting field campaign data integration. Requirements: MS or PhD in geospatial science, environmental science, or related field; proficiency in Python for geospatial analysis; experience with cloud computing platforms (GEE, AWS); ability to work independently. Woodwell is a 501(c)(3) nonprofit research institution focused on understanding climate change through science.',
     pre_applied: true,
     pre_applied_date: '2026-03-23',
   },
@@ -395,6 +399,7 @@ export const seedJobs: SeedJob[] = [
     remote_status: 'on_site',
     skills_required: ['Machine Learning', 'Earth Science', 'Python'],
     why_fits: 'ML + earth science + NOAA affiliation. Cooperative institute = cap-exempt.',
+    raw_description: 'CIRES (Cooperative Institute for Research in Environmental Sciences) at the University of Colorado Boulder, in partnership with NOAA, is seeking an Earth System AI Scientist. The role involves applying machine learning and deep learning techniques to Earth system data (satellite observations, reanalysis products, climate model outputs); developing AI-powered tools for weather prediction, ocean monitoring, and environmental forecasting; and publishing research in peer-reviewed journals. Requirements: PhD in atmospheric science, computer science, or related field; demonstrated experience applying ML/DL to geophysical data; proficiency in Python (PyTorch/TensorFlow, xarray, NumPy); track record of publications. CIRES is a NOAA cooperative institute and a cap-exempt H1-B employer.',
     pre_applied: true,
     pre_applied_date: '2026-03-24',
   },
@@ -439,6 +444,7 @@ export const seedJobs: SeedJob[] = [
     remote_status: 'on_site',
     skills_required: ['Remote Sensing', 'Ecosystem Science', 'Carbon Fluxes'],
     why_fits: 'Direct fit: remote sensing + ecology, carbon/water fluxes. 2-year position.',
+    raw_description: 'The Photon Informed Ecology Lab at UC Santa Barbara seeks a Postdoctoral Scholar in remote sensing and ecosystem science. The researcher will use optical and lidar remote sensing data from satellite (Landsat, GEDI, ECOSTRESS) and airborne (AVIRIS-NG) platforms to study carbon and water fluxes in terrestrial ecosystems. Key responsibilities include developing and validating remote sensing products for ecosystem function; analyzing multi-scale datasets from leaf to landscape; contributing to NASA-funded research on vegetation dynamics; and mentoring graduate students. Requirements: PhD in ecology, remote sensing, geography, or related field; experience with satellite data processing (Python, GEE); knowledge of radiative transfer modeling and vegetation indices; at least 2 first-author publications. 2-year appointment with possibility of renewal.',
     pre_applied: true,
     pre_applied_date: '2026-03-25',
   },

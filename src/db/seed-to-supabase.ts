@@ -181,6 +181,7 @@ async function main() {
         remote_status: job.remote_status,
         skills_required: job.skills_required,
         why_fits: job.why_fits,
+        raw_description: job.raw_description ?? null,
       })
       .select('id')
       .single()
