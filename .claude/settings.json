@@ -82,6 +82,11 @@
             "type": "command",
             "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-gate.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(*br close*)",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-close-learn.sh"
           }
         ]
       },
