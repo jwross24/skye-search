@@ -90,15 +90,26 @@ jobs:
 
       - name: Deep health check (cron + pipeline staleness)
         run: |
-          RESPONSE=$(curl -sf --max-time 15 \
-            "https://skye-search.vercel.app/api/health?ready=true" \
-            || echo '{"status":"unreachable","checks":{}}')
+          # Use -s (not -sf) — we need the response body even on 503 (degraded)
+          HTTP_CODE=$(curl -s -o /tmp/health-response.json -w "%{http_code}" --max-time 15 \
+            "https://skye-search.vercel.app/api/health?ready=true" || echo "000")
+          RESPONSE=$(cat /tmp/health-response.json 2>/dev/null || echo '{}')
+
+          # Retry once on timeout/connection failure (cold start)
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "First attempt failed (timeout/connection). Retrying in 10s..."
+            sleep 10
+            HTTP_CODE=$(curl -s -o /tmp/health-response.json -w "%{http_code}" --max-time 15 \
+              "https://skye-search.vercel.app/api/health?ready=true" || echo "000")
+            RESPONSE=$(cat /tmp/health-response.json 2>/dev/null || echo '{}')
+          fi
+
           STATUS=$(echo "$RESPONSE" | jq -r '.status // "unknown"')
-          echo "Health status: $STATUS"
+          echo "Health HTTP: $HTTP_CODE, status: $STATUS"
           echo "$RESPONSE" | jq '.checks'
 
-          if [ "$STATUS" = "unreachable" ]; then
-            echo "::error::Health endpoint unreachable — cannot verify production health"
+          if [ "$HTTP_CODE" = "000" ]; then
+            echo "::error::Health endpoint unreachable after retry — network/DNS failure"
             exit 1
           fi
 
@@ -108,6 +119,7 @@ jobs:
               | select(.value.stale == true)
               | "\(.key): \(.value.detail // "stale")"
             ')
-            echo "::warning::Production health degraded"
+            echo "::warning::Production health degraded (HTTP $HTTP_CODE)"
             echo "$STALE"
+            # Degraded is a warning, not a failure — cron jobs may be behind schedule
           fi
