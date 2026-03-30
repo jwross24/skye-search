@@ -34,8 +34,8 @@ async function handler(req: NextRequest) {
       process.env.SUPABASE_SECRET_KEY!,
     )
 
-    // Single-user app: get the user
-    const { data: users } = await supabase.from('users').select('id').limit(1)
+    // Get the primary (non-admin) user — admin accounts don't own job data
+    const { data: users } = await supabase.from('users').select('id').eq('is_admin', false).limit(1)
     if (!users || users.length === 0) {
       return NextResponse.json({ ok: true, tasks_created: 0, reason: 'no users' })
     }
