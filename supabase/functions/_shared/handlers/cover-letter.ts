@@ -20,9 +20,10 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
 const MODEL = 'claude-sonnet-4-5-20250929'
 const MAX_TOKENS = 4096
 // Sonnet 4.5 pricing
-const INPUT_COST_PER_TOKEN = 0.003     // $3.00/MTok
-const OUTPUT_COST_PER_TOKEN = 0.015    // $15.00/MTok
-const CACHE_WRITE_COST_PER_TOKEN = 0.00375  // $3.75/MTok
+// Sonnet 4.5 pricing: per-token (not per-1K)
+const INPUT_COST_PER_TOKEN = 0.000003      // $3.00/MTok = $0.000003/token
+const OUTPUT_COST_PER_TOKEN = 0.000015     // $15.00/MTok = $0.000015/token
+const CACHE_WRITE_COST_PER_TOKEN = 0.00000375  // $3.75/MTok
 
 // ─── Academic ↔ Industry Translation Table ──────────────────────────────────
 

@@ -27,9 +27,10 @@ const INTER_CHUNK_DELAY_MS = 2500
 const MODEL = 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 2048
 // Haiku 4.5 pricing
-const INPUT_COST_PER_TOKEN = 0.00008   // $0.80/MTok
-const OUTPUT_COST_PER_TOKEN = 0.0004   // $4.00/MTok
-const CACHE_WRITE_COST_PER_TOKEN = 0.0001  // $1.00/MTok (25% markup on input)
+// Haiku 4.5 pricing: per-token (not per-1K)
+const INPUT_COST_PER_TOKEN = 0.0000008    // $0.80/MTok = $0.0000008/token
+const OUTPUT_COST_PER_TOKEN = 0.000004    // $4.00/MTok = $0.000004/token
+const CACHE_WRITE_COST_PER_TOKEN = 0.000001  // $1.00/MTok
 
 // ─── Zod Schema for structured output ───────────────────────────────────────
 
