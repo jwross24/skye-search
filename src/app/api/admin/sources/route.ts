@@ -25,10 +25,10 @@ export async function GET() {
     .eq('user_id', user.id)
     .gte('created_at', thirtyDaysAgo)
 
-  // Get task errors by type
+  // Get task errors by type (include dead_lettered_at for permanently failed tasks)
   const { data: taskErrors } = await supabase
     .from('task_queue')
-    .select('task_type, status, created_at')
+    .select('task_type, status, dead_lettered_at, created_at')
     .eq('user_id', user.id)
     .in('task_type', ['exa_search_query', 'exa_find_similar', 'usajobs_search'])
     .gte('created_at', oneWeekAgo)
@@ -82,7 +82,7 @@ export async function GET() {
     const src = sourceMap[task.task_type] ?? task.task_type
     if (!sources[src]) continue
     sources[src].totalTasks7d++
-    if (task.status === 'failed_validation') {
+    if (task.status === 'failed_validation' || task.dead_lettered_at != null) {
       sources[src].failedTasks7d++
     }
   }

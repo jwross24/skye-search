@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status')
   const taskType = searchParams.get('type')
   const range = searchParams.get('range') ?? '24h'
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
+  const rawLimit = parseInt(searchParams.get('limit') ?? '50')
+  const limit = Math.min(isNaN(rawLimit) ? 50 : rawLimit, 100)
 
   const rangeMs: Record<string, number> = {
     '1h': 60 * 60 * 1000,
@@ -44,12 +45,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Aggregate counts by status
-  const { data: statusCounts } = await supabase
+  // Aggregate counts by status (respects taskType filter if set)
+  let countQuery = supabase
     .from('task_queue')
     .select('status')
     .eq('user_id', user.id)
     .gte('created_at', since)
+  if (taskType) countQuery = countQuery.eq('task_type', taskType)
+
+  const { data: statusCounts } = await countQuery
 
   const counts: Record<string, number> = {}
   for (const row of statusCounts ?? []) {

@@ -41,6 +41,7 @@ export function TaskQueueMonitor() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [retrying, setRetrying] = useState<string | null>(null)
   const [expandedError, setExpandedError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState(false)
 
   const fetchTasks = useCallback(async () => {
     const params = new URLSearchParams({ range })
@@ -51,7 +52,12 @@ export function TaskQueueMonitor() {
         const data = await res.json()
         setTasks(data.tasks)
         setCounts(data.counts)
+        setFetchError(false)
+      } else {
+        setFetchError(true)
       }
+    } catch {
+      setFetchError(true)
     } finally {
       setLoading(false)
     }
@@ -116,6 +122,9 @@ export function TaskQueueMonitor() {
         </div>
       </CardHeader>
       <CardContent>
+        {fetchError && (
+          <p className="text-xs text-rose-400 font-mono py-2">Failed to load task queue. Retrying...</p>
+        )}
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full bg-zinc-800" />)}

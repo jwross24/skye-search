@@ -12,7 +12,7 @@ interface ScoringData {
   employerBreakdown: Record<string, number>
   visaPathBreakdown: Record<string, number>
   sourceBreakdown: Record<string, number>
-  topMatches: Array<{ title: string; company: string; matchScore: number; visaPath: string; employerType: string }>
+  topMatches: Array<{ id: string; title: string; company: string; matchScore: number; visaPath: string; employerType: string }>
 }
 
 const VISA_COLORS: Record<string, string> = {
@@ -161,8 +161,8 @@ export function ScoringStats() {
           <div>
             <p className="text-xs text-zinc-500 font-mono mb-2">Top matches</p>
             <div className="space-y-2">
-              {data.topMatches.slice(0, 5).map((job, i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded bg-zinc-800/50">
+              {data.topMatches.slice(0, 5).map((job) => (
+                <div key={job.id} className="flex items-center justify-between p-2 rounded bg-zinc-800/50">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-zinc-200 truncate">{job.title}</p>
                     <p className="text-xs text-zinc-500 font-mono">{job.company}</p>

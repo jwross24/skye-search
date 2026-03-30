@@ -26,7 +26,7 @@ interface CronData {
   taskActivity: Record<string, TaskActivity>
 }
 
-function CellColor({ log, activity }: { log?: CronLog; activity?: TaskActivity }) {
+function getCellColor({ log, activity }: { log?: CronLog; activity?: TaskActivity }) {
   if (log?.status === 'completed' || (activity && activity.failed === 0 && (activity.discover > 0 || activity.score > 0))) {
     return 'bg-emerald-500/60 hover:bg-emerald-400/80'
   }
@@ -96,7 +96,7 @@ export function CronHistory() {
                   <button
                     key={`ue-${day}`}
                     onClick={() => setSelectedDay(selectedDay === day ? null : day)}
-                    className={`flex-1 h-6 rounded-sm transition-colors cursor-pointer ${CellColor({ log })} ${selectedDay === day ? 'ring-1 ring-zinc-400' : ''}`}
+                    className={`flex-1 h-6 rounded-sm transition-colors cursor-pointer ${getCellColor({ log })} ${selectedDay === day ? 'ring-1 ring-zinc-400' : ''}`}
                     title={`${day}: ${log?.status ?? 'no data'}`}
                   />
                 )
@@ -114,7 +114,7 @@ export function CronHistory() {
                   <button
                     key={`ds-${day}`}
                     onClick={() => setSelectedDay(selectedDay === day ? null : day)}
-                    className={`flex-1 h-6 rounded-sm transition-colors cursor-pointer ${CellColor({ activity })} ${selectedDay === day ? 'ring-1 ring-zinc-400' : ''}`}
+                    className={`flex-1 h-6 rounded-sm transition-colors cursor-pointer ${getCellColor({ activity })} ${selectedDay === day ? 'ring-1 ring-zinc-400' : ''}`}
                     title={`${day}: ${activity ? `${activity.discover} discover, ${activity.score} score` : 'no data'}`}
                   />
                 )

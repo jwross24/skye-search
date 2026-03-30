@@ -28,7 +28,7 @@ export async function GET() {
     .limit(50)
 
   const discoverCompleted = recentDiscoverTasks?.filter(t => t.status === 'completed').length ?? 0
-  const discoverFailed = recentDiscoverTasks?.filter(t => t.status === 'failed_validation' || t.dead_lettered_at != null).length ?? 0
+  const discoverFailed = recentDiscoverTasks?.filter(t => t.status === 'failed_validation' || (t.dead_lettered_at != null && t.status !== 'failed_validation')).length ?? 0
   const lastDiscoverRun = recentDiscoverTasks?.[0]?.created_at ?? null
   const discoverStatus = !lastDiscoverRun ? 'red'
     : discoverFailed > discoverCompleted ? 'red'
@@ -103,16 +103,19 @@ export async function GET() {
     : 'red'
 
   // ─── Email Alerts ────────────────────────────────────────────────────
+  // Check task_queue for alert-related tasks (the alerts endpoint doesn't use api_usage_log)
   const { data: recentAlertTasks } = await supabase
-    .from('api_usage_log')
-    .select('model, created_at')
+    .from('task_queue')
+    .select('id, status, created_at')
     .eq('user_id', user.id)
-    .like('model', '%resend%')
+    .like('task_type', '%alert%')
     .gte('created_at', oneWeekAgo)
     .order('created_at', { ascending: false })
     .limit(5)
 
-  const alertStatus = (recentAlertTasks?.length ?? 0) > 0 ? 'green' : 'yellow'
+  // Fallback: check cron_execution_log for alert cron runs
+  const alertTaskCount = recentAlertTasks?.length ?? 0
+  const alertStatus = alertTaskCount > 0 ? 'green' : 'yellow'
 
   return NextResponse.json({
     discovery: {

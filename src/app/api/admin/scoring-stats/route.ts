@@ -15,8 +15,9 @@ export async function GET() {
 
   const { data: jobs } = await supabase
     .from('jobs')
-    .select('match_score, urgency_score, employer_type, visa_path, source_type, title, company')
+    .select('id, match_score, urgency_score, employer_type, visa_path, source_type, title, company')
     .eq('user_id', user.id)
+    .limit(5000)
 
   if (!jobs || jobs.length === 0) {
     return NextResponse.json({
@@ -67,7 +68,7 @@ export async function GET() {
     .filter(j => j.match_score != null)
     .sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
     .slice(0, 10)
-    .map(j => ({ title: j.title, company: j.company, matchScore: j.match_score, visaPath: j.visa_path, employerType: j.employer_type }))
+    .map(j => ({ id: j.id, title: j.title, company: j.company, matchScore: j.match_score, visaPath: j.visa_path, employerType: j.employer_type }))
 
   return NextResponse.json({
     total: jobs.length,

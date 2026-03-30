@@ -56,6 +56,11 @@
             "type": "command",
             "if": "Bash(*bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-enforce.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(*npx *)",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-npx.sh"
           }
         ]
       }
