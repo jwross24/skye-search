@@ -1,22 +1,25 @@
 import { createClient } from '@/db/supabase-server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 /**
  * Authenticate admin API requests.
  *
- * Uses the existing Supabase session + is_admin flag on the users table.
- * No special tokens, no separate auth flows. If you're logged in and
- * is_admin is true, you're in.
+ * 1. Verify the caller is logged in (Supabase session cookie)
+ * 2. Verify is_admin = true on their users row
+ * 3. Return a service-role client that bypasses RLS — admins need to see
+ *    ALL user data, not just their own
  *
- * Returns { userId, supabase } or null if unauthorized.
+ * Returns { supabase } or null if unauthorized.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function authenticateAdmin(_req?: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Auth check uses the cookie-based client (respects session)
+  const sessionClient = await createClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
   if (!user) return null
 
-  // Check admin role
-  const { data: profile } = await supabase
+  // Role check — is_admin lives on the users table, readable via RLS
+  const { data: profile } = await sessionClient
     .from('users')
     .select('is_admin')
     .eq('id', user.id)
@@ -24,5 +27,16 @@ export async function authenticateAdmin(_req?: Request) {
 
   if (!profile?.is_admin) return null
 
-  return { userId: user.id, supabase }
+  // Admin verified — return service-role client that bypasses RLS
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+  )
+
+  // For queries that need a user_id scope, get the primary user
+  // (single-user app; multi-user would accept a user selector)
+  const { data: users } = await supabase.from('users').select('id').eq('is_admin', false).limit(1)
+  const targetUserId = users?.[0]?.id ?? user.id
+
+  return { supabase, userId: targetUserId }
 }
