@@ -4,7 +4,7 @@
  * Task type: ai_score_batch
  * Payload: { job_ids: string[] }
  *
- * Processes up to 50 jobs in chunked concurrent calls (10 per chunk, 5 max).
+ * Processes up to 50 jobs in chunked concurrent calls (5 per chunk, 10 max).
  * Uses prompt caching on the system prompt (profile + translation table + rubric).
  * Computes urgency_score server-side and writes fully-scored jobs to the jobs table.
  */
@@ -13,6 +13,7 @@ import { registerHandler } from '../handler-registry.ts'
 import { getSupabaseAdmin } from '../supabase-admin.ts'
 import { checkBudget } from '../budget-guard.ts'
 import { computeUrgencyScore } from '../urgency-scoring.ts'
+import { CircuitBreaker, retryWithBackoff } from '../rate-limiter.ts'
 import type { TaskRow, TaskResult } from '../task-types.ts'
 import type { VisaPath, CapExemptConfidence, EmployerType, EmploymentType, SourceType, UserState } from '../urgency-scoring.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
@@ -21,9 +22,13 @@ import { z } from 'npm:zod@4'
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 10
-const MAX_CHUNKS = 5
+const CHUNK_SIZE = 5
+const MAX_CHUNKS = 10
 const INTER_CHUNK_DELAY_MS = 2500
+const SDK_MAX_RETRIES = 5
+const JOB_MAX_RETRIES = 3
+const BACKOFF_BASE_429_MS = 2_000
+const BACKOFF_BASE_529_MS = 5_000
 const MODEL = 'claude-haiku-4-5-20251001'
 const MAX_TOKENS = 2048
 // Haiku 4.5 pricing
@@ -31,6 +36,7 @@ const MAX_TOKENS = 2048
 const INPUT_COST_PER_TOKEN = 0.0000008    // $0.80/MTok = $0.0000008/token
 const OUTPUT_COST_PER_TOKEN = 0.000004    // $4.00/MTok = $0.000004/token
 const CACHE_WRITE_COST_PER_TOKEN = 0.000001  // $1.00/MTok
+const CACHE_READ_COST_PER_TOKEN = 0.00000008  // $0.08/MTok
 
 // ─── Zod Schema for structured output ───────────────────────────────────────
 
@@ -270,10 +276,12 @@ async function scoreOneJob(
     output_config: {
       format: zodOutputFormat(ScoringOutputSchema),
     },
+  }, {
+    maxRetries: SDK_MAX_RETRIES,
   })
 
-  if (message.stop_reason !== 'end_turn' || !message.parsed_output) {
-    throw new Error(`Scoring incomplete: stop_reason=${message.stop_reason}`)
+  if (!message.parsed_output) {
+    throw new Error(`Scoring incomplete: stop_reason=${message.stop_reason}, no parsed_output`)
   }
 
   const usage = message.usage as Record<string, number>
@@ -351,11 +359,13 @@ interface BatchResult {
   failed: number
   skipped: number
   budgetPaused: boolean
-  errors: Array<{ jobId: string; title: string; error: string }>
+  errors: Array<{ jobId: string; title: string; error: string; retries?: number }>
   totalInputTokens: number
   totalOutputTokens: number
   totalCacheReadTokens: number
   totalCostCents: number
+  totalRetries: number
+  circuitBreakerTrips: number
 }
 
 async function processBatch(
@@ -370,11 +380,16 @@ async function processBatch(
   const supabase = getSupabaseAdmin()
   const systemPrompt = await buildScoringPrompt(userId)
 
+  const cb = new CircuitBreaker({
+    threshold: 3,
+    cooldownMs: 30_000,
+    minConcurrency: 2,
+  })
+
   // Filter out jobs without descriptions
   const scorable = jobs.filter(j => j.raw_description && j.raw_description.length > 50)
   const skipped = jobs.length - scorable.length
 
-  const chunks = splitIntoChunks(scorable, CHUNK_SIZE).slice(0, MAX_CHUNKS)
   const result: BatchResult = {
     scored: 0,
     failed: 0,
@@ -385,6 +400,8 @@ async function processBatch(
     totalOutputTokens: 0,
     totalCacheReadTokens: 0,
     totalCostCents: 0,
+    totalRetries: 0,
+    circuitBreakerTrips: 0,
   }
 
   // Mark skipped jobs (no description) as scored to avoid re-processing
@@ -396,7 +413,14 @@ async function processBatch(
       .in('id', skippedIds)
   }
 
-  for (const [chunkIdx, chunk] of chunks.entries()) {
+  // Dynamic chunking: recompute chunk size each iteration so circuit breaker
+  // trips are reflected immediately (not pre-split and then sliced)
+  let processed = 0
+
+  for (let chunkIdx = 0; processed < scorable.length && chunkIdx < MAX_CHUNKS; chunkIdx++) {
+    // Adaptive concurrency: drops after circuit breaker trips
+    const chunkSize = cb.effectiveConcurrency(CHUNK_SIZE)
+
     // Budget check per chunk
     let budgetVerdict
     try {
@@ -409,14 +433,26 @@ async function processBatch(
       break
     }
 
-    const effectiveSize = budgetVerdict.action === 'reduce_batch'
-      ? Math.min(chunk.length, budgetVerdict.maxBatchSize)
-      : chunk.length
-    const chunkJobs = chunk.slice(0, effectiveSize)
+    const budgetSize = budgetVerdict.action === 'reduce_batch'
+      ? Math.min(chunkSize, budgetVerdict.maxBatchSize)
+      : chunkSize
+    const chunkJobs = scorable.slice(processed, processed + budgetSize)
+    if (chunkJobs.length === 0) break
+    processed += chunkJobs.length
 
-    // Process chunk concurrently
+    // Process chunk concurrently, each job wrapped in retry logic
     const settled = await Promise.allSettled(
-      chunkJobs.map(job => scoreOneJob(anthropic, systemPrompt, job)),
+      chunkJobs.map(job =>
+        retryWithBackoff(
+          () => scoreOneJob(anthropic, systemPrompt, job),
+          {
+            maxRetries: JOB_MAX_RETRIES,
+            backoffBase429Ms: BACKOFF_BASE_429_MS,
+            backoffBase529Ms: BACKOFF_BASE_529_MS,
+            circuitBreaker: cb,
+          },
+        ),
+      ),
     )
 
     // Process results
@@ -431,7 +467,8 @@ async function processBatch(
         continue
       }
 
-      const scored = outcome.value
+      const { value: scored, retries } = outcome.value
+      result.totalRetries += retries
       const output = scored.output
 
       // Guard: null out non-ISO-8601 dates to prevent DB cast errors
@@ -499,7 +536,8 @@ async function processBatch(
       const costCents = Math.ceil(
         scored.inputTokens * INPUT_COST_PER_TOKEN
         + scored.outputTokens * OUTPUT_COST_PER_TOKEN
-        + scored.cacheCreationTokens * CACHE_WRITE_COST_PER_TOKEN,
+        + scored.cacheCreationTokens * CACHE_WRITE_COST_PER_TOKEN
+        + scored.cacheReadTokens * CACHE_READ_COST_PER_TOKEN,
       )
       await supabase.from('api_usage_log').insert({
         user_id: userId,
@@ -517,8 +555,10 @@ async function processBatch(
       result.totalCostCents += costCents
     }
 
+    result.circuitBreakerTrips = cb.tripCount
+
     // Inter-chunk delay for prompt cache TTL
-    if (chunkIdx < chunks.length - 1) {
+    if (processed < scorable.length) {
       await delay(INTER_CHUNK_DELAY_MS)
     }
   }
@@ -569,6 +609,8 @@ registerHandler({
         budget_paused: batchResult.budgetPaused,
         total_cost_cents: batchResult.totalCostCents,
         cache_read_tokens: batchResult.totalCacheReadTokens,
+        total_retries: batchResult.totalRetries,
+        circuit_breaker_trips: batchResult.circuitBreakerTrips,
         errors: batchResult.errors.slice(0, 10), // Truncate error list
       },
     }
