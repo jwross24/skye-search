@@ -56,27 +56,46 @@ if echo "$CHANGED" | grep -q '^supabase/functions/' && ! echo "$CHANGED" | grep 
   done
 fi
 
-# ── Rule 3: New env vars in code → vercel env ────────────────────────────
-# Check if any committed .ts/.tsx files reference env vars not in the Vercel env list
-NEW_ENV_REFS=""
+# ── Rule 3: New env vars in code → vercel env / supabase secrets ─────────
+# Separate Vercel (src/**) and Supabase Edge Function (supabase/functions/**)
+# env var references — they deploy to different runtimes.
+VERCEL_ENV_REFS=""
+SUPA_ENV_REFS=""
 for f in $(echo "$CHANGED" | grep -E '\.(ts|tsx)$'); do
   [ -f "$f" ] || continue
-  # Find process.env.XXX or Deno.env.get('XXX') patterns in changed files
   REFS=$(grep -ohE "process\.env\.([A-Z_]+)|Deno\.env\.get\(['\"]([A-Z_]+)" "$f" 2>/dev/null | grep -ohE '[A-Z_]{3,}' | sort -u) || true
-  NEW_ENV_REFS="$NEW_ENV_REFS $REFS"
+  if echo "$f" | grep -q '^supabase/functions/'; then
+    SUPA_ENV_REFS="$SUPA_ENV_REFS $REFS"
+  else
+    VERCEL_ENV_REFS="$VERCEL_ENV_REFS $REFS"
+  fi
 done
 
-if [ -n "$(echo "$NEW_ENV_REFS" | xargs)" ]; then
-  # Check if vercel env was run at all during this session
+# 3a: Vercel routes (src/**) → vercel env
+if [ -n "$(echo "$VERCEL_ENV_REFS" | xargs)" ]; then
   if ! echo "$ALL_CMDS" | grep -qE 'vercel env'; then
-    # Only flag if this is a new env var (not previously deployed)
-    UNIQUE_VARS=$(echo "$NEW_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
+    UNIQUE_VARS=$(echo "$VERCEL_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
     if [ -n "$UNIQUE_VARS" ]; then
       VAR_LIST=$(echo "$UNIQUE_VARS" | tr '\n' ', ' | sed 's/,$//')
       MISSING=$(printf '%s' "$MISSING" | jq -c --arg v "$VAR_LIST" '. + [{
         "step": "vercel env add",
-        "reason": ("Code references env vars (" + $v + ") — verify they are set in production"),
+        "reason": ("Vercel code references env vars (" + $v + ") — verify they are set in production"),
         "hint": "Run: vercel env ls | grep VAR_NAME — or set with: vercel env add VAR_NAME production --force"
+      }]')
+    fi
+  fi
+fi
+
+# 3b: Supabase Edge Functions → supabase secrets set
+if [ -n "$(echo "$SUPA_ENV_REFS" | xargs)" ]; then
+  if ! echo "$ALL_CMDS" | grep -qE 'supabase secrets set'; then
+    UNIQUE_VARS=$(echo "$SUPA_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
+    if [ -n "$UNIQUE_VARS" ]; then
+      VAR_LIST=$(echo "$UNIQUE_VARS" | tr '\n' ', ' | sed 's/,$//')
+      MISSING=$(printf '%s' "$MISSING" | jq -c --arg v "$VAR_LIST" '. + [{
+        "step": "supabase secrets set",
+        "reason": ("Edge Function code references env vars (" + $v + ") — verify they are set as Supabase secrets"),
+        "hint": "Run: supabase secrets list | grep VAR_NAME — or set with: supabase secrets set VAR_NAME=value --project-ref <ref>"
       }]')
     fi
   fi
