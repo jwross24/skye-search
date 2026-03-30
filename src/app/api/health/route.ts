@@ -35,26 +35,34 @@ export async function GET(request: Request) {
     checks.db = { healthy: false, detail: 'connection failed' }
   }
 
-  // ─── Unemployment cron (daily — stale if >26h) ─────────────────────────
+  // ─── Unemployment cron (daily — checks actual checkpoint data) ──────────
+  // The cron creates yesterday's checkpoint. On Hobby plan it has a 1-hour flex
+  // window. An idempotent re-run (skip_idempotent) doesn't write to cron_execution_log,
+  // so we check daily_checkpoint directly — the source of truth for whether the
+  // system is tracking unemployment days correctly.
   try {
-    const { data: lastCron } = await supabase
-      .from('cron_execution_log')
-      .select('completed_at, status')
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
+    const { data: lastCheckpoint } = await supabase
+      .from('daily_checkpoint')
+      .select('checkpoint_date, created_at')
+      .order('checkpoint_date', { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    if (lastCron?.completed_at) {
-      const ageHours = (Date.now() - new Date(lastCron.completed_at).getTime()) / (1000 * 60 * 60)
+    if (lastCheckpoint?.created_at) {
+      const ageHours = (Date.now() - new Date(lastCheckpoint.created_at).getTime()) / (1000 * 60 * 60)
+      // 50h threshold: cron targets yesterday, so a checkpoint from 2 days ago is stale.
+      // Normal gap is ~24h (yesterday's checkpoint created today). 50h accommodates
+      // Hobby plan flex window + timezone edge cases without false alarms.
       checks.unemployment_cron = {
-        healthy: ageHours < 26,
-        last_run: lastCron.completed_at,
-        stale: ageHours >= 26,
-        detail: ageHours >= 26 ? `${Math.round(ageHours)}h since last run` : undefined,
+        healthy: ageHours < 50,
+        last_run: lastCheckpoint.created_at,
+        stale: ageHours >= 50,
+        detail: ageHours >= 50
+          ? `${Math.round(ageHours)}h since last checkpoint (${lastCheckpoint.checkpoint_date})`
+          : `latest: ${lastCheckpoint.checkpoint_date}`,
       }
     } else {
-      checks.unemployment_cron = { healthy: true, detail: 'no runs yet (bootstrap)' }
+      checks.unemployment_cron = { healthy: true, detail: 'no checkpoints yet (bootstrap)' }
     }
   } catch {
     checks.unemployment_cron = { healthy: false, detail: 'query failed' }

@@ -35,8 +35,8 @@ function setupHealthyMocks() {
     switch (table) {
       case 'users':
         return { select: () => Promise.resolve({ error: null }) }
-      case 'cron_execution_log':
-        return { select: () => chainable({ data: { completed_at: now, status: 'completed' } }) }
+      case 'daily_checkpoint':
+        return { select: () => chainable({ data: { checkpoint_date: new Date().toISOString().split('T')[0], created_at: now } }) }
       case 'task_queue':
         return {
           select: (_col: string, opts?: { count?: string; head?: boolean }) => {
@@ -112,13 +112,13 @@ describe('GET /api/health', () => {
     expect(body.checks.db.detail).toBe('connection refused')
   })
 
-  it('detects stale unemployment cron (>26 hours)', async () => {
+  it('detects stale unemployment checkpoint (>50 hours)', async () => {
     setupHealthyMocks()
-    const staleTime = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString()
+    const staleTime = new Date(Date.now() - 55 * 60 * 60 * 1000).toISOString()
     const originalImpl = mockFrom.getMockImplementation()!
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'cron_execution_log') {
-        return { select: () => chainable({ data: { completed_at: staleTime, status: 'completed' } }) }
+      if (table === 'daily_checkpoint') {
+        return { select: () => chainable({ data: { checkpoint_date: '2026-03-28', created_at: staleTime } }) }
       }
       return originalImpl(table)
     })
@@ -128,7 +128,7 @@ describe('GET /api/health', () => {
     expect(response.status).toBe(503)
     expect(body.checks.unemployment_cron.healthy).toBe(false)
     expect(body.checks.unemployment_cron.stale).toBe(true)
-    expect(body.checks.unemployment_cron.detail).toContain('30h')
+    expect(body.checks.unemployment_cron.detail).toContain('55h')
   })
 
   it('detects stale queue worker (pending tasks >24h)', async () => {
@@ -182,11 +182,11 @@ describe('GET /api/health', () => {
     expect(body.checks.exa_pipeline.detail).toContain('10d')
   })
 
-  it('treats no cron runs as bootstrap (healthy)', async () => {
+  it('treats no checkpoints as bootstrap (healthy)', async () => {
     setupHealthyMocks()
     const originalImpl = mockFrom.getMockImplementation()!
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'cron_execution_log') {
+      if (table === 'daily_checkpoint') {
         return { select: () => chainable({ data: null }) }
       }
       return originalImpl(table)
