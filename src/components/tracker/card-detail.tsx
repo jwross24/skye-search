@@ -45,7 +45,7 @@ export function CardDetail({ application, onClose, onUpdate, onMove }: CardDetai
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 12, opacity: 0 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-2xl shadow-lg overflow-hidden"
+        className="relative w-full max-w-lg mx-4 bg-card border border-border rounded-2xl shadow-lg overflow-y-auto max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-7rem)]"
         data-testid="card-detail"
         role="dialog"
         aria-modal="true"

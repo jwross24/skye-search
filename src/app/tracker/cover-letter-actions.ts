@@ -15,17 +15,18 @@ export async function generateCoverLetter(applicationId: string) {
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
   const { data: existing } = await supabase
     .from('task_queue')
-    .select('id, status')
+    .select('id, status, payload_json')
     .eq('user_id', user.id)
     .eq('task_type', 'tailor_cover_letter')
     .in('status', ['pending', 'processing'])
     .gte('created_at', fiveMinutesAgo)
 
-  // Check if any existing task matches this application_id
-  if (existing && existing.length > 0) {
-    // Could be for a different job — check payload. Service client needed for payload access.
-    // For safety, just skip if any tailor task is running (user can only tailor one at a time)
-    return { success: true, skipped: true, taskId: existing[0].id }
+  // Only skip if there's already a task for THIS application (not a different job)
+  const duplicateForThisApp = existing?.find(
+    (t) => (t.payload_json as Record<string, unknown>)?.application_id === applicationId,
+  )
+  if (duplicateForThisApp) {
+    return { success: true, skipped: true, taskId: duplicateForThisApp.id }
   }
 
   const result = await enqueueTask({

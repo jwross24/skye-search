@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { AnimatePresence } from 'framer-motion'
 import { List, LayoutGrid } from 'lucide-react'
 import { ApplicationCard } from './application-card'
@@ -65,6 +66,31 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
   const [viewMode, setViewMode] = useState<'board' | 'list' | null>(null)
   const [pendingReject, setPendingReject] = useState<string | null>(null)
   const [pendingOffer, setPendingOffer] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  // DnD sensors — require 8px of movement before drag starts (prevents accidental drags)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
+    const { active, over } = event
+    if (!over) return
+
+    const appId = active.id as string
+    const targetColumn = over.id as KanbanStatus
+    const app = applications.find((a) => a.id === appId)
+    if (!app || app.status === targetColumn) return
+
+    moveApplication(appId, targetColumn)
+  }
+
+  const activeApp = activeId ? applications.find((a) => a.id === activeId) : null
 
   // Resolve view mode: null = use mobile default
   const resolvedViewMode = viewMode ?? (isMobile ? 'list' : 'board')
@@ -179,27 +205,43 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
 
       {/* Board view */}
       {resolvedViewMode === 'board' && (
-        <div
-          className="flex gap-4 overflow-x-auto pb-4"
-          data-testid="board-view"
-        >
-          {visibleColumns.map((column) => (
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div
+            className="flex gap-4 overflow-x-auto pb-4"
+            data-testid="board-view"
+          >
+            {visibleColumns.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                column={column}
+                applications={applications.filter((a) => a.status === column.id)}
+                onMove={moveApplication}
+                onSelect={setSelectedApp}
+                activeId={activeId}
+              />
+            ))}
             <KanbanColumn
-              key={column.id}
-              column={column}
-              applications={applications.filter((a) => a.status === column.id)}
+              column={REJECTED_COLUMN}
+              applications={applications.filter((a) => a.status === 'rejected')}
               onMove={moveApplication}
               onSelect={setSelectedApp}
+              isRejected
+              activeId={activeId}
             />
-          ))}
-          <KanbanColumn
-            column={REJECTED_COLUMN}
-            applications={applications.filter((a) => a.status === 'rejected')}
-            onMove={moveApplication}
-            onSelect={setSelectedApp}
-            isRejected
-          />
-        </div>
+          </div>
+          <DragOverlay>
+            {activeApp ? (
+              <div className="opacity-80 rotate-2 pointer-events-none">
+                <ApplicationCard
+                  application={activeApp}
+                  layout="card"
+                  onMove={() => {}}
+                  onSelect={() => {}}
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* List view */}
@@ -270,16 +312,21 @@ function KanbanColumn({
   onMove,
   onSelect,
   isRejected = false,
+  activeId = null,
 }: {
   column: { id: KanbanStatus; label: string; emptyMessage: string }
   applications: TrackedApplication[]
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: (appId: string) => void
   isRejected?: boolean
+  activeId?: string | null
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id })
+
   return (
     <div
-      className={`flex-shrink-0 w-64 lg:w-72 ${isRejected ? 'opacity-70' : ''}`}
+      ref={setNodeRef}
+      className={`flex-shrink-0 w-64 lg:w-72 ${isRejected ? 'opacity-70' : ''} ${isOver ? 'ring-2 ring-ocean/30 rounded-xl' : ''} transition-shadow`}
       data-testid={`column-${column.id}`}
     >
       <div className="flex items-center justify-between mb-3">
@@ -292,12 +339,12 @@ function KanbanColumn({
       </div>
       <div className="space-y-2 min-h-[120px]">
         {applications.map((app) => (
-          <ApplicationCard
+          <DraggableCard
             key={app.id}
             application={app}
-            layout="card"
             onMove={onMove}
             onSelect={() => onSelect(app.id)}
+            isDragging={activeId === app.id}
           />
         ))}
         {applications.length === 0 && (
@@ -306,6 +353,42 @@ function KanbanColumn({
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+function DraggableCard({
+  application,
+  onMove,
+  onSelect,
+  isDragging,
+}: {
+  application: TrackedApplication
+  onMove: (appId: string, status: KanbanStatus) => void
+  onSelect: () => void
+  isDragging: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: application.id,
+  })
+  const style = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
+    : undefined
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? 'opacity-30' : ''}
+      {...listeners}
+      {...attributes}
+    >
+      <ApplicationCard
+        application={application}
+        layout="card"
+        onMove={onMove}
+        onSelect={onSelect}
+      />
     </div>
   )
 }
