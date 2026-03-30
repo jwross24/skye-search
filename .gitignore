@@ -60,3 +60,4 @@ next-env.d.ts
 .claude/settings.local.json
 supabase/.temp/
 .DS_Store
+.ntm/
