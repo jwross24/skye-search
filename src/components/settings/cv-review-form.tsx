@@ -9,6 +9,7 @@ interface CvReviewFormProps {
   extraction: CvExtraction
   existingSkills: string[]
   existingProfile: UserProfile
+  documentId?: string
   onSaved: () => void
   onDiscard: () => void
 }
@@ -17,6 +18,7 @@ export function CvReviewForm({
   extraction,
   existingSkills,
   existingProfile,
+  documentId,
   onSaved,
   onDiscard,
 }: CvReviewFormProps) {
@@ -54,7 +56,7 @@ export function CvReviewForm({
       publications: extraction.publications,
       education: extraction.education,
       employment_history: extraction.employment_history,
-    })
+    }, documentId)
 
     setSaving(false)
     if (result.success) {

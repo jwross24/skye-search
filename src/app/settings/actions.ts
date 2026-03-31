@@ -89,7 +89,7 @@ export async function uploadCv(formData: FormData) {
   return { success: true, documentId: doc.id, filePath }
 }
 
-export async function saveExtractedProfile(extraction: CvExtraction) {
+export async function saveExtractedProfile(extraction: CvExtraction, documentId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
@@ -144,6 +144,15 @@ export async function saveExtractedProfile(extraction: CvExtraction) {
     .eq('id', user.id)
 
   if (updateError) return { success: false, error: updateError.message }
+
+  // Mark document as approved (clears "review pending" status in UI)
+  if (documentId) {
+    await supabase
+      .from('documents')
+      .update({ status: 'approved' })
+      .eq('id', documentId)
+      .eq('user_id', user.id)
+  }
 
   revalidatePath('/settings')
   return { success: true }

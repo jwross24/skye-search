@@ -81,7 +81,7 @@ describe('CvReviewForm', () => {
 
     await user.click(screen.getByText(/save to profile/i))
 
-    expect(mockSaveExtractedProfile).toHaveBeenCalledWith(
+    expect(mockSaveExtractedProfile.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         name: 'Skye Zhang',
         field: 'Environmental Science',

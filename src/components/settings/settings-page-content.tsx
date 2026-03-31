@@ -11,7 +11,7 @@ import { FileText, Loader2, CheckCircle2 } from 'lucide-react'
 type FlowState =
   | { step: 'idle' }
   | { step: 'extracting'; documentId: string; filePath: string }
-  | { step: 'review'; extraction: CvExtraction }
+  | { step: 'review'; extraction: CvExtraction; documentId: string }
   | { step: 'saved' }
   | { step: 'error'; message: string }
 
@@ -33,6 +33,7 @@ export function SettingsPageContent({
   latestCv,
 }: SettingsPageContentProps) {
   const [flow, setFlow] = useState<FlowState>({ step: 'idle' })
+  const [showReupload, setShowReupload] = useState(false)
 
   const handleUploaded = async (data: { documentId: string; filePath: string }) => {
     setFlow({ step: 'extracting', ...data })
@@ -64,7 +65,7 @@ export function SettingsPageContent({
         return
       }
 
-      setFlow({ step: 'review', extraction: parsed.data })
+      setFlow({ step: 'review', extraction: parsed.data, documentId: data.documentId })
     } catch (err) {
       setFlow({
         step: 'error',
@@ -127,9 +128,21 @@ export function SettingsPageContent({
                 <FileText className="size-4" />
                 CV uploaded on {new Date(latestCv.created_at).toLocaleDateString()}
                 {latestCv.status === 'pending_review' && ' — review pending'}
+                {latestCv.status === 'approved' && ' — profile updated'}
               </div>
             )}
-            <CvDropzone onExtracted={handleUploaded} />
+            {(latestCv?.status !== 'approved' || showReupload) && (
+              <CvDropzone onExtracted={handleUploaded} />
+            )}
+            {latestCv?.status === 'approved' && !showReupload && (
+              <button
+                type="button"
+                onClick={() => setShowReupload(true)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Upload a new CV
+              </button>
+            )}
           </>
         )}
 
@@ -152,6 +165,7 @@ export function SettingsPageContent({
             extraction={flow.extraction}
             existingSkills={skills}
             existingProfile={profile}
+            documentId={flow.documentId}
             onSaved={() => setFlow({ step: 'saved' })}
             onDiscard={() => setFlow({ step: 'idle' })}
           />
