@@ -26,20 +26,15 @@ test.describe('Score cron endpoint', () => {
     expect(typeof body.tasks_created).toBe('number')
   })
 
-  test('POST /api/cron/score rejects without auth', async ({ request }) => {
-    const response = await request.post('/api/cron/score', {
-      headers: { 'Content-Type': 'application/json' },
-    })
+  test('GET /api/cron/score rejects without auth', async ({ request }) => {
+    const response = await request.get('/api/cron/score')
 
     expect(response.status()).toBe(401)
   })
 
-  test('POST /api/cron/score rejects wrong secret', async ({ request }) => {
-    const response = await request.post('/api/cron/score', {
-      headers: {
-        Authorization: 'Bearer wrong-secret-value',
-        'Content-Type': 'application/json',
-      },
+  test('GET /api/cron/score rejects wrong secret', async ({ request }) => {
+    const response = await request.get('/api/cron/score', {
+      headers: { Authorization: 'Bearer wrong-secret-value' },
     })
 
     expect(response.status()).toBe(401)

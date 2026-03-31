@@ -34,8 +34,8 @@ test.describe('Vote persistence', () => {
       skipButton.click(),
     ])
 
-    // Give the server action time to write to Supabase
-    await page.waitForTimeout(2000)
+    // Wait for all in-flight requests (including Supabase writes) to settle
+    await page.waitForLoadState('networkidle')
 
     // Refresh to verify persistence
     await page.reload()
