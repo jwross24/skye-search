@@ -91,7 +91,7 @@ describe('isRelevant', () => {
     expect(isRelevant(item)).toBe(true)
   })
 
-  it('matches climate/ecology posting', () => {
+  it('matches ecology posting by title', () => {
     const item: RdfItem = {
       url: 'https://ajo.org/test/2',
       title: 'Research Associate in Freshwater Ecology',
@@ -102,11 +102,11 @@ describe('isRelevant', () => {
     expect(isRelevant(item)).toBe(true)
   })
 
-  it('rejects quantum computing posting', () => {
+  it('rejects quantum computing posting (description mentions environment but title/dept do not)', () => {
     const item: RdfItem = {
       url: 'https://ajo.org/test/3',
       title: 'Postdoc in Quantum Computing',
-      description: 'quantum error correction and fault-tolerant quantum computing',
+      description: 'collaborative research environment for quantum error correction',
       department: 'Physics',
       university: 'MIT',
     }

@@ -26,14 +26,18 @@ const AJO_FEED_URL = 'https://academicjobsonline.org/ajo?joblist-0-0-0-----rss--
 
 // Keywords to match against title, description, and department path.
 // A posting matches if ANY keyword appears (case-insensitive).
+// Keywords checked against title + department + university (NOT description,
+// because "research environment" in every posting creates false positives).
 const RELEVANCE_KEYWORDS = [
-  'ocean', 'oceanograph', 'marine',
-  'remote sensing', 'satellite', 'earth observation',
-  'environment', 'ecology', 'climate',
-  'geospatial', 'gis', 'atmospheric',
-  'hydrology', 'water resource', 'biogeochem',
-  'coastal', 'phytoplankton', 'sea',
+  'ocean', 'oceanograph', 'marine science',
+  'remote sensing', 'earth observation',
+  'environmental science', 'ecology',
+  'climate', 'atmospheric',
+  'geospatial', 'geoscience',
+  'hydrology', 'water resource',
+  'biogeochem', 'coastal',
   'earth science', 'natural resource',
+  'satellite', 'phytoplankton',
 ]
 
 // ─── RDF/RSS 1.0 Parser ────────────────────────────────────────────────────
@@ -93,7 +97,10 @@ function extractTag(xml: string, tag: string): string {
 // ─── Relevance Filter ───────────────────────────────────────────────────────
 
 function isRelevant(item: RdfItem): boolean {
-  const searchable = `${item.title} ${item.description} ${item.department} ${item.university}`.toLowerCase()
+  // Match against title + department + university only — NOT description,
+  // because "collaborative research environment" in every posting causes
+  // false positives with keywords like "environment".
+  const searchable = `${item.title} ${item.department} ${item.university}`.toLowerCase()
   return RELEVANCE_KEYWORDS.some(kw => searchable.includes(kw))
 }
 
