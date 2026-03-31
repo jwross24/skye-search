@@ -10,32 +10,26 @@
           },
           {
             "type": "command",
-            "if": "Bash(*git commit*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/commit-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/prereq-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/close-bead-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*bv *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-enforce.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*npx *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-npx.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*git add*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-git-add-all.sh"
           }
         ]
@@ -71,22 +65,18 @@
           },
           {
             "type": "command",
-            "if": "Bash(*bun run verify*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-verify-stamp.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*agent-browser *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-agent-browser-stamp.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/cross-review-gate.sh"
           },
           {
             "type": "command",
-            "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-close-learn.sh"
           },
           {

@@ -83,13 +83,9 @@ if [ -n "$STAGED_FILES" ]; then
   fi
 fi
 
-# Also check files mentioned in the command itself (git add ... && git commit)
-if echo "$CMD" | grep -q '\.tsx'; then
-  HAS_TSX=true
-fi
-if echo "$CMD" | grep -qE '(email-templates|email-alerts|resend)'; then
-  HAS_EMAIL=true
-fi
+# Note: only check STAGED files, not the command string.
+# Command string includes commit message text which causes false positives
+# (e.g., mentioning ".tsx" in a commit message description).
 
 # ── Check 3: Agent-browser stamp (UI beads with .tsx) ───────────────────
 
