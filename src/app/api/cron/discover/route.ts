@@ -8,6 +8,7 @@ import {
   ACADEMIC_JOB_DOMAINS,
 } from '@/lib/adapters/exa'
 import { USAJOBS_QUERIES } from '@/lib/adapters/usajobs'
+import { ajoRssAdapter } from '@/lib/adapters/ajo-rss'
 
 /**
  * POST /api/cron/discover
@@ -146,14 +147,44 @@ async function handler(req: NextRequest) {
       )
     }
 
+    // ─── AJO RSS: Free, no queue needed — fetch + insert inline ─────────
+    let ajoCount = 0
+    try {
+      const ajoResult = await ajoRssAdapter.discover([])
+      if (ajoResult.jobs.length > 0) {
+        const ajoRows = ajoResult.jobs.map(job => ({
+          user_id: userId,
+          source: job.source,
+          url: job.url,
+          title: job.title,
+          company: job.company,
+          raw_description: job.raw_description,
+          canonical_url: job.canonical_url,
+          normalized_company: job.normalized_company,
+          indexed_date: job.indexed_date,
+          source_type: job.source_type,
+          scored: false,
+        }))
+        await supabase.from('discovered_jobs').upsert(ajoRows, {
+          onConflict: 'canonical_url',
+          ignoreDuplicates: true,
+        })
+        ajoCount = ajoResult.jobs.length
+      }
+    } catch (err) {
+      console.error('AJO RSS inline discovery failed:', err)
+    }
+
     return NextResponse.json({
       ok: true,
       tasks_created: tasks.length,
+      ajo_rss_discovered: ajoCount,
       breakdown: {
         academic_search: ACADEMIC_QUERIES.length,
         industry_search: INDUSTRY_QUERIES.length,
         find_similar: FIND_SIMILAR_SEEDS.length,
         usajobs_search: USAJOBS_QUERIES.length,
+        ajo_rss: ajoCount,
       },
     })
   } catch (err) {
