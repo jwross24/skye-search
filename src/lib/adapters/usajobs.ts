@@ -29,12 +29,32 @@ const RESULTS_PER_PAGE = 50
 export const USAJOBS_QUERIES = [
   'ocean remote sensing',
   'environmental scientist',
-  'geospatial',
-  'satellite data',
-  'remote sensing',
+  'satellite remote sensing',
   'oceanography',
   'earth observation',
   'marine science',
+]
+
+// OPM job series relevant to environmental science / remote sensing PhDs
+// Filters out Police Officers (0083), Nurses (0610), Child Development (1701), etc.
+export const RELEVANT_JOB_SERIES = [
+  '0401', // Biological Science
+  '0408', // Ecology
+  '0482', // Fish Biology
+  '0801', // General Engineering
+  '1301', // Physical Science
+  '1315', // Hydrology
+  '1340', // Meteorology
+  '1350', // Geology
+  '1360', // Oceanography
+  '1370', // Cartography
+  '1372', // Geodesy
+  '1373', // Land Surveying
+  '1374', // Photogrammetry
+  '1515', // Operations Research
+  '1529', // Math Science
+  '1550', // Computer Science
+  '0150', // Geography
 ]
 
 // ─── USAJobs API response types ─────────────────────────────────────────────
@@ -104,7 +124,7 @@ function getApiCredentials(): { apiKey: string; userAgent: string } {
 
 export async function fetchUSAJobsSearch(
   keyword: string,
-  options: { apiKey: string; userAgent: string; locationName?: string; resultsPerPage?: number },
+  options: { apiKey: string; userAgent: string; locationName?: string; resultsPerPage?: number; jobCategoryCode?: string },
 ): Promise<USAJobsSearchResponse> {
   const params = new URLSearchParams({
     Keyword: keyword,
@@ -113,6 +133,9 @@ export async function fetchUSAJobsSearch(
   })
   if (options.locationName) {
     params.set('LocationName', options.locationName)
+  }
+  if (options.jobCategoryCode) {
+    params.set('JobCategoryCode', options.jobCategoryCode)
   }
 
   const url = `${USAJOBS_BASE_URL}?${params.toString()}`
@@ -194,11 +217,17 @@ export const usajobsAdapter: JobSourceAdapter = {
           userAgent,
           locationName: query.location,
           resultsPerPage: RESULTS_PER_PAGE,
+          jobCategoryCode: RELEVANT_JOB_SERIES.join(';'),
         })
         requestCount++
 
         const items = response.SearchResult?.SearchResultItems ?? []
         for (const item of items) {
+          // Filter: PhD-level positions are typically GS-11 and above
+          const grades = item.MatchedObjectDescriptor.JobGrade?.map(g => g.Code) ?? []
+          const minGrade = grades.length > 0 ? Math.min(...grades.map(g => parseInt(g, 10)).filter(n => !isNaN(n))) : 99
+          if (minGrade < 11) continue
+
           jobs.push(mapUSAJobsItem(item))
         }
 

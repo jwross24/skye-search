@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from '../supabase-admin.ts'
 import { checkBudget } from '../budget-guard.ts'
 import { computeUrgencyScore } from '../urgency-scoring.ts'
 import { CircuitBreaker, retryWithBackoff, delay } from '../rate-limiter.ts'
+import { isNonJobEntry } from '../url-filter.ts'
 import type { TaskRow, TaskResult } from '../task-types.ts'
 import type { VisaPath, CapExemptConfidence, EmployerType, EmploymentType, SourceType, UserState } from '../urgency-scoring.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
@@ -374,8 +375,12 @@ async function processBatch(
     minConcurrency: 2,
   })
 
-  // Filter out jobs without descriptions
-  const scorable = jobs.filter(j => j.raw_description && j.raw_description.length > 50)
+  // Filter out non-job URLs, bad titles, and jobs without descriptions
+  const scorable = jobs.filter(j =>
+    j.raw_description
+    && j.raw_description.length > 50
+    && !isNonJobEntry(j.url, j.title)
+  )
   const skipped = jobs.length - scorable.length
 
   const result: BatchResult = {

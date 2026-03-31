@@ -433,15 +433,14 @@ describe('usajobsAdapter.healthCheck', () => {
 })
 
 describe('USAJOBS_QUERIES', () => {
-  it('has 8 search queries targeting environmental science', () => {
-    expect(USAJOBS_QUERIES).toHaveLength(8)
+  it('has 6 search queries targeting environmental science', () => {
+    expect(USAJOBS_QUERIES).toHaveLength(6)
   })
 
   it('covers key environmental science domains', () => {
     const all = USAJOBS_QUERIES.join(' ').toLowerCase()
     expect(all).toContain('remote sensing')
     expect(all).toContain('environmental')
-    expect(all).toContain('geospatial')
     expect(all).toContain('satellite')
     expect(all).toContain('oceanography')
   })

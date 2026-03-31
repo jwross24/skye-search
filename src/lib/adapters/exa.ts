@@ -37,34 +37,47 @@ export const FIND_SIMILAR_SEEDS: { url: string; source_type: SourceType }[] = [
 export const ACADEMIC_JOB_DOMAINS = [
   'academicjobsonline.org',
   'sciencecareers.org',
-  'nature.com',
+  'naturecareers.com',
   'postdocjobs.com',
   'higheredjobs.com',
   'chroniclevitae.com',
   'jobs.agu.org',
+  'careers.whoi.edu',
+  'apply.interfolio.com',
+]
+
+// Industry queries search the open web but exclude known non-job domains
+export const INDUSTRY_EXCLUDE_DOMAINS = [
+  'nature.com',
+  'go.nature.com',
+  'wikipedia.org',
+  'reddit.com',
+  'youtube.com',
+  'researchgate.net',
+  'scholar.google.com',
+  'linkedin.com', // login walls prevent description extraction
 ]
 
 // ─── Query presets ──────────────────────────────────────────────────────────
 
 export const ACADEMIC_QUERIES = [
-  'ocean color remote sensing',
-  'satellite oceanography',
-  'coastal biogeochemistry',
-  'Earth observation data science',
-  'environmental remote sensing postdoc',
-  'marine science research scientist',
-  'phytoplankton remote sensing',
-  'ocean optics researcher',
+  'postdoc ocean color remote sensing',
+  'postdoc satellite oceanography researcher',
+  'research scientist coastal biogeochemistry',
+  'postdoctoral fellow Earth observation',
+  'environmental remote sensing research position',
+  'marine science research scientist hiring',
+  'remote sensing scientist position university',
+  'oceanography research position PhD',
 ]
 
 export const INDUSTRY_QUERIES = [
-  'satellite data pipeline engineer',
-  'geospatial ML engineer',
-  'remote sensing ETL',
-  'cloud-native geospatial computing',
-  'environmental data scientist',
-  'earth science software engineer',
-  'climate data analyst',
+  'satellite data scientist position hiring',
+  'geospatial data engineer remote sensing job',
+  'environmental data scientist position',
+  'earth observation scientist job opening',
+  'climate scientist position hiring',
+  'remote sensing analyst job',
 ]
 
 // ─── Adapter implementation ─────────────────────────────────────────────────
@@ -147,6 +160,7 @@ export const exaAdapter: JobSourceAdapter = {
           numResults: 10,
           type: 'neural',
           includeDomains: query.domains?.length ? query.domains : undefined,
+          excludeDomains: query.domains?.length ? undefined : INDUSTRY_EXCLUDE_DOMAINS,
           startPublishedDate: thirtyDaysAgo(),
         })
         requestCount++
