@@ -6,7 +6,8 @@ import { CvDropzone } from './cv-dropzone'
 import { CvReviewForm } from './cv-review-form'
 import { cvExtractionSchema } from '@/types/cv-extraction'
 import type { CvExtraction, UserProfile } from '@/types/cv-extraction'
-import { FileText, Loader2, CheckCircle2 } from 'lucide-react'
+import { FileText, Loader2, CheckCircle2, X, Plus } from 'lucide-react'
+import { addSkill, removeSkill } from '@/app/settings/actions'
 
 type FlowState =
   | { step: 'idle' }
@@ -34,6 +35,41 @@ export function SettingsPageContent({
 }: SettingsPageContentProps) {
   const [flow, setFlow] = useState<FlowState>({ step: 'idle' })
   const [showReupload, setShowReupload] = useState(false)
+  const [localSkills, setLocalSkills] = useState<string[]>(skills)
+  const [newSkill, setNewSkill] = useState('')
+  const [skillError, setSkillError] = useState<string | null>(null)
+
+  const handleAddSkill = async () => {
+    const trimmed = newSkill.trim()
+    if (!trimmed) return
+
+    if (localSkills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+      setSkillError('Already tracked')
+      return
+    }
+
+    // Optimistic update
+    setLocalSkills(prev => [...prev, trimmed])
+    setNewSkill('')
+    setSkillError(null)
+
+    const result = await addSkill(trimmed)
+    if (!result.success) {
+      setLocalSkills(prev => prev.filter(s => s !== trimmed))
+      setSkillError(result.error ?? 'Failed to add skill')
+    }
+  }
+
+  const handleRemoveSkill = async (skill: string) => {
+    // Optimistic update
+    setLocalSkills(prev => prev.filter(s => s !== skill))
+
+    const result = await removeSkill(skill)
+    if (!result.success) {
+      setLocalSkills(prev => [...prev, skill])
+      setSkillError(result.error ?? 'Failed to remove skill')
+    }
+  }
 
   const handleUploaded = async (data: { documentId: string; filePath: string }) => {
     setFlow({ step: 'extracting', ...data })
@@ -105,22 +141,63 @@ export function SettingsPageContent({
                 <span className="font-medium">{String(profile.field)}</span>
               </div>
             )}
-            {skills.length > 0 && (
-              <div>
-                <span className="text-muted-foreground">Skills:</span>{' '}
-                <span className="font-medium">{skills.length} tracked</span>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-full bg-ocean/8 px-2.5 py-0.5 text-xs text-ocean"
+            <div>
+              <span className="text-muted-foreground">Skills:</span>{' '}
+              <span className="font-medium">{localSkills.length} tracked</span>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {localSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="group inline-flex items-center gap-1 rounded-full bg-ocean/8 px-2.5 py-0.5 text-xs text-ocean"
+                  >
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full hover:bg-ocean/15 p-0.5"
+                      aria-label={`Remove ${skill}`}
                     >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
               </div>
-            )}
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newSkill}
+                  onChange={(e) => {
+                    setNewSkill(e.target.value)
+                    setSkillError(null)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddSkill()
+                    }
+                  }}
+                  placeholder="Add a skill..."
+                  className="rounded-xl border border-border/50 bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ocean/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSkill}
+                  disabled={!newSkill.trim()}
+                  className="inline-flex items-center gap-1 rounded-xl bg-ocean/10 px-3 py-1.5 text-sm text-ocean hover:bg-ocean/15 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus className="size-3.5" />
+                  Add
+                </button>
+              </div>
+              {skillError && (
+                <p className="mt-1.5 text-xs text-amber-warm">{skillError}</p>
+              )}
+              {localSkills.length === 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Add skills that matter for your job search
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -173,10 +250,20 @@ export function SettingsPageContent({
         {flow.step === 'review' && (
           <CvReviewForm
             extraction={flow.extraction}
-            existingSkills={skills}
+            existingSkills={localSkills}
             existingProfile={profile}
             documentId={flow.documentId}
-            onSaved={() => setFlow({ step: 'saved' })}
+            onSaved={() => {
+              // Merge extracted skills into localSkills (revalidatePath won't update useState)
+              if (flow.step === 'review') {
+                const existingLower = new Set(localSkills.map(s => s.toLowerCase()))
+                const newSkills = flow.extraction.skills.filter(
+                  s => !existingLower.has(s.toLowerCase()),
+                )
+                setLocalSkills(prev => [...prev, ...newSkills])
+              }
+              setFlow({ step: 'saved' })
+            }}
             onDiscard={() => setFlow({ step: 'idle' })}
           />
         )}

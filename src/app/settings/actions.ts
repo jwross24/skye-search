@@ -199,6 +199,60 @@ export async function updateBudgetCaps(caps: {
   return { success: true }
 }
 
+export async function addSkill(skill: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const trimmed = skill.trim()
+  if (!trimmed) return { success: false, error: 'Skill cannot be empty' }
+  if (trimmed.length > 100) return { success: false, error: 'Skill name too long' }
+
+  const { data: current } = await supabase
+    .from('users')
+    .select('skills')
+    .eq('id', user.id)
+    .single()
+
+  const currentSkills = (current?.skills ?? []) as string[]
+  if (currentSkills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+    return { success: false, error: 'Skill already tracked' }
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({ skills: [...currentSkills, trimmed] })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/settings')
+  return { success: true }
+}
+
+export async function removeSkill(skill: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { data: current } = await supabase
+    .from('users')
+    .select('skills')
+    .eq('id', user.id)
+    .single()
+
+  const currentSkills = (current?.skills ?? []) as string[]
+  const updated = currentSkills.filter(s => s.toLowerCase() !== skill.toLowerCase())
+
+  const { error } = await supabase
+    .from('users')
+    .update({ skills: updated })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/settings')
+  return { success: true }
+}
+
 export async function getUserProfile() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
