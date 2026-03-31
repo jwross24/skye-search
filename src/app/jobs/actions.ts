@@ -12,6 +12,11 @@ export type DismissTag =
   | 'too_senior'
   | 'no_visa_path'
   | 'already_applied'
+  | 'deadline_expired'
+  | 'requires_citizenship'
+  | 'requires_clearance'
+  | 'salary_too_low'
+  | 'not_remote'
 
 export async function voteOnJob(
   jobId: string,

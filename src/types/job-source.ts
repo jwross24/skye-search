@@ -15,11 +15,11 @@ export interface DiscoveryQuery {
 
 export interface DiscoveredJob {
   source: string
-  url: string
+  url: string | null
   title: string
   company: string
   raw_description: string | null
-  canonical_url: string
+  canonical_url: string | null
   normalized_company: string
   indexed_date: string // ISO timestamptz
   source_type: SourceType

@@ -109,7 +109,7 @@ describe('Exa adapter', () => {
   it('maps findSimilar results as academic source_type', async () => {
     const result = await exaAdapter.discover([academicQuery])
 
-    const similarJob = result.jobs.find(j => j.url.includes('cires'))
+    const similarJob = result.jobs.find(j => j.url?.includes('cires'))
     expect(similarJob).toBeDefined()
     expect(similarJob!.source_type).toBe('academic')
   })
@@ -138,7 +138,7 @@ describe('Exa adapter', () => {
     const result = await exaAdapter.discover([academicQuery])
 
     // search results should still be present
-    const searchJobs = result.jobs.filter(j => j.url.includes('example.com'))
+    const searchJobs = result.jobs.filter(j => j.url?.includes('example.com'))
     expect(searchJobs.length).toBeGreaterThan(0)
     // errors from all failed findSimilar calls
     expect(result.errors.length).toBe(FIND_SIMILAR_SEEDS.length)

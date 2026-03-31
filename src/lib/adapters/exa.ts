@@ -126,9 +126,9 @@ function mapToDiscoveredJob(
   result: ExaSearchResult,
   sourceType: SourceType,
 ): DiscoveredJob {
-  const url = result.url ?? ''
+  const url = result.url || null
   const title = result.title ?? 'Untitled'
-  const company = extractCompanyFromUrl(url)
+  const company = url ? extractCompanyFromUrl(url) : 'Unknown'
 
   return {
     source: 'exa',
@@ -136,9 +136,9 @@ function mapToDiscoveredJob(
     title,
     company,
     raw_description: result.text ?? null,
-    canonical_url: canonicalizeUrl(url),
+    canonical_url: url ? canonicalizeUrl(url) : null,
     normalized_company: normalizeCompany(company),
-    indexed_date: result.publishedDate ?? new Date().toISOString(), // fallback: treat undated as discovered-now
+    indexed_date: result.publishedDate ?? new Date().toISOString(),
     source_type: sourceType,
   }
 }

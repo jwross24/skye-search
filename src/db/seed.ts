@@ -35,6 +35,9 @@ export interface SeedJob {
   skills_required: string[]
   why_fits: string
   raw_description?: string | null
+  /** If true, this job is ineligible for international candidates — excluded from scoring and display. */
+  requires_citizenship?: boolean
+  requires_security_clearance?: boolean
   /** If true, Skye has already applied (pre-populate Application record) */
   pre_applied?: boolean
   pre_applied_date?: string

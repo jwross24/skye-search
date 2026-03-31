@@ -349,4 +349,26 @@ describe('prepareDailyPicks', () => {
     expect(result.data?.capExemptCount).toBe(1)
     expect(result.data?.bridgeCount).toBe(2) // cap_subject + opt_compatible
   })
+
+  it('canada visa path jobs are not counted in capExemptCount or bridgeCount', async () => {
+    log('Step 1', 'Setting up all-canada picks')
+    setupHandlers({
+      jobs: createChain({
+        data: [
+          { id: 'j1', title: 'Job A', company: 'Co A', visa_path: 'canada', location: 'Toronto, ON', url: null, match_score: 0.75, why_fits: null },
+          { id: 'j2', title: 'Job B', company: 'Co B', visa_path: 'canada', location: 'Vancouver, BC', url: null, match_score: 0.70, why_fits: null },
+        ],
+      }),
+    })
+    const { prepareDailyPicks } = await import('./daily-picks')
+
+    const result = await prepareDailyPicks('user-1')
+    log('Step 2', `Bridge count: ${result.data?.bridgeCount}, Cap-exempt: ${result.data?.capExemptCount}`)
+
+    // canada path is intentionally excluded from both counts — email greeting falls back to null
+    expect(result.data?.capExemptCount).toBe(0)
+    expect(result.data?.bridgeCount).toBe(0)
+    // Email should still send (picks exist)
+    expect(result.sent).toBe(true)
+  })
 })
