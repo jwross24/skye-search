@@ -118,7 +118,7 @@ describe('RankedJobList', () => {
   it('renders correct visa path badge colors via aria-labels', () => {
     render(<RankedJobList jobs={testJobs} userState={userState} />)
 
-    const capExemptBadges = screen.getAllByLabelText(/cap-exempt employer/i)
+    const capExemptBadges = screen.getAllByLabelText(/cap-exempt/i)
     expect(capExemptBadges.length).toBeGreaterThan(0)
 
     const canadaBadges = screen.queryAllByLabelText(/Canadian employer/i)

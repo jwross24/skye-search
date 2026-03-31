@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { TrackedApplication, KanbanStatus } from './kanban-board'
-
-const VISA_BADGE: Record<string, { label: string; className: string }> = {
-  cap_exempt: { label: 'Cap-exempt', className: 'bg-jade/10 text-jade' },
-  cap_subject: { label: 'Cap-subject', className: 'bg-amber-warm/10 text-amber-warm' },
-  opt_compatible: { label: 'OPT', className: 'bg-ocean/10 text-ocean' },
-  canada: { label: 'Canada', className: 'bg-muted text-muted-foreground' },
-  unknown: { label: 'Unknown', className: 'bg-muted text-muted-foreground/60' },
-}
+import { VisaBadge } from '@/components/visa-badge'
 
 const STATUS_OPTIONS: { value: KanbanStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
@@ -31,7 +24,6 @@ interface ApplicationCardProps {
 
 export function ApplicationCard({ application, layout, onMove, onSelect }: ApplicationCardProps) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
-  const badge = VISA_BADGE[application.job.visa_path] ?? VISA_BADGE.unknown
 
   const handleStatusChange = (newStatus: KanbanStatus) => {
     onMove(application.id, newStatus)
@@ -56,9 +48,10 @@ export function ApplicationCard({ application, layout, onMove, onSelect }: Appli
             {application.job.company}
           </p>
         </div>
-        <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full ${badge.className}`}>
-          {badge.label}
-        </span>
+        <VisaBadge
+          visaPath={application.job.visa_path}
+          confidence={application.job.visa_path === 'cap_exempt' ? application.job.cap_exempt_confidence : undefined}
+        />
         {/* Tap-to-move selector for mobile/list */}
         <div className="relative flex-shrink-0">
           <button
@@ -129,9 +122,10 @@ export function ApplicationCard({ application, layout, onMove, onSelect }: Appli
         </div>
       </div>
       <div className="flex items-center gap-2 mt-2">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${badge.className}`}>
-          {badge.label}
-        </span>
+        <VisaBadge
+          visaPath={application.job.visa_path}
+          confidence={application.job.visa_path === 'cap_exempt' ? application.job.cap_exempt_confidence : undefined}
+        />
         <span className="text-[10px] text-muted-foreground/50">
           {new Date(application.dateAdded + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
         </span>
@@ -200,4 +194,4 @@ function StatusMenu({
   )
 }
 
-export { VISA_BADGE, STATUS_OPTIONS }
+export { STATUS_OPTIONS }

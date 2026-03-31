@@ -10,15 +10,17 @@ describe('VisaBadge', () => {
 
   it('renders confirmed confidence indicator for cap-exempt', () => {
     render(<VisaBadge visaPath="cap_exempt" confidence="confirmed" />)
-    expect(screen.getByText(/Cap-Exempt.*✓/)).toBeDefined()
+    expect(screen.getByText('Cap-Exempt')).toBeDefined()
+    expect(screen.getByText('✓')).toBeDefined()
   })
 
   it('renders unverified confidence indicator for cap-exempt', () => {
     render(<VisaBadge visaPath="cap_exempt" confidence="unverified" />)
-    expect(screen.getByText(/Cap-Exempt.*\?/)).toBeDefined()
+    expect(screen.getByText('Cap-Exempt')).toBeDefined()
+    expect(screen.getByText('?')).toBeDefined()
   })
 
-  it('renders bridge badge as teal', () => {
+  it('renders cap-exempt badge with correct colors', () => {
     const { container } = render(<VisaBadge visaPath="cap_exempt" />)
     const badge = container.querySelector('[class*="badge-cap-exempt"]')
     expect(badge).toBeDefined()

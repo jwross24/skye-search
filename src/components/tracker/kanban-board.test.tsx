@@ -188,7 +188,7 @@ describe('Application card', () => {
     const card = screen.getByTestId('card-app-brown')
     expect(card.textContent).toContain('Global Land Surface Remote Sensing')
     expect(card.textContent).toContain('Brown University')
-    expect(card.textContent).toContain('Cap-exempt')
+    expect(card.textContent).toContain('Cap-Exempt')
     expect(card.textContent).toContain('Mar 24')
     log('Step 2', 'Card displays all required fields')
   })

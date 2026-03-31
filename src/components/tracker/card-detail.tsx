@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { X, ExternalLink } from 'lucide-react'
 import type { TrackedApplication, KanbanStatus } from './kanban-board'
-import { STATUS_OPTIONS, VISA_BADGE } from './application-card'
+import { STATUS_OPTIONS } from './application-card'
+import { VisaBadge } from '@/components/visa-badge'
 import { CoverLetterPanel } from './cover-letter-panel'
 
 interface CardDetailProps {
@@ -18,7 +19,8 @@ export function CardDetail({ application, onClose, onUpdate, onMove }: CardDetai
   const [notes, setNotes] = useState(application.notes)
   const [nextAction, setNextAction] = useState(application.nextAction)
   const [nextActionDate, setNextActionDate] = useState(application.nextActionDate)
-  const badge = VISA_BADGE[application.job.visa_path] ?? VISA_BADGE.unknown
+  const visaPath = application.job.visa_path
+  const confidence = visaPath === 'cap_exempt' ? application.job.cap_exempt_confidence : undefined
 
   const handleSaveNotes = () => {
     onUpdate({ notes, nextAction, nextActionDate })
@@ -62,9 +64,7 @@ export function CardDetail({ application, onClose, onUpdate, onMove }: CardDetai
                 {application.job.company}
               </p>
               <div className="flex items-center gap-2 mt-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${badge.className}`}>
-                  {badge.label}
-                </span>
+                <VisaBadge visaPath={visaPath} confidence={confidence} />
                 {application.job.location && (
                   <span className="text-xs text-muted-foreground">
                     {application.job.location}
