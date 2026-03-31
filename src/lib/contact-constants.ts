@@ -1,6 +1,7 @@
 export const RELATIONSHIP_TYPES = [
   'co-author',
   'advisor',
+  'former advisor',
   'conference contact',
   'referral',
   'O-1A recommender',

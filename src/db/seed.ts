@@ -201,8 +201,14 @@ export const seedContacts: SeedContact[] = [
   {
     name: 'Zhongping Lee',
     affiliation: 'UMass Boston',
+    relationship_type: 'former advisor',
+    notes: 'PhD advisor — ocean color remote sensing pioneer (QAA, HOPE algorithms). Strong reference and collaborator.',
+  },
+  {
+    name: 'Crystal Schaaf',
+    affiliation: 'UMass Boston — SpectralMass Lab',
     relationship_type: 'advisor',
-    notes: 'Current advisor/collaborator. Warmest lead for bridge role or referrals.',
+    notes: 'Current postdoc supervisor. MODIS/VIIRS albedo and vegetation monitoring. Potential bridge role through SpectralMass lab.',
   },
 ]
 

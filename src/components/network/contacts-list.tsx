@@ -15,6 +15,7 @@ import { RELATIONSHIP_TYPES, type Contact } from '@/lib/contact-constants'
 const BADGE_STYLES: Record<string, string> = {
   'co-author': 'bg-ocean/10 text-ocean',
   'advisor': 'bg-jade/10 text-jade',
+  'former advisor': 'bg-jade/10 text-jade/70',
   'conference contact': 'bg-muted text-muted-foreground',
   'referral': 'bg-amber-warm/10 text-amber-warm',
   'O-1A recommender': 'bg-violet-500/10 text-violet-500',
