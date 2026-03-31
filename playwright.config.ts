@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'path'
+
+const authFile = path.join(__dirname, 'tests', '.auth', 'user.json')
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -14,7 +17,18 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: authFile,
+      },
+      dependencies: ['setup'],
+    },
   ],
   webServer: {
     command: process.env.CI ? 'bun run build && bun run start' : 'bun run dev',
