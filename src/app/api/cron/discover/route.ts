@@ -69,7 +69,7 @@ async function handler(req: NextRequest) {
     const { count: pendingCount } = await supabase
       .from('task_queue')
       .select('*', { count: 'exact', head: true })
-      .in('task_type', ['exa_search_query', 'exa_find_similar', 'usajobs_search'])
+      .in('task_type', ['exa_search_query', 'exa_find_similar'])
       .in('status', ['pending', 'processing'])
       .gte('created_at', twentyFourHoursAgo)
 

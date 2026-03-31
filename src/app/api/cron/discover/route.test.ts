@@ -40,7 +40,10 @@ vi.mock('@supabase/supabase-js', () => {
 
 // Mock AJO RSS adapter to avoid real network calls (CORS timeout in test env)
 vi.mock('@/lib/adapters/ajo-rss', () => ({
-  fetchAjoRssJobs: vi.fn().mockResolvedValue([]),
+  ajoRssAdapter: {
+    discover: vi.fn().mockResolvedValue({ jobs: [], errors: [], metadata: { request_count: 0, latency_ms: 0 } }),
+    healthCheck: vi.fn().mockResolvedValue({ healthy: true, latencyMs: 0 }),
+  },
 }))
 
 import { POST } from './route'
