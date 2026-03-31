@@ -8,7 +8,7 @@ describe('VisaBadge cap-exempt confidence tiers', () => {
     expect(screen.getByText('✓')).toBeTruthy()
     expect(screen.getByText('Cap-Exempt')).toBeTruthy()
     // Tooltip trigger wraps the badge — check the element with badge classes
-    const badgeEl = container.querySelector('[class*="bg-badge-cap-exempt"][class*="text-white"]')
+    const badgeEl = container.querySelector('[class*="bg-badge-cap-exempt"][class*="font-semibold"]')
     expect(badgeEl).toBeTruthy()
   })
 

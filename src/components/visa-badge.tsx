@@ -56,7 +56,7 @@ const capExemptTiers: Record<Confidence, {
   confirmed: {
     label: 'Cap-Exempt',
     icon: '✓',
-    className: 'bg-badge-cap-exempt text-white border-badge-cap-exempt font-semibold',
+    className: 'bg-badge-cap-exempt/20 text-badge-cap-exempt border-badge-cap-exempt/50 font-semibold',
     ariaLabel: 'Cap-exempt confirmed — multiple signals agree this employer can sponsor H1-B without lottery',
   },
   likely: {
@@ -115,6 +115,7 @@ export function VisaBadge({ visaPath, confidence }: VisaBadgeProps) {
               variant="outline"
               className={`text-xs ${tier.className} cursor-help`}
               aria-label={tier.ariaLabel}
+              tabIndex={0}
             />
           }
         >
