@@ -161,8 +161,8 @@ if [ "$IS_BEAD_COMMIT" = "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
     fi
     NOW=$(date +%s)
     DISP_AGE=$(( NOW - DISP_MOD ))
-    if [ "$DISP_AGE" -gt 7200 ]; then
-      echo "BLOCKED: Self-review disposition is stale ($(( DISP_AGE / 60 )) min old)." >&2
+    if [ "$DISP_AGE" -gt 600 ]; then
+      echo "BLOCKED: Self-review disposition is stale ($(( DISP_AGE / 60 )) min old, max 10 min)." >&2
       echo "" >&2
       echo "  → Run a fresh self-review before committing" >&2
       exit 2
