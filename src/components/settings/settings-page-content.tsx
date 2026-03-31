@@ -109,6 +109,16 @@ export function SettingsPageContent({
               <div>
                 <span className="text-muted-foreground">Skills:</span>{' '}
                 <span className="font-medium">{skills.length} tracked</span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-full bg-ocean/8 px-2.5 py-0.5 text-xs text-ocean"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
