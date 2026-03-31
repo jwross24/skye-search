@@ -22,14 +22,17 @@ import { normalizeCompany } from './normalize-company'
 // ─── Cap-exempt employer seed URLs for findSimilar ──────────────────────────
 
 export const FIND_SIMILAR_SEEDS: { url: string; source_type: SourceType }[] = [
-  { url: 'https://careers.whoi.edu', source_type: 'academic' },
-  { url: 'https://www.ssaihq.com/employment', source_type: 'government' },
-  { url: 'https://www.gst.com/careers', source_type: 'government' },
-  { url: 'https://cires.colorado.edu/about/opportunities', source_type: 'academic' },
-  { url: 'https://jcet.umbc.edu/employment', source_type: 'academic' },
-  { url: 'https://www.cira.colostate.edu/about/career-opportunities', source_type: 'academic' },
+  // High performers from eval (precision >= 0.8)
   { url: 'https://ioccg.org/resources/employment', source_type: 'academic' },
   { url: 'https://science.gsfc.nasa.gov/sed/index.cfm?fuseAction=people.openings', source_type: 'government' },
+  // HigherEdJobs seeds — Exa crawls through their WAF via findSimilar
+  // Environmental science / oceanography / remote sensing postings
+  { url: 'https://www.higheredjobs.com/faculty/details.cfm?JobCode=179396510', source_type: 'academic' },  // UTA Postdoc Remote Sensing
+  { url: 'https://www.higheredjobs.com/faculty/details.cfm?JobCode=179209603', source_type: 'academic' },  // Water Resources & Hydrology
+  { url: 'https://www.higheredjobs.com/details.cfm?JobCode=178814456', source_type: 'academic' },          // UT Natural Resources
+  // Career pages with moderate performance
+  { url: 'https://careers.whoi.edu', source_type: 'academic' },
+  { url: 'https://cires.colorado.edu/about/opportunities', source_type: 'academic' },
 ]
 
 // ─── Academic job board domains for includeDomains filtering ─────────────────
