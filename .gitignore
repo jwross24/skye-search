@@ -63,3 +63,5 @@ supabase/.temp/
 .ntm/
 .eval-cache/
 tests/.auth/
+playwright-report/
+test-results/
