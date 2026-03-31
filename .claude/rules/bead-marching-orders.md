@@ -30,7 +30,7 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 14. `ntm scan --diff` — bug scan
 15. `git pull && git add <specific files> && git commit -m "br-XX: description"`
 16. `git push`
-17. **Prod verify** (if bead touches API routes, cron, migrations, or Edge Functions): curl the deployed endpoint or query prod DB to confirm the change works in production. Don't trust "the build passed" — verify the deployed artifact.
+17. **Prod verify** (if bead touches API routes, cron, migrations, Edge Functions, server components with data fetching, or server actions): curl the deployed endpoint or query prod DB to confirm the change works in production. Don't trust "the build passed" — verify the deployed artifact.
 18. Learn: Route surprising discoveries to `.claude/rules/` or memory. Skip if obvious.
 19. `br close <id> --reason "Completed"`
 20. `bv --robot-next` — advance

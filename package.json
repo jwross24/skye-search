@@ -17,7 +17,7 @@
     "test:all": "bun run typecheck && bun run lint && vitest run --coverage && playwright test",
     "eval:queries": "bun run scripts/eval-queries.ts",
     "eval:queries:cached": "bun run scripts/eval-queries.ts --judge-only",
-    "verify": "bun run build && bun run lint && bun run test && if which ntm >/dev/null 2>&1; then ntm scan --staged; else echo 'ntm not installed, skipping scan'; fi",
+    "verify": "bun run build && bun run lint && bun run test && if which ntm >/dev/null 2>&1; then ntm scan --staged --fail-on-warning; else echo 'ntm not installed, skipping scan'; fi",
     "prepare": "husky"
   },
   "lint-staged": {

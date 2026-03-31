@@ -88,7 +88,19 @@ describe('CvReviewForm', () => {
         skills: expect.arrayContaining(['Python', 'R', 'MATLAB']),
       }),
     )
+    // documentId not provided in defaultProps — second arg should be undefined
+    expect(mockSaveExtractedProfile.mock.calls[0][1]).toBeUndefined()
     expect(onSaved).toHaveBeenCalled()
+  })
+
+  it('passes documentId to saveExtractedProfile when provided', async () => {
+    const user = userEvent.setup()
+    mockSaveExtractedProfile.mockClear()
+    render(<CvReviewForm {...defaultProps} documentId="doc-abc-123" onSaved={vi.fn()} />)
+
+    await user.click(screen.getByText(/save to profile/i))
+
+    expect(mockSaveExtractedProfile.mock.calls[0][1]).toBe('doc-abc-123')
   })
 
   it('calls onDiscard when discard is clicked', async () => {

@@ -147,11 +147,15 @@ export async function saveExtractedProfile(extraction: CvExtraction, documentId?
 
   // Mark document as approved (clears "review pending" status in UI)
   if (documentId) {
-    await supabase
+    const { error: approveError } = await supabase
       .from('documents')
       .update({ status: 'approved' })
       .eq('id', documentId)
       .eq('user_id', user.id)
+    if (approveError) {
+      console.error('Failed to mark document as approved:', approveError.message)
+      // Non-fatal: profile was saved successfully; UI will re-check on next load
+    }
   }
 
   revalidatePath('/settings')
