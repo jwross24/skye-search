@@ -66,7 +66,14 @@ Deno.serve(async (req) => {
 
     let userId: string
 
-    if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
+    const secretsMatch = cronSecret && expectedSecret
+      && cronSecret.length === expectedSecret.length
+      && crypto.subtle.timingSafeEqual(
+        new TextEncoder().encode(cronSecret),
+        new TextEncoder().encode(expectedSecret),
+      )
+
+    if (secretsMatch) {
       // Service-role call (from task queue or manual trigger)
       userId = body.userId
       if (!userId) return jsonResponse({ error: 'Missing userId for service-role call' }, 400)
@@ -146,7 +153,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Extraction returned empty result' }, 500)
     }
 
-    // Update the documents row with extracted data
+    // Update the documents row with extracted data.
+    // Conditional on status='draft' — prevents race if client + queue both extract.
     const { error: updateError } = await supabase
       .from('documents')
       .update({
@@ -155,6 +163,7 @@ Deno.serve(async (req) => {
       })
       .eq('id', documentId)
       .eq('user_id', userId)
+      .eq('status', 'draft')
 
     if (updateError) {
       console.error('Failed to update document:', updateError.message)
