@@ -38,6 +38,11 @@ vi.mock('@supabase/supabase-js', () => {
   }
 })
 
+// Mock AJO RSS adapter to avoid real network calls (CORS timeout in test env)
+vi.mock('@/lib/adapters/ajo-rss', () => ({
+  fetchAjoRssJobs: vi.fn().mockResolvedValue([]),
+}))
+
 import { POST } from './route'
 import { ACADEMIC_QUERIES, INDUSTRY_QUERIES, FIND_SIMILAR_SEEDS } from '@/lib/adapters/exa'
 import { USAJOBS_QUERIES } from '@/lib/adapters/usajobs'
