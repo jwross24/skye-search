@@ -114,6 +114,18 @@ jobs:
           supabase db reset --debug 2>&1 | tail -5
           bun run src/db/seed-to-supabase.ts
 
+      - name: Verify Supabase is healthy
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl -sf http://127.0.0.1:54321/auth/v1/health > /dev/null 2>&1; then
+              echo "Supabase auth is healthy"
+              break
+            fi
+            echo "Waiting for Supabase auth... (attempt $i)"
+            sleep 3
+          done
+          curl -sf http://127.0.0.1:54321/auth/v1/health || (echo "Supabase auth not healthy" && exit 1)
+
       - name: Run E2E tests
         run: |
           if ls tests/e2e/*.spec.ts 1>/dev/null 2>&1; then
