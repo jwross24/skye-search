@@ -116,4 +116,58 @@ if [ "$HAS_EMAIL" = "true" ]; then
   fi
 fi
 
+# ── Check 6: Self-review disposition (bead commits with src/supabase changes) ──
+
+HAS_CODE_CHANGES=false
+ALL_STAGED=$(git diff --cached --name-only 2>/dev/null || true)
+if echo "$ALL_STAGED" | grep -qE '^(src/|supabase/)'; then
+  HAS_CODE_CHANGES=true
+fi
+
+if [ "$IS_BEAD_COMMIT" = "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
+  # Extract bead ID from commit message (pattern: "bead-id:" at start of message)
+  COMMIT_MSG=$(echo "$CMD" | grep -oP "(?<=<<'EOF'\n|<<EOF\n|^git commit -m \")[^\"]*" 2>/dev/null || true)
+  if [ -z "$COMMIT_MSG" ]; then
+    # Try extracting from heredoc body
+    COMMIT_MSG=$(echo "$CMD" | sed -n '/EOF/,/EOF/p' | head -1 2>/dev/null || true)
+  fi
+
+  # Check for ANY disposition file for this session (not bead-specific,
+  # since extracting bead ID from commit msg is fragile)
+  DISP_PATTERN="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-*.json"
+  DISP_FILES=$(ls $DISP_PATTERN 2>/dev/null || true)
+
+  if [ -z "$DISP_FILES" ]; then
+    echo "BLOCKED: Bead commit with code changes but no self-review disposition found." >&2
+    echo "" >&2
+    echo "  Run self-review before committing (step 11 of marching orders):" >&2
+    echo "" >&2
+    echo '  Agent tool call:' >&2
+    echo '    description: "Self-review <bead-id>"' >&2
+    echo '    model: "sonnet"' >&2
+    echo '    prompt: "Review ALL changed files for bugs, type errors, security..."' >&2
+    echo "" >&2
+    echo "  The subagent writes the disposition file automatically." >&2
+    exit 2
+  fi
+
+  # Check freshness — disposition must be from this session (< 2 hours)
+  NEWEST_DISP=$(ls -t $DISP_PATTERN 2>/dev/null | head -1)
+  if [ -n "$NEWEST_DISP" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+      DISP_MOD=$(stat -f %m "$NEWEST_DISP")
+    else
+      DISP_MOD=$(stat -c %Y "$NEWEST_DISP")
+    fi
+    NOW=$(date +%s)
+    DISP_AGE=$(( NOW - DISP_MOD ))
+    if [ "$DISP_AGE" -gt 7200 ]; then
+      echo "BLOCKED: Self-review disposition is stale ($(( DISP_AGE / 60 )) min old)." >&2
+      echo "" >&2
+      echo "  → Run a fresh self-review before committing" >&2
+      exit 2
+    fi
+  fi
+fi
+
 exit 0
