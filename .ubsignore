@@ -1,0 +1,10 @@
+# UBS ignore — prevent false positives from generated/temp files
+.next/
+node_modules/
+dist/
+coverage/
+*.config.js
+*.config.mjs
+# Shell scripts use == in jq/bash (not JS loose equality)
+.claude/
+*.sh

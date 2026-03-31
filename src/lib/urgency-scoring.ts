@@ -163,7 +163,7 @@ export function computeUrgencyScore(
   }
 
   // High H1-B filer
-  if (job.h1b_sponsor_count != null && job.h1b_sponsor_count > 25) {
+  if (job.h1b_sponsor_count !== null && job.h1b_sponsor_count !== undefined && job.h1b_sponsor_count > 25) {
     modifiers.push({ name: 'high_h1b_filer', value: 0.03 })
   }
 
@@ -306,6 +306,8 @@ export function jobToInput(
     application_deadline: string | null
     application_complexity: string | null
     indexed_date?: string | null
+    requires_citizenship?: boolean
+    requires_security_clearance?: boolean
   },
   today: string,
 ): JobInput {
@@ -320,6 +322,8 @@ export function jobToInput(
     application_deadline: job.application_deadline,
     application_complexity: job.application_complexity,
     indexed_date: job.indexed_date ?? today,
+    requires_citizenship: job.requires_citizenship,
+    requires_security_clearance: job.requires_security_clearance,
   }
 }
 

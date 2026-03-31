@@ -8,7 +8,7 @@ export default async function JobsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) return redirect('/login')
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -75,6 +75,8 @@ export default async function JobsPage() {
       skills_required: row.skills_required ?? [],
       why_fits: row.why_fits ?? '',
       indexed_date: row.indexed_date,
+      requires_citizenship: row.requires_citizenship ?? false,
+      requires_security_clearance: row.requires_security_clearance ?? false,
     }))
 
   // ─── Compute user state from immigration_status + checkpoint data ────

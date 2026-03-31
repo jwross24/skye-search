@@ -153,7 +153,7 @@ export function computeUrgencyScore(
     modifiers.push({ name: 'boston_metro', value: 0.05 })
   }
 
-  if (job.h1b_sponsor_count != null && job.h1b_sponsor_count > 25) {
+  if (job.h1b_sponsor_count !== null && job.h1b_sponsor_count !== undefined && job.h1b_sponsor_count > 25) {
     modifiers.push({ name: 'high_h1b_filer', value: 0.03 })
   }
 

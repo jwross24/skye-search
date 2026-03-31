@@ -15,6 +15,7 @@ function createChain(resolvedValue: { data: unknown; count?: number; error?: nul
   chain.select = vi.fn().mockReturnValue(chain)
   chain.eq = vi.fn().mockReturnValue(chain)
   chain.not = vi.fn().mockReturnValue(chain)
+  chain.neq = vi.fn().mockReturnValue(chain)
   chain.order = vi.fn().mockReturnValue(chain)
   chain.limit = vi.fn().mockReturnValue(chain)
   chain.gte = vi.fn().mockReturnValue(chain)
@@ -246,6 +247,22 @@ describe('selectTopPicks', () => {
 
     expect(picks).toHaveLength(0)
   })
+
+  it('neq filter is applied to citizenship and security clearance columns', async () => {
+    log('Step 1', 'Verifying neq filter calls on jobs chain')
+    setupHandlers()
+    const { selectTopPicks } = await import('./daily-picks')
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient('', '')
+
+    await selectTopPicks(supabase as ReturnType<typeof createClient>, 'user-1')
+
+    const jobsChain = fromHandlers['jobs']
+    const neqCalls = (jobsChain.neq as ReturnType<typeof vi.fn>).mock.calls
+    log('Step 2', `neq called ${neqCalls.length} times`)
+    expect(neqCalls).toContainEqual(['requires_citizenship', true])
+    expect(neqCalls).toContainEqual(['requires_security_clearance', true])
+  })
 })
 
 describe('prepareDailyPicks', () => {
@@ -259,12 +276,12 @@ describe('prepareDailyPicks', () => {
 
     expect(result.sent).toBe(true)
     expect(result.data).toBeDefined()
-    expect(result.data!.daysRemaining).toBe(120)
-    expect(result.data!.daysUsed).toBe(30)
-    expect(result.data!.picks).toHaveLength(3)
-    expect(result.data!.scoringStatus).toBe('complete')
-    expect(result.data!.capExemptCount).toBe(2) // MIT and NOAA
-    log('Step 3', `Cap-exempt: ${result.data!.capExemptCount}, Bridge: ${result.data!.bridgeCount}`)
+    expect(result.data?.daysRemaining).toBe(120)
+    expect(result.data?.daysUsed).toBe(30)
+    expect(result.data?.picks).toHaveLength(3)
+    expect(result.data?.scoringStatus).toBe('complete')
+    expect(result.data?.capExemptCount).toBe(2) // MIT and NOAA
+    log('Step 3', `Cap-exempt: ${result.data?.capExemptCount}, Bridge: ${result.data?.bridgeCount}`)
   })
 
   it('skips email when no picks available', async () => {
@@ -310,7 +327,7 @@ describe('prepareDailyPicks', () => {
     log('Step 2', `Result: sent=${result.sent}, daysRemaining=${result.data?.daysRemaining}`)
 
     expect(result.sent).toBe(true)
-    expect(result.data!.daysRemaining).toBe(10)
+    expect(result.data?.daysRemaining).toBe(10)
   })
 
   it('includes correct bridge count for cap_subject and opt_compatible', async () => {
@@ -329,7 +346,7 @@ describe('prepareDailyPicks', () => {
     const result = await prepareDailyPicks('user-1')
     log('Step 2', `Bridge count: ${result.data?.bridgeCount}, Cap-exempt: ${result.data?.capExemptCount}`)
 
-    expect(result.data!.capExemptCount).toBe(1)
-    expect(result.data!.bridgeCount).toBe(2) // cap_subject + opt_compatible
+    expect(result.data?.capExemptCount).toBe(1)
+    expect(result.data?.bridgeCount).toBe(2) // cap_subject + opt_compatible
   })
 })

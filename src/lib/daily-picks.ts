@@ -89,6 +89,8 @@ export async function selectTopPicks(
       .select('id, title, company, visa_path, location, url, match_score, why_fits')
       .eq('user_id', userId)
       .not('match_score', 'is', null)
+      .neq('requires_citizenship', true)
+      .neq('requires_security_clearance', true)
       .order('match_score', { ascending: false })
       .limit(50), // Over-fetch then filter
   ])

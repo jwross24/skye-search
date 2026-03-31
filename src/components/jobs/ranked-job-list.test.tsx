@@ -30,6 +30,8 @@ function seedToJobs(seeds: typeof seedJobs): Job[] {
     skills_required: s.skills_required,
     why_fits: s.why_fits,
     indexed_date: null,
+    requires_citizenship: false,
+    requires_security_clearance: false,
   }))
 }
 

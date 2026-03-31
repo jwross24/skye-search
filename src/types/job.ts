@@ -28,4 +28,6 @@ export interface Job {
   skills_required: string[]
   why_fits: string
   indexed_date: string | null
+  requires_citizenship: boolean
+  requires_security_clearance: boolean
 }
