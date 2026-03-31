@@ -7,35 +7,6 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/protect-review-results.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-agent-review-auth.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Evaluate this plan for completeness and quality. Check: (1) Does it have a Context section explaining WHY? (2) Does it have a Files Modified/Created table? (3) Does it have a Verification section? (4) Is there a simpler approach that achieves the same goal? (5) Are existing utilities/patterns being duplicated instead of reused? (6) What assumptions could be wrong? Respond with {\"ok\": false, \"reason\": \"specific improvements needed\"} if the plan is missing required sections or has obvious optimization opportunities. Respond {\"ok\": true} if the plan is solid. Plan context: $ARGUMENTS",
-            "model": "haiku",
-            "statusMessage": "Evaluating plan quality..."
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/trauma_guard.py"
           },
           {
             "type": "command",
@@ -61,13 +32,38 @@
             "type": "command",
             "if": "Bash(*npx *)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-npx.sh"
+          },
+          {
+            "type": "command",
+            "if": "Bash(*git add*)",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/block-git-add-all.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pre-agent-review-auth.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Evaluate this plan for completeness and quality. Check: (1) Does it have a Context section explaining WHY? (2) Does it have a Files Modified/Created table? (3) Does it have a Verification section? (4) Is there a simpler approach that achieves the same goal? (5) Are existing utilities/patterns being duplicated instead of reused? (6) What assumptions could be wrong? Respond with {\"ok\": false, \"reason\": \"specific improvements needed\"} if the plan is missing required sections or has obvious optimization opportunities. Respond {\"ok\": true} if the plan is solid. Plan context: $ARGUMENTS",
+            "model": "haiku",
+            "statusMessage": "Evaluating plan quality..."
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|Write|Edit",
         "hooks": [
           {
             "type": "command",
@@ -92,14 +88,10 @@
             "type": "command",
             "if": "Bash(*br close*)",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-close-learn.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
+          },
           {
             "type": "prompt",
+            "if": "Write|Edit",
             "prompt": "Check if this file edit adds NEW imports from libraries that may have stale training data: @supabase/, @anthropic-ai/, resend, exa-js, next/, zod. Look at the actual content: $ARGUMENTS. If new library imports are added (not just editing existing code that already uses them), respond {\"ok\": false, \"reason\": \"Fetch Context7 docs for [specific library] before committing — training data may be stale\"}. If no new library imports, respond {\"ok\": true}.",
             "model": "haiku",
             "statusMessage": "Checking library imports..."

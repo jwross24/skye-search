@@ -20,6 +20,12 @@ case "$SKILL" in
   resend)
     touch_stamp "resend"
     ;;
+  humanizer)
+    touch_stamp "humanizer"
+    ;;
+  context7-mcp)
+    touch_stamp "context7"
+    ;;
 esac
 
 exit 0

@@ -36,6 +36,17 @@ if echo "$CMD" | grep -Eq '\-\-no-verify'; then
   exit 2
 fi
 
+# ── Check 1b: git add . / git add -A in compound command ───────────────
+# Catches: git add . && git commit, git add -A && git commit, etc.
+
+if echo "$CMD" | grep -Eq 'git\s+add\s+(-[A]|--all|\.\s|\.$)'; then
+  echo "BLOCKED: git add . / git add -A detected in commit command." >&2
+  echo "" >&2
+  echo "  Stage specific files instead:" >&2
+  echo "  → git add src/lib/my-file.ts src/app/my-route/route.ts" >&2
+  exit 2
+fi
+
 # ── Check 2: Verify stamp (bun run verify, includes ntm scan) ──────────
 
 if ! stamp_is_fresh "verify" 600; then
@@ -45,21 +56,17 @@ if ! stamp_is_fresh "verify" 600; then
   exit 2
 fi
 
-# ── Determine if this is a bead commit with special file types ──────────
+# ── Check staged file types (ALWAYS — not just bead commits) ───────────
+# Previous bug: only checked .tsx/email when commit message contained "br-".
+# Bead IDs use formats like "d3y:", "55l:", etc. — checking unconditionally
+# is simpler and more correct.
 
-IS_BEAD_COMMIT=false
-if echo "$CMD" | grep -Eq 'br-'; then
-  IS_BEAD_COMMIT=true
-fi
-
-# Check staged file types (one git diff --cached for all checks)
-STAGED_FILES=""
-if [ "$IS_BEAD_COMMIT" = "true" ]; then
-  STAGED_FILES=$(git diff --cached --name-only 2>/dev/null || true)
-fi
+STAGED_FILES=$(git diff --cached --name-only 2>/dev/null || true)
 
 HAS_TSX=false
 HAS_EMAIL=false
+HAS_SERVER_ACTION=false
+HAS_CODE_CHANGES=false
 
 if [ -n "$STAGED_FILES" ]; then
   if echo "$STAGED_FILES" | grep -q '\.tsx$'; then
@@ -68,16 +75,20 @@ if [ -n "$STAGED_FILES" ]; then
   if echo "$STAGED_FILES" | grep -qE '(email-templates/|email-alerts|resend)'; then
     HAS_EMAIL=true
   fi
+  if echo "$STAGED_FILES" | grep -q 'actions\.ts'; then
+    HAS_SERVER_ACTION=true
+  fi
+  if echo "$STAGED_FILES" | grep -qE '^(src/|supabase/)'; then
+    HAS_CODE_CHANGES=true
+  fi
 fi
 
 # Also check files mentioned in the command itself (git add ... && git commit)
-if [ "$IS_BEAD_COMMIT" = "true" ]; then
-  if echo "$CMD" | grep -q '\.tsx'; then
-    HAS_TSX=true
-  fi
-  if echo "$CMD" | grep -qE '(email-templates|email-alerts|resend)'; then
-    HAS_EMAIL=true
-  fi
+if echo "$CMD" | grep -q '\.tsx'; then
+  HAS_TSX=true
+fi
+if echo "$CMD" | grep -qE '(email-templates|email-alerts|resend)'; then
+  HAS_EMAIL=true
 fi
 
 # ── Check 3: Agent-browser stamp (UI beads with .tsx) ───────────────────
@@ -116,29 +127,34 @@ if [ "$HAS_EMAIL" = "true" ]; then
   fi
 fi
 
-# ── Check 6: Self-review disposition (bead commits with src/supabase changes) ──
+# ── Check 6: Data persistence invariant (server actions must write to DB) ──
 
-HAS_CODE_CHANGES=false
-ALL_STAGED=$(git diff --cached --name-only 2>/dev/null || true)
-if echo "$ALL_STAGED" | grep -qE '^(src/|supabase/)'; then
-  HAS_CODE_CHANGES=true
+if [ "$HAS_SERVER_ACTION" = "true" ]; then
+  # Check staged actions.ts files for stub returns without DB calls
+  for f in $(echo "$STAGED_FILES" | grep 'actions\.ts$'); do
+    if [ -f "$f" ] && head -1 "$f" | grep -q "'use server'"; then
+      # Check if any exported async function returns { success: true } without createClient
+      if grep -q "success: true" "$f" && ! grep -q "createClient\|createServiceClient\|supabase" "$f"; then
+        echo "BLOCKED: Server action '$f' returns success without a database call." >&2
+        echo "" >&2
+        echo "  Data persistence invariant: every server action MUST write to Supabase." >&2
+        echo "  → Add a real database operation, or don't create the action yet." >&2
+        exit 2
+      fi
+    fi
+  done
 fi
 
-if [ "$IS_BEAD_COMMIT" = "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
-  # Extract bead ID from commit message (pattern: "bead-id:" at start of message)
-  COMMIT_MSG=$(echo "$CMD" | grep -oP "(?<=<<'EOF'\n|<<EOF\n|^git commit -m \")[^\"]*" 2>/dev/null || true)
-  if [ -z "$COMMIT_MSG" ]; then
-    # Try extracting from heredoc body
-    COMMIT_MSG=$(echo "$CMD" | sed -n '/EOF/,/EOF/p' | head -1 2>/dev/null || true)
-  fi
+# ── Check 7: Self-review disposition (commits with src/supabase changes) ──
 
+if [ "$HAS_CODE_CHANGES" = "true" ]; then
   # Check for ANY disposition file for this session (not bead-specific,
   # since extracting bead ID from commit msg is fragile)
   DISP_PATTERN="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-*.json"
   DISP_FILES=$(ls $DISP_PATTERN 2>/dev/null || true)
 
   if [ -z "$DISP_FILES" ]; then
-    echo "BLOCKED: Bead commit with code changes but no self-review disposition found." >&2
+    echo "BLOCKED: Commit with code changes but no self-review disposition found." >&2
     echo "" >&2
     echo "  Run self-review before committing (step 11 of marching orders):" >&2
     echo "" >&2
@@ -151,7 +167,7 @@ if [ "$IS_BEAD_COMMIT" = "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then
     exit 2
   fi
 
-  # Check freshness — disposition must be from this session (< 2 hours)
+  # Check freshness — disposition must be from this session (< 10 min)
   NEWEST_DISP=$(ls -t $DISP_PATTERN 2>/dev/null | head -1)
   if [ -n "$NEWEST_DISP" ]; then
     if [ "$(uname)" = "Darwin" ]; then
