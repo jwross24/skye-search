@@ -193,6 +193,49 @@ if command -v gh &>/dev/null; then
   fi
 fi
 
+# ── Step 1g: Skill directive check — verify skills from bead spec ───────
+# Parses bead description for "Invoke /skill" or "Use /skill" directives
+# and checks that corresponding stamps exist in this session.
+
+BEAD_DESC=$(br show "$BEAD_ID" --json 2>/dev/null | jq -r '.[0].description // ""' 2>/dev/null) || BEAD_DESC=""
+
+if [ -n "$BEAD_DESC" ]; then
+  MISSING_SKILLS=""
+
+  if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/impeccable'; then
+    if ! stamp_is_fresh "impeccable" 86400; then
+      MISSING_SKILLS="${MISSING_SKILLS}  ✗ /impeccable — required by bead spec but not invoked this session\n"
+    fi
+  fi
+
+  if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/resend'; then
+    if ! stamp_is_fresh "resend" 86400; then
+      MISSING_SKILLS="${MISSING_SKILLS}  ✗ /resend — required by bead spec but not invoked this session\n"
+    fi
+  fi
+
+  if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/humanizer'; then
+    if ! stamp_is_fresh "humanizer" 86400; then
+      MISSING_SKILLS="${MISSING_SKILLS}  ✗ /humanizer — required by bead spec but not invoked this session\n"
+    fi
+  fi
+
+  if echo "$BEAD_DESC" | grep -qiE 'context7\s+mcp|use\s+context7'; then
+    if ! stamp_is_fresh "context7" 86400; then
+      MISSING_SKILLS="${MISSING_SKILLS}  ✗ Context7 MCP — required by bead spec but not queried this session\n"
+    fi
+  fi
+
+  if [ -n "$MISSING_SKILLS" ]; then
+    echo "BLOCKED: Bead spec requires skills that were not invoked:" >&2
+    echo "" >&2
+    printf '%b' "$MISSING_SKILLS" >&2
+    echo "" >&2
+    echo "  Invoke the required skills, then retry: br close $BEAD_ID" >&2
+    exit 2
+  fi
+fi
+
 # ── Step 2: Parse test contract from bead spec ───────────────────────────
 
 REQUIREMENTS=""
