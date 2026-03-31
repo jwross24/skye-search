@@ -248,6 +248,49 @@ describe('selectTopPicks', () => {
     expect(picks).toHaveLength(0)
   })
 
+  it('excludes jobs with expired deadlines', async () => {
+    log('Step 1', 'Setting up jobs with expired and future deadlines')
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+    setupHandlers({
+      jobs: createChain({
+        data: [
+          { id: 'j1', title: 'Expired Job', company: 'MIT', visa_path: 'cap_exempt', location: 'Boston', url: 'https://example.com/j1', match_score: 0.95, why_fits: 'Great', application_deadline: yesterday, source_type: 'academic' },
+          { id: 'j2', title: 'Active Job', company: 'NOAA', visa_path: 'cap_exempt', location: 'DC', url: 'https://example.com/j2', match_score: 0.85, why_fits: 'Good', application_deadline: nextWeek, source_type: 'government' },
+          { id: 'j3', title: 'No Deadline', company: 'Acme', visa_path: 'cap_subject', location: 'NYC', url: 'https://example.com/j3', match_score: 0.70, why_fits: null, application_deadline: null, source_type: 'industry' },
+        ],
+      }),
+    })
+    const { selectTopPicks } = await import('./daily-picks')
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient('', '')
+
+    const picks = await selectTopPicks(supabase as ReturnType<typeof createClient>, 'user-1')
+    log('Step 2', `Got ${picks.length} picks (expected 2, expired job excluded)`)
+    expect(picks).toHaveLength(2)
+    expect(picks.map(p => p.title)).not.toContain('Expired Job')
+  })
+
+  it('keeps expired until_filled jobs (no real deadline)', async () => {
+    log('Step 1', 'Setting up expired until_filled job')
+    const lastMonth = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+    setupHandlers({
+      jobs: createChain({
+        data: [
+          { id: 'j1', title: 'Until Filled', company: 'MIT', visa_path: 'cap_exempt', location: 'Boston', url: 'https://example.com/j1', match_score: 0.90, why_fits: 'Great', application_deadline: lastMonth, source_type: 'until_filled' },
+        ],
+      }),
+    })
+    const { selectTopPicks } = await import('./daily-picks')
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient('', '')
+
+    const picks = await selectTopPicks(supabase as ReturnType<typeof createClient>, 'user-1')
+    log('Step 2', `Got ${picks.length} picks (expected 1, until_filled kept)`)
+    expect(picks).toHaveLength(1)
+    expect(picks[0].title).toBe('Until Filled')
+  })
+
   it('neq filter is applied to citizenship and security clearance columns', async () => {
     log('Step 1', 'Verifying neq filter calls on jobs chain')
     setupHandlers()

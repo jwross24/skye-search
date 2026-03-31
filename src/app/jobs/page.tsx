@@ -54,6 +54,13 @@ export default async function JobsPage() {
 
   const jobs: Job[] = (jobsResult.data ?? [])
     .filter((row) => !votedJobIds.has(row.id))
+    .filter((row) => {
+      // Exclude expired deadlines (except until_filled)
+      if (row.application_deadline && row.source_type !== 'until_filled') {
+        return row.application_deadline >= today
+      }
+      return true
+    })
     .map((row) => ({
       id: row.id,
       title: row.title ?? '',

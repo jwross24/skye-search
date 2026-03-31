@@ -97,6 +97,20 @@ export function computeUrgencyScore(
     }
   }
 
+  // Expired deadline check — hard -1.0 (except until_filled jobs)
+  if (
+    job.application_deadline &&
+    job.source_type !== 'until_filled' &&
+    daysBetween(user.today, job.application_deadline) < 0
+  ) {
+    return {
+      urgency_score: -1.0,
+      base_score: -1.0,
+      modifiers: [{ name: 'expired_deadline', value: -1.0 }],
+      final_before_clamp: -1.0,
+    }
+  }
+
   const clock_pressure = 1 - user.days_remaining / 150
 
   // Grace period override

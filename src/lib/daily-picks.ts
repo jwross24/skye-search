@@ -86,7 +86,7 @@ export async function selectTopPicks(
     supabase.from('applications').select('job_id').eq('user_id', userId),
     supabase
       .from('jobs')
-      .select('id, title, company, visa_path, location, url, match_score, why_fits')
+      .select('id, title, company, visa_path, location, url, match_score, why_fits, application_deadline, source_type')
       .eq('user_id', userId)
       .not('match_score', 'is', null)
       .neq('requires_citizenship', true)
@@ -100,8 +100,16 @@ export async function selectTopPicks(
     ...(appsResult.data ?? []).map((a) => a.job_id).filter(Boolean),
   ])
 
+  const today = new Date().toISOString().split('T')[0]
   const picks: DailyPickJob[] = (jobsResult.data ?? [])
     .filter((j) => !excludedIds.has(j.id))
+    .filter((j) => {
+      // Exclude expired deadlines (except until_filled)
+      if (j.application_deadline && j.source_type !== 'until_filled') {
+        return j.application_deadline >= today
+      }
+      return true
+    })
     .slice(0, MAX_PICKS)
     .map((j) => ({
       title: j.title ?? '',

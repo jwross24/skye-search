@@ -143,6 +143,50 @@ describe('Base score assignment', () => {
     )
     expect(result.urgency_score).toBe(-1.0)
   })
+
+  it('expired deadline -> -1.0', () => {
+    const result = computeUrgencyScore(
+      makeJob({ application_deadline: '2026-03-20' }), // 4 days ago
+      makeUser(),
+    )
+    expect(result.urgency_score).toBe(-1.0)
+    expect(result.modifiers[0].name).toBe('expired_deadline')
+  })
+
+  it('expired deadline with until_filled source -> NOT -1.0', () => {
+    const result = computeUrgencyScore(
+      makeJob({
+        application_deadline: '2026-03-20',
+        source_type: 'until_filled',
+      }),
+      makeUser(),
+    )
+    expect(result.urgency_score).toBeGreaterThan(0)
+  })
+
+  it('deadline today -> NOT expired (score > 0)', () => {
+    const result = computeUrgencyScore(
+      makeJob({ application_deadline: TODAY }),
+      makeUser(),
+    )
+    expect(result.urgency_score).toBeGreaterThan(0)
+  })
+
+  it('deadline tomorrow -> NOT expired', () => {
+    const result = computeUrgencyScore(
+      makeJob({ application_deadline: '2026-03-25' }),
+      makeUser(),
+    )
+    expect(result.urgency_score).toBeGreaterThan(0)
+  })
+
+  it('null deadline -> NOT expired', () => {
+    const result = computeUrgencyScore(
+      makeJob({ application_deadline: null }),
+      makeUser(),
+    )
+    expect(result.urgency_score).toBeGreaterThan(0)
+  })
 })
 
 // ─── Confidence Discounts ────────────────────────────────────────────────────
