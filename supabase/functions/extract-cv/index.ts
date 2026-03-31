@@ -55,24 +55,29 @@ Rules:
 
 Deno.serve(async (req) => {
   try {
-    // Auth: extract user from JWT
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader) {
-      return jsonResponse({ error: 'Missing authorization header' }, 401)
-    }
-
     const supabase = getSupabaseAdmin()
+    const body = await req.json()
+    const { documentId, filePath } = body
 
-    // Verify the user's JWT and get their ID
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', ''),
-    )
-    if (authError || !user) {
-      return jsonResponse({ error: 'Unauthorized' }, 401)
+    // Auth: accept user JWT or service-role cron secret
+    const authHeader = req.headers.get('authorization')?.replace('Bearer ', '') ?? ''
+    const cronSecret = req.headers.get('x-cron-secret') ?? ''
+    const expectedSecret = Deno.env.get('CRON_SECRET') ?? ''
+
+    let userId: string
+
+    if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
+      // Service-role call (from task queue or manual trigger)
+      userId = body.userId
+      if (!userId) return jsonResponse({ error: 'Missing userId for service-role call' }, 400)
+    } else if (authHeader) {
+      // User JWT call (from client-side invoke)
+      const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader)
+      if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401)
+      userId = user.id
+    } else {
+      return jsonResponse({ error: 'Missing authorization' }, 401)
     }
-
-    // Parse request body
-    const { documentId, filePath } = await req.json()
     if (!documentId || !filePath) {
       return jsonResponse({ error: 'Missing documentId or filePath' }, 400)
     }
@@ -97,7 +102,7 @@ Deno.serve(async (req) => {
 
     // Budget check before API call (cv_extraction is non-critical)
     const { checkBudget } = await import('../_shared/budget-guard.ts')
-    const budgetVerdict = await checkBudget({ userId: user.id, taskType: 'cv_extraction' })
+    const budgetVerdict = await checkBudget({ userId, taskType: 'cv_extraction' })
     if (budgetVerdict.action === 'pause') {
       return jsonResponse({ error: 'API spend cap reached for today. Try again tomorrow.' }, 429)
     }
@@ -149,7 +154,7 @@ Deno.serve(async (req) => {
         status: 'pending_review',
       })
       .eq('id', documentId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (updateError) {
       console.error('Failed to update document:', updateError.message)
@@ -157,7 +162,7 @@ Deno.serve(async (req) => {
 
     // Log API usage (best-effort, don't fail extraction if logging fails)
     const { error: logError } = await supabase.from('api_usage_log').insert({
-      user_id: user.id,
+      user_id: userId,
       model: message.model,
       input_tokens: message.usage.input_tokens,
       output_tokens: message.usage.output_tokens,

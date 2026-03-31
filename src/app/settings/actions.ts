@@ -82,6 +82,23 @@ export async function uploadCv(formData: FormData) {
     return { success: false, error: `Document record failed: ${docError.message}` }
   }
 
+  // Enqueue background extraction as a safety net — the client also triggers
+  // extraction via supabase.functions.invoke, but if that fails silently
+  // (auth, CORS, timeout), the task queue ensures extraction still happens.
+  try {
+    const { enqueueTask } = await import('@/lib/task-queue')
+    await enqueueTask({
+      userId: user.id,
+      taskType: 'extract_cv',
+      payload: { documentId: doc.id, filePath },
+      maxRetries: 2,
+      idempotencyWindowMinutes: 60,
+    })
+  } catch {
+    // Non-fatal — client-side extraction is the primary path
+    console.error('Failed to enqueue extract_cv task (non-fatal)')
+  }
+
   revalidatePath('/settings')
   return { success: true, documentId: doc.id, filePath }
 }
