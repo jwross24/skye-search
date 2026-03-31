@@ -7,7 +7,10 @@ import {
   FIND_SIMILAR_SEEDS,
   ACADEMIC_JOB_DOMAINS,
 } from '@/lib/adapters/exa'
-import { USAJOBS_QUERIES } from '@/lib/adapters/usajobs'
+// USAJobs disabled: all federal positions require US citizenship (5 USC § 3301,
+// Executive Order 11935). Skye is on OPT — none are eligible. The Exa government
+// source already finds contractor/university positions at federal labs (SSAI, CIRA,
+// JCET) which ARE cap-exempt and don't require citizenship.
 import { ajoRssAdapter } from '@/lib/adapters/ajo-rss'
 
 /**
@@ -126,17 +129,7 @@ async function handler(req: NextRequest) {
       })
     }
 
-    // USAJobs queries (government/contractor positions)
-    for (const query of USAJOBS_QUERIES) {
-      tasks.push({
-        user_id: userId,
-        task_type: 'usajobs_search',
-        payload_json: {
-          query,
-        },
-        max_retries: 3,
-      })
-    }
+    // USAJobs disabled — see import comment above
 
     // Bulk insert
     const { error: insertError } = await supabase.from('task_queue').insert(tasks)
@@ -183,7 +176,7 @@ async function handler(req: NextRequest) {
         academic_search: ACADEMIC_QUERIES.length,
         industry_search: INDUSTRY_QUERIES.length,
         find_similar: FIND_SIMILAR_SEEDS.length,
-        usajobs_search: USAJOBS_QUERIES.length,
+        usajobs_search: 0, // disabled — re-enable per-user when multi-user launches
         ajo_rss: ajoCount,
       },
     })
