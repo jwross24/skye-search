@@ -8,7 +8,8 @@ function log(step: string, detail: string) {
 
 // Chain builder that supports the fluent query API
 function createChain(resolvedValue: { data: unknown; count?: number; error?: null }) {
-  const chain: Record<string, ReturnType<typeof vi.fn>> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const chain: Record<string, any> = {}
   chain.select = vi.fn().mockReturnValue(chain)
   chain.eq = vi.fn().mockReturnValue(chain)
   chain.not = vi.fn().mockReturnValue(chain)
