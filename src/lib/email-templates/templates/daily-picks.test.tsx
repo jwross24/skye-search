@@ -70,20 +70,20 @@ describe('DailyPicksEmail template', () => {
     log('Step 2', 'All 3 jobs and badges verified')
   })
 
-  it('includes urgency summary with cap-exempt and bridge counts', async () => {
-    log('Step 1', 'Checking urgency summary')
+  it('includes contextual greeting with cap-exempt emphasis', async () => {
+    log('Step 1', 'Checking contextual greeting')
     const html = await render(DailyPicksEmail(baseProps))
 
-    expect(html).toContain('2 cap-exempt')
-    expect(html).toContain('1 bridge role')
-    log('Step 2', 'Urgency summary verified')
+    expect(html).toContain('2 cap-exempt roles today')
+    expect(html).toContain('strongest visa path')
+    log('Step 2', 'Contextual greeting verified')
   })
 
   it('includes CTA link to /jobs', async () => {
     log('Step 1', 'Checking CTA button')
     const html = await render(DailyPicksEmail(baseProps))
 
-    expect(html).toContain('Review your picks')
+    expect(html).toContain('See today&#x27;s picks')
     expect(html).toContain('/jobs')
     log('Step 2', 'CTA link verified')
   })
@@ -114,8 +114,8 @@ describe('DailyPicksEmail template', () => {
     )
 
     // Apostrophes are HTML-encoded as &#x27; in rendered email output
-    expect(html).toContain('yesterday&#x27;s top picks')
-    expect(html).toContain('scoring is still running')
+    expect(html).toContain('yesterday&#x27;s strongest matches')
+    expect(html).toContain('being scored')
     log('Step 2', 'Staleness notice verified')
   })
 
@@ -125,7 +125,7 @@ describe('DailyPicksEmail template', () => {
       DailyPicksEmail({ ...baseProps, scoringStatus: 'failed' }),
     )
 
-    expect(html).toContain('ran into a hiccup')
+    expect(html).toContain('had a hiccup')
     expect(html).toContain('clock number is still accurate')
     log('Step 2', 'Failure notice verified')
   })
@@ -134,8 +134,8 @@ describe('DailyPicksEmail template', () => {
     log('Step 1', 'Rendering with complete scoring status')
     const html = await render(DailyPicksEmail(baseProps))
 
-    expect(html).not.toContain("yesterday's top picks")
-    expect(html).not.toContain('ran into a hiccup')
+    expect(html).not.toContain("yesterday's strongest matches")
+    expect(html).not.toContain('had a hiccup')
     log('Step 2', 'No staleness notice (correct)')
   })
 

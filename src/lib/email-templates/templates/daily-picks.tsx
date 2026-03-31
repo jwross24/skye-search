@@ -46,6 +46,12 @@ export function DailyPicksEmail({
     .filter(Boolean)
     .join(', ')
 
+  const greeting = capExemptCount > 0
+    ? `${capExemptCount} cap-exempt ${capExemptCount === 1 ? 'role' : 'roles'} today — your strongest visa path.`
+    : urgencySummary
+      ? `Today's strongest matches: ${urgencySummary}.`
+      : null
+
   return (
     <BaseLayout preview={subject}>
       {/* Clock status */}
@@ -68,16 +74,16 @@ export function DailyPicksEmail({
         >
           <Text style={{ fontSize: '13px', color: '#92400e', margin: 0, lineHeight: '1.4' }}>
             {scoringStatus === 'stale'
-              ? "These are yesterday's top picks — today's scoring is still running. Check back after 9am for fresh matches."
-              : "Scoring ran into a hiccup — showing yesterday's strongest matches. Your clock number is still accurate."}
+              ? "Showing yesterday's strongest matches while today's are being scored. Fresh picks will be in the app after 9am."
+              : "Yesterday's strongest matches for now — scoring had a hiccup. Your clock number is still accurate."}
           </Text>
         </Section>
       )}
 
-      {/* Urgency summary */}
-      {urgencySummary && (
-        <Text style={{ fontSize: '14px', color: BRAND.text, margin: '0 0 16px', lineHeight: '1.4' }}>
-          Today: {urgencySummary}
+      {/* Contextual greeting */}
+      {greeting && (
+        <Text style={{ fontSize: '14px', color: BRAND.text, margin: '0 0 16px', lineHeight: '1.5' }}>
+          {greeting}
         </Text>
       )}
 
@@ -123,7 +129,7 @@ export function DailyPicksEmail({
             display: 'inline-block',
           }}
         >
-          Review your picks
+          See today&apos;s picks
         </Button>
       </Section>
     </BaseLayout>

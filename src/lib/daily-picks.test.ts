@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { Mock } from 'vitest'
 
 function log(step: string, detail: string) {
   process.stdout.write(`  [daily-picks test] ${step}: ${detail}\n`)
@@ -6,10 +7,11 @@ function log(step: string, detail: string) {
 
 // ─── Mock Supabase ──────────────────────────────────────────────────────────
 
+type ChainMethod = Mock | ((resolve: (v: unknown) => void) => void)
+
 // Chain builder that supports the fluent query API
 function createChain(resolvedValue: { data: unknown; count?: number; error?: null }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const chain: Record<string, any> = {}
+  const chain: Record<string, ChainMethod> = {}
   chain.select = vi.fn().mockReturnValue(chain)
   chain.eq = vi.fn().mockReturnValue(chain)
   chain.not = vi.fn().mockReturnValue(chain)
