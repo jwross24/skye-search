@@ -17,7 +17,9 @@ export default async function JobsPage() {
   // ─── Parallel queries ────────────────────────────────────────────────
 
   const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult] = await Promise.all([
-    supabase.from('jobs').select('*').eq('user_id', user.id),
+    supabase.from('jobs').select('*').eq('user_id', user.id)
+      .or('requires_citizenship.is.null,requires_citizenship.neq.true')
+      .or('requires_security_clearance.is.null,requires_security_clearance.neq.true'),
     supabase.from('votes').select('job_id').eq('user_id', user.id),
     supabase.from('applications').select('job_id').eq('user_id', user.id),
     supabase
