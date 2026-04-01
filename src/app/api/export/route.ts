@@ -51,7 +51,7 @@ export async function GET() {
       supabase.from('contacts').select('*').eq('user_id', userId).order('name', { ascending: true }),
       supabase.from('plans').select('*').eq('user_id', userId),
       supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-      supabase.from('job_votes').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+      supabase.from('votes').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     ])
 
     // Build ZIP archive
@@ -70,7 +70,7 @@ export async function GET() {
     addJson('jobs.json', jobs.data ?? [])
     addJson('contacts.json', contacts.data ?? [])
     addJson('plans.json', plans.data ?? [])
-    addJson('job_votes.json', votes.data ?? [])
+    addJson('votes.json', votes.data ?? [])
     addJson('preferences.json', {
       profile: userData.data?.profile ?? {},
       skills: userData.data?.skills ?? [],
@@ -122,7 +122,7 @@ export async function GET() {
         'jobs.json',
         'contacts.json',
         'plans.json',
-        'job_votes.json',
+        'votes.json',
         'preferences.json',
         ...docFileEntries,
       ],

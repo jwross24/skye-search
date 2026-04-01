@@ -52,7 +52,7 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
     contacts: [{ name: 'Dr. Smith' }],
     plans: [{ id: 'plan_a', status: 'active' }],
     documents: [],
-    job_votes: [{ job_id: 'job-1', vote: 'interested' }],
+    votes: [{ job_id: 'job-1', vote: 'interested' }],
     ...overrides,
   }
 
@@ -93,7 +93,7 @@ describe('GET /api/export', () => {
     expect(files).toContain('jobs.json')
     expect(files).toContain('contacts.json')
     expect(files).toContain('plans.json')
-    expect(files).toContain('job_votes.json')
+    expect(files).toContain('votes.json')
     expect(files).toContain('preferences.json')
     expect(files).toContain('_export_metadata.json')
   })

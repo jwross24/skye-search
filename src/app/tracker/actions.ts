@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/db/supabase-server'
+import type { DismissTag } from '@/app/jobs/actions'
 
 export async function moveApplication(applicationId: string, newStatus: string) {
   const supabase = await createClient()
@@ -67,5 +68,59 @@ export async function captureRejection(applicationId: string, rejectionType: str
   if (error) return { success: false, error: error.message }
 
   revalidatePath('/tracker')
+  return { success: true }
+}
+
+export async function uninterestApplication(
+  applicationId: string,
+  tags: DismissTag[] = [],
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  // Look up the application to get the job_id
+  const { data: app } = await supabase
+    .from('applications')
+    .select('job_id')
+    .eq('id', applicationId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!app?.job_id) return { success: false, error: 'Application not found' }
+
+  // Delete the application (reverses the "interested" action)
+  const { error: deleteError } = await supabase
+    .from('applications')
+    .delete()
+    .eq('id', applicationId)
+    .eq('user_id', user.id)
+
+  if (deleteError) return { success: false, error: deleteError.message }
+
+  // Guard against duplicate votes (user may have dismissed from daily picks previously)
+  const { data: existingVote } = await supabase
+    .from('votes')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('job_id', app.job_id)
+    .limit(1)
+    .single()
+
+  if (!existingVote) {
+    // Create a dismiss vote so the job is excluded from future picks
+    const { error: voteError } = await supabase.from('votes').insert({
+      user_id: user.id,
+      job_id: app.job_id,
+      decision: 'not_for_me',
+      tags,
+    })
+
+    if (voteError) return { success: false, error: voteError.message }
+  }
+
+  revalidatePath('/tracker')
+  revalidatePath('/jobs')
   return { success: true }
 }

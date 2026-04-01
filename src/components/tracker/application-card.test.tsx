@@ -1,0 +1,124 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ApplicationCard } from './application-card'
+import type { TrackedApplication } from './kanban-board'
+import { seedJobs } from '@/db/seed'
+
+function log(step: string, detail: string) {
+  process.stdout.write(`  [application-card] ${step}: ${detail}\n`)
+}
+
+vi.mock('@/app/tracker/actions', () => ({
+  moveApplication: vi.fn().mockResolvedValue({ success: true }),
+  updateApplicationNotes: vi.fn().mockResolvedValue({ success: true }),
+  captureRejection: vi.fn().mockResolvedValue({ success: true }),
+  uninterestApplication: vi.fn().mockResolvedValue({ success: true }),
+}))
+
+const INTERESTED_APP: TrackedApplication = {
+  id: 'app-test-1',
+  job: seedJobs.find((j) => j.company.includes('Brown'))!,
+  status: 'interested',
+  dateAdded: '2026-03-25',
+  notes: '',
+  nextAction: '',
+  nextActionDate: '',
+  contacts: [],
+}
+
+const APPLIED_APP: TrackedApplication = {
+  ...INTERESTED_APP,
+  id: 'app-test-2',
+  status: 'applied',
+}
+
+describe('ApplicationCard', () => {
+  it('[card] Step 1: renders job title and company in card layout', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    log('Step 2', 'Checking card content')
+
+    expect(screen.getByText(INTERESTED_APP.job.title)).toBeInTheDocument()
+    expect(screen.getByText(INTERESTED_APP.job.company)).toBeInTheDocument()
+    log('Step 3', `Title: ${INTERESTED_APP.job.title}, Company: ${INTERESTED_APP.job.company}`)
+  })
+
+  it('[card] Step 1: renders job title and company in list layout', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="list" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    log('Step 2', 'List layout renders correctly')
+
+    expect(screen.getByText(INTERESTED_APP.job.title)).toBeInTheDocument()
+    expect(screen.getByText(INTERESTED_APP.job.company)).toBeInTheDocument()
+  })
+
+  it('[card] Step 1: shows "Changed my mind" on interested cards with onUninterest', () => {
+    const onUninterest = vi.fn()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} onUninterest={onUninterest} />
+    )
+    log('Step 2', 'Checking button visibility')
+
+    const btn = screen.getByTestId('card-app-test-1-uninterest')
+    expect(btn).toBeInTheDocument()
+    expect(btn).toHaveTextContent('Changed my mind')
+    log('Step 3', 'Button found on interested card')
+  })
+
+  it('[card] Step 1: hides "Changed my mind" on non-interested cards', () => {
+    render(
+      <ApplicationCard application={APPLIED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} onUninterest={vi.fn()} />
+    )
+    log('Step 2', 'Applied card should not have uninterest button')
+
+    expect(screen.queryByTestId('card-app-test-2-uninterest')).not.toBeInTheDocument()
+    log('Step 3', 'Confirmed: no uninterest button on applied card')
+  })
+
+  it('[card] Step 1: hides "Changed my mind" when onUninterest is not provided', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    log('Step 2', 'No onUninterest prop — button should be hidden')
+
+    expect(screen.queryByTestId('card-app-test-1-uninterest')).not.toBeInTheDocument()
+    log('Step 3', 'Confirmed: no button without onUninterest prop')
+  })
+
+  it('[card] Step 1: clicking "Changed my mind" calls onUninterest with app id', async () => {
+    const user = userEvent.setup()
+    const onUninterest = vi.fn()
+    const onSelect = vi.fn()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={onSelect} onUninterest={onUninterest} />
+    )
+
+    await user.click(screen.getByTestId('card-app-test-1-uninterest'))
+    log('Step 2', 'Clicked "Changed my mind"')
+
+    expect(onUninterest).toHaveBeenCalledWith('app-test-1')
+    expect(onSelect).not.toHaveBeenCalled() // stopPropagation works
+    log('Step 3', 'onUninterest called, onSelect not called (event stopped)')
+  })
+
+  it('[card] Step 1: shows visa badge', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    log('Step 2', `Visa path: ${INTERESTED_APP.job.visa_path}`)
+    // VisaBadge renders — just verify the card doesn't crash
+    expect(screen.getByTestId('card-app-test-1')).toBeInTheDocument()
+  })
+
+  it('[card] Step 1: shows next action when present', () => {
+    const appWithAction = { ...INTERESTED_APP, nextAction: 'Follow up on Monday' }
+    render(
+      <ApplicationCard application={appWithAction} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    log('Step 2', 'Next action visible')
+    expect(screen.getByText('Next: Follow up on Monday')).toBeInTheDocument()
+  })
+})

@@ -14,6 +14,7 @@ vi.mock('@/app/tracker/actions', () => ({
   moveApplication: vi.fn().mockResolvedValue({ success: true }),
   updateApplicationNotes: vi.fn().mockResolvedValue({ success: true }),
   captureRejection: vi.fn().mockResolvedValue({ success: true }),
+  uninterestApplication: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 vi.mock('@/app/tracker/cover-letter-actions', () => ({
@@ -504,5 +505,114 @@ describe('Stats bar', () => {
   it('shows correct application count', () => {
     render(<KanbanBoard initialApplications={SEED_APPS} />)
     expect(screen.getByText('5 applications')).toBeDefined()
+  })
+})
+
+// ─── Uninterest Flow ───────────────────────────────────────────────────────
+
+describe('Uninterest ("Changed my mind")', () => {
+  it('[uninterest] Step 1: "Changed my mind" button visible on Interested cards only', () => {
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+    log('Step 1', 'Checking "Changed my mind" button visibility')
+
+    // app-bu-sif is interested — should have the button
+    const interestedCard = screen.getByTestId('card-app-bu-sif')
+    const uninterestBtn = within(interestedCard).getByTestId('card-app-bu-sif-uninterest')
+    expect(uninterestBtn).toBeDefined()
+    expect(uninterestBtn.textContent).toBe('Changed my mind')
+    log('Step 2', 'Button found on interested card app-bu-sif')
+
+    // app-brown is applied — should NOT have the button
+    const appliedCard = screen.getByTestId('card-app-brown')
+    expect(within(appliedCard).queryByTestId('card-app-brown-uninterest')).toBeNull()
+    log('Step 3', 'Button NOT present on applied card app-brown (correct)')
+  })
+
+  it('[uninterest] Step 1: clicking "Changed my mind" opens tag picker dialog', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    const uninterestBtn = screen.getByTestId('card-app-bu-sif-uninterest')
+    await user.click(uninterestBtn)
+    log('Step 2', 'Clicked "Changed my mind" on app-bu-sif')
+
+    // Tag picker dialog should appear
+    const dialog = screen.getByRole('dialog', { name: /removing this job/i })
+    expect(dialog).toBeDefined()
+    log('Step 3', 'Tag picker dialog appeared')
+
+    // Should show the warm tone message
+    expect(screen.getByText(/no worries/i)).toBeDefined()
+    log('Step 4', 'Warm tone message visible: "No worries — it happens"')
+
+    // Should show tag pills
+    expect(screen.getByText('Wrong field')).toBeDefined()
+    expect(screen.getByText('No visa path')).toBeDefined()
+    expect(screen.getByText('Skip')).toBeDefined()
+    log('Step 5', 'Tag pills and Skip button visible')
+  })
+
+  it('[uninterest] Step 1: selecting a tag removes card and calls server action', async () => {
+    const { uninterestApplication } = await import('@/app/tracker/actions')
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    log('Step 2', 'Interested column has app-bu-sif')
+    expect(screen.getByTestId('card-app-bu-sif')).toBeDefined()
+
+    // Click "Changed my mind"
+    await user.click(screen.getByTestId('card-app-bu-sif-uninterest'))
+    log('Step 3', 'Opened tag picker')
+
+    // Click "Wrong field" tag
+    await user.click(screen.getByText('Wrong field'))
+    log('Step 4', 'Selected "Wrong field" tag')
+
+    // Card should be removed (optimistic)
+    expect(screen.queryByTestId('card-app-bu-sif')).toBeNull()
+    log('Step 5', 'Card removed from board (optimistic update)')
+
+    // Server action should be called
+    expect(uninterestApplication).toHaveBeenCalledWith('app-bu-sif', ['wrong_field'])
+    log('Step 6', 'uninterestApplication called with correct args')
+
+    // Application count should decrease
+    expect(screen.getByText('4 applications')).toBeDefined()
+    log('Step 7', 'Application count decreased to 4')
+  })
+
+  it('[uninterest] Step 1: clicking Skip removes card without tags', async () => {
+    const { uninterestApplication } = await import('@/app/tracker/actions')
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    await user.click(screen.getByTestId('card-app-bu-sif-uninterest'))
+    log('Step 2', 'Opened tag picker')
+
+    await user.click(screen.getByText('Skip'))
+    log('Step 3', 'Clicked Skip')
+
+    expect(screen.queryByTestId('card-app-bu-sif')).toBeNull()
+    expect(uninterestApplication).toHaveBeenCalledWith('app-bu-sif', [])
+    log('Step 4', 'Card removed, action called with empty tags')
+  })
+
+  it('[uninterest] Step 1: clicking backdrop dismisses dialog without removing card', async () => {
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    await user.click(screen.getByTestId('card-app-bu-sif-uninterest'))
+    log('Step 2', 'Opened tag picker')
+    expect(screen.getByRole('dialog')).toBeDefined()
+
+    // Click the backdrop (presentation div)
+    const backdrop = screen.getByRole('presentation')
+    await user.click(backdrop)
+    log('Step 3', 'Clicked backdrop')
+
+    // Dialog should close, card should still be there
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByTestId('card-app-bu-sif')).toBeDefined()
+    log('Step 4', 'Dialog closed, card still in Interested column')
   })
 })

@@ -20,9 +20,10 @@ interface ApplicationCardProps {
   layout: 'card' | 'list'
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: () => void
+  onUninterest?: (appId: string) => void
 }
 
-export function ApplicationCard({ application, layout, onMove, onSelect }: ApplicationCardProps) {
+export function ApplicationCard({ application, layout, onMove, onSelect, onUninterest }: ApplicationCardProps) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
 
   const handleStatusChange = (newStatus: KanbanStatus) => {
@@ -134,6 +135,20 @@ export function ApplicationCard({ application, layout, onMove, onSelect }: Appli
         <p className="text-[10px] text-muted-foreground mt-1.5 truncate">
           Next: {application.nextAction}
         </p>
+      )}
+      {application.status === 'interested' && onUninterest && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onUninterest(application.id)
+          }}
+          className="mt-2 text-[11px] text-muted-foreground/50 hover:text-foreground/70 transition-colors"
+          data-testid={`card-${application.id}-uninterest`}
+          aria-label={`Remove ${application.job.title} from interested`}
+        >
+          Changed my mind
+        </button>
       )}
     </div>
   )

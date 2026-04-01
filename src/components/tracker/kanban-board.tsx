@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { DndContext, DragOverlay, useDroppable, useDraggable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { AnimatePresence } from 'framer-motion'
@@ -10,7 +10,9 @@ import { CardDetail } from './card-detail'
 import { RejectionCapture } from './rejection-capture'
 import { OfferVerification } from './offer-verification'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection } from '@/app/tracker/actions'
+import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection, uninterestApplication } from '@/app/tracker/actions'
+import { TagPicker } from '@/components/jobs/tag-picker'
+import type { DismissTag } from '@/app/jobs/actions'
 import type { SeedJob } from '@/db/seed'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
   const [viewMode, setViewMode] = useState<'board' | 'list' | null>(null)
   const [pendingReject, setPendingReject] = useState<string | null>(null)
   const [pendingOffer, setPendingOffer] = useState<string | null>(null)
+  const [pendingUninterest, setPendingUninterest] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
   // DnD sensors — require 8px of movement before drag starts (prevents accidental drags)
@@ -147,6 +150,13 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
     moveApplicationAction(appId, 'offer')
   }
 
+  const confirmUninterest = (appId: string, tags: DismissTag[]) => {
+    // Optimistic: remove the card from the list
+    setApplications((prev) => prev.filter((app) => app.id !== appId))
+    setPendingUninterest(null)
+    uninterestApplication(appId, tags)
+  }
+
   const updateApplication = (appId: string, updates: Partial<TrackedApplication>) => {
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, ...updates } : app)),
@@ -165,6 +175,15 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
   const selectedApplication = applications.find((a) => a.id === selectedApp) ?? null
   const pendingRejectApp = applications.find((a) => a.id === pendingReject) ?? null
   const pendingOfferApp = applications.find((a) => a.id === pendingOffer) ?? null
+  const pendingUninterestApp = applications.find((a) => a.id === pendingUninterest) ?? null
+
+  // Escape key dismisses the uninterest dialog (matches rejection-capture pattern)
+  useEffect(() => {
+    if (!pendingUninterestApp) return
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPendingUninterest(null) }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [pendingUninterestApp])
 
   const columnCounts = ALL_STATUSES.reduce(
     (acc, status) => {
@@ -218,6 +237,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
                 applications={applications.filter((a) => a.status === column.id)}
                 onMove={moveApplication}
                 onSelect={setSelectedApp}
+                onUninterest={column.id === 'interested' ? setPendingUninterest : undefined}
                 activeId={activeId}
               />
             ))}
@@ -255,6 +275,7 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
               layout="list"
               onMove={moveApplication}
               onSelect={() => setSelectedApp(app.id)}
+              onUninterest={app.status === 'interested' ? setPendingUninterest : undefined}
             />
           ))}
           {applications.length === 0 && (
@@ -301,6 +322,37 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Uninterest tag picker */}
+      <AnimatePresence>
+        {pendingUninterestApp && (
+          <div
+            key={`uninterest-${pendingUninterestApp.id}`}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-ocean-deep/20"
+            onClick={() => setPendingUninterest(null)}
+            role="presentation"
+          >
+            <div
+              className="bg-card rounded-2xl p-5 shadow-xl max-w-sm w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Why are you removing this job?"
+            >
+              <p className="text-sm font-medium text-foreground mb-1">
+                Changed your mind about {pendingUninterestApp.job.title}?
+              </p>
+              <p className="text-xs text-muted-foreground mb-3">
+                No worries — it happens. Pick a reason so we learn your preferences.
+              </p>
+              <TagPicker
+                onSelect={(tags) => confirmUninterest(pendingUninterestApp.id, tags)}
+                onSkip={() => confirmUninterest(pendingUninterestApp.id, [])}
+              />
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -312,6 +364,7 @@ function KanbanColumn({
   applications,
   onMove,
   onSelect,
+  onUninterest,
   isRejected = false,
   activeId = null,
 }: {
@@ -319,6 +372,7 @@ function KanbanColumn({
   applications: TrackedApplication[]
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: (appId: string) => void
+  onUninterest?: (appId: string) => void
   isRejected?: boolean
   activeId?: string | null
 }) {
@@ -345,6 +399,7 @@ function KanbanColumn({
             application={app}
             onMove={onMove}
             onSelect={() => onSelect(app.id)}
+            onUninterest={onUninterest}
             isDragging={activeId === app.id}
           />
         ))}
@@ -362,11 +417,13 @@ function DraggableCard({
   application,
   onMove,
   onSelect,
+  onUninterest,
   isDragging,
 }: {
   application: TrackedApplication
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: () => void
+  onUninterest?: (appId: string) => void
   isDragging: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -389,6 +446,7 @@ function DraggableCard({
         layout="card"
         onMove={onMove}
         onSelect={onSelect}
+        onUninterest={onUninterest}
       />
     </div>
   )
