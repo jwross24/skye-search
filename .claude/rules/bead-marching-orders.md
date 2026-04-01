@@ -22,6 +22,20 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 9. Use `cass search` when stuck
 10. Use seed test user for E2E: `dev@skye-search.test` / `testpass123`
 
+## Test coverage gates (enforce before commit)
+
+**Component coverage:** Every new/modified `.tsx` component MUST have a co-located `.test.tsx` file. Only shadcn/ui primitives in `src/components/ui/` are exempt.
+
+**Server action coverage:** Every new/modified server action (file with `'use server'`) MUST have:
+- A unit test file (mocked Supabase, tests logic/validation)
+- An integration test file (`*.integration.test.ts`, real Supabase) — required if the action writes to DB
+
+**API route coverage:** Every new/modified API route MUST have a test file.
+
+**Integration test rule:** `*.integration.test.ts` files MUST NOT use `vi.mock` on Supabase. Enforced by `scripts/check-integration-mocks.sh`.
+
+**Enforcement:** `scripts/check-test-coverage.sh` validates that staged files have tests. Wired into `close-bead-gate.sh` — blocks bead close if NEW components/actions/routes lack tests. Existing untested files tracked in bead skye-search-efpj (backlog).
+
 ## After completing each bead (EVERY step, in order)
 
 11. **Self-review via subagent**: Spin up a review agent (model: sonnet) to read ALL new/modified files with fresh eyes. The implementing agent is biased — a separate agent catches more. The subagent checks: bugs, type errors, missing edge cases, test assertions, accessibility, dead code, hardcoded values. **The subagent writes the disposition file** (`.claude/.review-disposition-{session}-{bead}.json`) — the parent agent is blocked from writing it directly. Fix CRITICAL and HIGH issues the subagent finds. Run tests after fixes.
