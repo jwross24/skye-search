@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { DailyBatch } from '@/components/jobs/daily-batch'
+import { JobsHeader } from '@/components/jobs/jobs-header'
 import { createClient } from '@/db/supabase-server'
 import type { UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
@@ -125,14 +126,7 @@ export default async function JobsPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Today&apos;s Picks
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Roles matched to your immigration timeline. Take your time.
-        </p>
-      </div>
+      <JobsHeader />
 
       <DailyBatch jobs={jobs} userState={userState} />
     </div>
