@@ -146,8 +146,26 @@ fi
 if [ "$HAS_CODE_CHANGES" = "true" ]; then
   # Check for ANY disposition file for this session (not bead-specific,
   # since extracting bead ID from commit msg is fragile)
+  # Check for session-prefixed disposition files (canonical)
   DISP_PATTERN="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-*.json"
   DISP_FILES=$(ls $DISP_PATTERN 2>/dev/null || true)
+
+  # Adopt orphaned disposition files (subagents may write without session prefix)
+  if [ -z "$DISP_FILES" ]; then
+    _CLAUDE_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
+    for _ORPHAN in "${_CLAUDE_DIR}"/.review-disposition-skye-search-*.json "${_CLAUDE_DIR}"/.review-disposition-[a-z0-9][a-z0-9][a-z0-9][a-z0-9].json; do
+      [ -f "$_ORPHAN" ] || continue
+      # Skip files that already have a session prefix (UUID pattern)
+      _BASENAME=$(basename "$_ORPHAN")
+      if echo "$_BASENAME" | grep -qE '^\.review-disposition-[0-9a-f]{8}-'; then
+        continue
+      fi
+      # Rename to canonical path
+      _BEAD_PART=$(echo "$_BASENAME" | sed 's/^\.review-disposition-//' | sed 's/\.json$//')
+      mv "$_ORPHAN" "${_CLAUDE_DIR}/.review-disposition-${_SESSION}-${_BEAD_PART}.json" 2>/dev/null || true
+    done
+    DISP_FILES=$(ls $DISP_PATTERN 2>/dev/null || true)
+  fi
 
   if [ -z "$DISP_FILES" ]; then
     echo "BLOCKED: Commit with code changes but no self-review disposition found." >&2

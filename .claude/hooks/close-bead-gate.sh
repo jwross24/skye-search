@@ -46,6 +46,25 @@ fi
 
 DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-${BEAD_ID}.json"
 
+# Adopt orphaned disposition files (subagents may not know parent session ID)
+if [ ! -f "$DISP_FILE" ]; then
+  _CLAUDE_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
+  # Try: no session prefix
+  _ORPHAN="${_CLAUDE_DIR}/.review-disposition-${BEAD_ID}.json"
+  [ -f "$_ORPHAN" ] && mv "$_ORPHAN" "$DISP_FILE"
+fi
+if [ ! -f "$DISP_FILE" ]; then
+  # Try: short bead ID (e.g., "k3l8" from "skye-search-k3l8")
+  _SHORT_ID=$(echo "$BEAD_ID" | sed 's/^skye-search-//')
+  _ORPHAN="${_CLAUDE_DIR}/.review-disposition-${_SHORT_ID}.json"
+  [ -f "$_ORPHAN" ] && mv "$_ORPHAN" "$DISP_FILE"
+fi
+if [ ! -f "$DISP_FILE" ]; then
+  # Try: wrong session prefix but correct bead ID
+  _FOUND=$(ls "${_CLAUDE_DIR}"/.review-disposition-*-"${BEAD_ID}".json 2>/dev/null | head -1 || true)
+  [ -n "$_FOUND" ] && [ "$_FOUND" != "$DISP_FILE" ] && mv "$_FOUND" "$DISP_FILE"
+fi
+
 # Compute lines changed for complexity check
 STAT_LINE=$(git diff --stat origin/main...HEAD 2>/dev/null | tail -1 || echo "")
 _INS=$(echo "$STAT_LINE" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)

@@ -11,6 +11,10 @@ set -euo pipefail
 #   - description contains "cross-review" (case-insensitive)
 #   - model is "sonnet" or "opus" (quality floor — no haiku reviews)
 #   - subagent output contains review content (not empty)
+#
+# Finding extraction (v2):
+#   Parses the subagent's actual JSON findings array if present (structured).
+#   Falls back to severity-word grep only if no structured output found.
 
 INPUT=$(cat)
 
@@ -42,20 +46,57 @@ if [ -z "$RESPONSE" ] || [ ${#RESPONSE} -lt 50 ]; then
   exit 0
 fi
 
-# Count findings mentioned (rough heuristic — look for severity markers)
+# ── Extract findings from structured JSON in response ────────────────────
+# The subagent is prompted to return a JSON block with "findings": [...]
+# Try to extract that array directly — much more reliable than grep heuristics.
+
+STRUCTURED_FINDINGS=""
 FINDING_COUNT=0
-for severity in CRITICAL HIGH MEDIUM; do
-  MATCHES=$(echo "$RESPONSE" | grep -oi "$severity" | wc -l | tr -d ' ' || echo 0)
-  FINDING_COUNT=$((FINDING_COUNT + MATCHES))
-done
+
+# Try extracting a JSON code block from the response
+JSON_BLOCK=$(printf '%s' "$RESPONSE" | sed -n '/```json/,/```/p' | sed '1d;$d' 2>/dev/null) || JSON_BLOCK=""
+
+if [ -n "$JSON_BLOCK" ]; then
+  # Validate it has a findings array
+  PARSED=$(printf '%s' "$JSON_BLOCK" | jq -c '.findings // empty' 2>/dev/null) || PARSED=""
+  if [ -n "$PARSED" ] && [ "$PARSED" != "null" ]; then
+    FINDING_COUNT=$(printf '%s' "$PARSED" | jq 'length' 2>/dev/null) || FINDING_COUNT=0
+    # Use the subagent's actual findings (they have real severity + disposition)
+    STRUCTURED_FINDINGS="$PARSED"
+  fi
+fi
+
+# Fallback: try parsing the entire response as JSON (some subagents return raw JSON)
+if [ -z "$STRUCTURED_FINDINGS" ]; then
+  PARSED=$(printf '%s' "$RESPONSE" | jq -c '.findings // empty' 2>/dev/null) || PARSED=""
+  if [ -n "$PARSED" ] && [ "$PARSED" != "null" ]; then
+    FINDING_COUNT=$(printf '%s' "$PARSED" | jq 'length' 2>/dev/null) || FINDING_COUNT=0
+    STRUCTURED_FINDINGS="$PARSED"
+  fi
+fi
+
+# Last resort fallback: grep for severity words (only if no structured output)
+if [ -z "$STRUCTURED_FINDINGS" ]; then
+  for severity in CRITICAL HIGH MEDIUM LOW; do
+    MATCHES=$(echo "$RESPONSE" | grep -oiE "\"severity\":\s*\"$severity\"" | wc -l | tr -d ' ' || echo 0)
+    FINDING_COUNT=$((FINDING_COUNT + MATCHES))
+  done
+  # Generate placeholder findings (old behavior, but less aggressive)
+  if [ "$FINDING_COUNT" -gt 0 ]; then
+    STRUCTURED_FINDINGS=$(jq -nc --argjson n "$FINDING_COUNT" \
+      '[range($n)] | map({id: ("F" + (. + 1 | tostring)), severity: "detected"})')
+  else
+    STRUCTURED_FINDINGS="[]"
+  fi
+fi
 
 # Determine if it's a clean pass
 PASS_VERDICT=""
-if echo "$RESPONSE" | grep -qi 'PASS.*no.*critical\|no.*critical.*high\|no.*issues\|all.*clean'; then
+if echo "$RESPONSE" | grep -qi 'no.*critical.*high\|no.*issues\|all.*clean'; then
   PASS_VERDICT="PASS: No critical or high issues found."
 fi
 
-# Extract commit count from response (look for "last N commits" or "HEAD~N")
+# Extract commit count from response
 COMMITS_REVIEWED=$(echo "$RESPONSE" | grep -oE 'last [0-9]+ commits|HEAD~[0-9]+' | grep -oE '[0-9]+' | head -1)
 COMMITS_REVIEWED=${COMMITS_REVIEWED:-3}
 
@@ -63,25 +104,25 @@ COMMITS_REVIEWED=${COMMITS_REVIEWED:-3}
 RESULTS_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.cross-review-results.json"
 
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERDICT="${PASS_VERDICT:-Review completed with $FINDING_COUNT severity markers found.}"
+VERDICT="${PASS_VERDICT:-Review completed with $FINDING_COUNT finding(s).}"
 
-# Write results — only this hook can create this file
+# Write results — structured findings preserve the subagent's actual data
 jq -nc \
   --arg ts "$TS" \
   --argjson commits "$COMMITS_REVIEWED" \
   --arg model "${MODEL:-inherited}" \
   --arg verdict "$VERDICT" \
-  --arg response "${RESPONSE:0:5000}" \
+  --argjson findings "$STRUCTURED_FINDINGS" \
+  --argjson count "$FINDING_COUNT" \
   '{
     reviewed_at: $ts,
     commits_reviewed: $commits,
     reviewer: ("subagent-" + $model),
     source: "harness-hook",
-    findings_detected: '"$FINDING_COUNT"',
-    findings: [range('"$FINDING_COUNT"')] | map({id: ("F" + (. + 1 | tostring)), severity: "detected"}),
-    verdict: $verdict,
-    raw_output_truncated: $response
+    findings_detected: $count,
+    findings: $findings,
+    verdict: $verdict
   }' > "$RESULTS_FILE"
 
-echo '{"systemMessage":"✓ Cross-review captured by harness hook. Results written to .cross-review-results.json"}'
+echo '{"systemMessage":"✓ Cross-review captured: '"$FINDING_COUNT"' finding(s) extracted from subagent output."}'
 exit 0
