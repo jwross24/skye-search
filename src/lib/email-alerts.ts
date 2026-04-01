@@ -226,6 +226,8 @@ async function checkDeadlineAlerts(
     .eq('user_id', userId)
     .gte('application_deadline', today)
     .lte('application_deadline', threeDaysStr)
+    .or('requires_citizenship.is.null,requires_citizenship.neq.true')
+    .or('requires_security_clearance.is.null,requires_security_clearance.neq.true')
 
   if (!jobRows || jobRows.length === 0) return null
 
