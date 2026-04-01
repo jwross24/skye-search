@@ -12,12 +12,13 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:changed": "vitest run --changed",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "bun run typecheck && bun run lint && vitest run --coverage && playwright test",
+    "test:all": "bun run typecheck && bun run lint && vitest run --coverage && bun run test:integration && playwright test",
     "eval:queries": "bun run scripts/eval-queries.ts",
     "eval:queries:cached": "bun run scripts/eval-queries.ts --judge-only",
-    "verify": "bun run build && bun run lint && bun run test && if which ntm >/dev/null 2>&1; then ntm scan --staged --fail-on-warning; else echo 'ntm not installed, skipping scan'; fi",
+    "verify": "bun run build && bun run lint && bun run test && bash scripts/check-integration-mocks.sh && if which ntm >/dev/null 2>&1; then ntm scan --staged --fail-on-warning; else echo 'ntm not installed, skipping scan'; fi",
     "prepare": "husky"
   },
   "lint-staged": {

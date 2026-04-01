@@ -12,8 +12,7 @@ config({ path: path.resolve(process.cwd(), '.env.local') })
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { createCheckpointDbSupabase } from '../checkpoint-db-supabase'
-
-const TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
+import { TEST_USER_ID } from '../../../tests/helpers/supabase'
 // Use a random year in the far future so concurrent test sessions don't collide
 // on the unique(user_id, checkpoint_date) constraint
 const TEST_YEAR = 2200 + Math.floor(Math.random() * 800) // 2200-2999
