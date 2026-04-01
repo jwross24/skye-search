@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ClockDisplay } from './clock-display'
 import { CalibrationFlow } from './calibration-flow'
@@ -41,6 +41,13 @@ export function ImmigrationHQ({
   const [haltSource, setHaltSource] = useState<string | null>(
     immigrationStatus?.employment_active ? 'PostDoc' : null,
   )
+
+  // Update PWA app badge with unemployment day count
+  useEffect(() => {
+    if (daysUsed > 0 && 'setAppBadge' in navigator) {
+      navigator.setAppBadge(daysUsed).catch(() => {})
+    }
+  }, [daysUsed])
 
   const handleDisclaimerAck = () => {
     setDisclaimerAcked(true)

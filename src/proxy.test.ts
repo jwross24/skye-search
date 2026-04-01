@@ -44,6 +44,12 @@ describe('proxy middleware', () => {
     expect(response.status).not.toBe(307)
   })
 
+  it('does NOT redirect /offline (PWA offline fallback)', async () => {
+    const response = await proxy(makeNextRequest('/offline'))
+    expect(response.status).not.toBe(307)
+    expect(response.status).not.toBe(302)
+  })
+
   it('does NOT redirect any /api route', async () => {
     const apiRoutes = [
       '/api/health',
