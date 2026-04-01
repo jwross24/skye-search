@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { Coffee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PickCard } from './pick-card'
+import { UndoToast } from './undo-toast'
 import { computeUrgencyScore, jobToInput, type UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
 import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
@@ -14,6 +15,7 @@ const BATCH_SIZE = 8
 interface DailyBatchProps {
   jobs: Job[]
   userState: UserState
+  undoDelayMs?: number
 }
 
 interface VoteRecord {
@@ -21,9 +23,24 @@ interface VoteRecord {
   tags: DismissTag[]
 }
 
-export function DailyBatch({ jobs, userState }: DailyBatchProps) {
+interface PendingVote {
+  jobId: string
+  decision: VoteDecision
+  tags: DismissTag[]
+}
+
+const DEFAULT_UNDO_DELAY = 4000
+
+export function DailyBatch({ jobs, userState, undoDelayMs = DEFAULT_UNDO_DELAY }: DailyBatchProps) {
   const [votes, setVotes] = useState<Map<string, VoteRecord>>(new Map())
   const [exitedEarly, setExitedEarly] = useState(false)
+  const [pendingUndo, setPendingUndo] = useState<PendingVote | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cancel pending vote on unmount (navigate away = cancel, not commit)
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
 
   // Score, sort, and pick top 8
   const batch = useMemo(() => {
@@ -37,15 +54,64 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
       .slice(0, BATCH_SIZE)
   }, [jobs, userState])
 
-  const handleVote = (jobId: string, decision: VoteDecision, tags: DismissTag[] = []) => {
+  const commitVote = useCallback((jobId: string, decision: VoteDecision, tags: DismissTag[]) => {
+    voteOnJob(jobId, decision, tags)
+    setPendingUndo(null)
+  }, [])
+
+  const handleVote = useCallback((jobId: string, decision: VoteDecision, tags: DismissTag[] = []) => {
+    // If there's a pending undo from a previous vote, commit it immediately
+    if (timerRef.current && pendingUndo) {
+      clearTimeout(timerRef.current)
+      voteOnJob(pendingUndo.jobId, pendingUndo.decision, pendingUndo.tags)
+    }
+
+    // Optimistic UI: mark as voted immediately
     setVotes((prev) => {
       const next = new Map(prev)
       next.set(jobId, { decision, tags })
       return next
     })
-    // Persist to Supabase (fire-and-forget — optimistic UI)
-    voteOnJob(jobId, decision, tags)
-  }
+
+    if (undoDelayMs === 0) {
+      // No undo window — commit immediately (used in tests)
+      voteOnJob(jobId, decision, tags)
+      return
+    }
+
+    // Show undo toast and delay the server action
+    const pending = { jobId, decision, tags }
+    setPendingUndo(pending)
+
+    timerRef.current = setTimeout(() => {
+      commitVote(jobId, decision, tags)
+      timerRef.current = null
+    }, undoDelayMs)
+  }, [pendingUndo, commitVote, undoDelayMs])
+
+  const handleUndo = useCallback(() => {
+    if (!pendingUndo) return
+
+    // Cancel the pending server action
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
+    // Restore the card
+    setVotes((prev) => {
+      const next = new Map(prev)
+      next.delete(pendingUndo.jobId)
+      return next
+    })
+
+    setPendingUndo(null)
+  }, [pendingUndo])
+
+  const handleExpire = useCallback(() => {
+    // Timer already fired via setTimeout — just clear the toast
+    setPendingUndo(null)
+  }, [])
 
   // Empty batch — check before allReviewed (0 >= 0 is true)
   if (batch.length === 0) {
@@ -102,7 +168,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
   }
 
   return (
-    <div>
+    <div className="relative">
       {/* Progress + exit */}
       <div className="flex items-center justify-between pb-3 mb-1">
         <p
@@ -157,6 +223,23 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
           )
         })}
       </AnimatePresence>
+
+      {/* Undo toast — anchored to bottom of picks area */}
+      <div className="sticky bottom-4 flex justify-center pointer-events-none mt-4">
+        <div className="pointer-events-auto">
+          <AnimatePresence>
+            {pendingUndo && (
+              <UndoToast
+                key={pendingUndo.jobId}
+                decision={pendingUndo.decision}
+                onUndo={handleUndo}
+                onExpire={handleExpire}
+                duration={undoDelayMs}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
   )
 }

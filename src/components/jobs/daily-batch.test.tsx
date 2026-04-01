@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
@@ -54,20 +54,29 @@ const userState: UserState = {
 }
 
 describe('DailyBatch', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.mocked(voteOnJob).mockClear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders exactly 8 job cards in default batch', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const cards = screen.getAllByTestId(/^pick-card-test-job-/)
     expect(cards.length).toBe(8)
   })
 
   it('each card shows title, company, visa path badge', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const badges = screen.getAllByLabelText(/cap-exempt|cap-subject|OPT compatible|Canadian|unknown/i)
     expect(badges.length).toBeGreaterThanOrEqual(8)
   })
 
   it('shows Interested, Not for me, and Save buttons on each card', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const interested = screen.getAllByRole('button', { name: /Interested/i })
     const notForMe = screen.getAllByRole('button', { name: /Not for me/i })
     const save = screen.getAllByRole('button', { name: /Save/i })
@@ -79,7 +88,7 @@ describe('DailyBatch', () => {
 
   it('Interested button marks job and shows confirmation', async () => {
     const user = userEvent.setup()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const interestedButtons = screen.getAllByRole('button', { name: /Interested/i })
     await user.click(interestedButtons[0])
@@ -88,10 +97,9 @@ describe('DailyBatch', () => {
     expect(confirmation).toBeDefined()
   })
 
-  it('Interested vote calls voteOnJob server action', async () => {
+  it('Interested vote calls voteOnJob after undo window expires', async () => {
     const user = userEvent.setup()
-    vi.mocked(voteOnJob).mockClear()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const interestedButtons = screen.getAllByRole('button', { name: /Interested/i })
     await user.click(interestedButtons[0])
@@ -105,7 +113,7 @@ describe('DailyBatch', () => {
 
   it('Not for me shows tag picker', async () => {
     const user = userEvent.setup()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const notForMeButtons = screen.getAllByRole('button', { name: /Not for me/i })
     await user.click(notForMeButtons[0])
@@ -114,10 +122,9 @@ describe('DailyBatch', () => {
     expect(screen.getByText('Wrong location')).toBeDefined()
   })
 
-  it('selecting a tag dismisses the card and calls server action', async () => {
+  it('selecting a tag dismisses the card and calls server action after undo window', async () => {
     const user = userEvent.setup()
-    vi.mocked(voteOnJob).mockClear()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const notForMeButtons = screen.getAllByRole('button', { name: /Not for me/i })
     await user.click(notForMeButtons[0])
@@ -127,6 +134,7 @@ describe('DailyBatch', () => {
 
     const noted = screen.getByText(/Got it/)
     expect(noted).toBeDefined()
+
     expect(voteOnJob).toHaveBeenCalledWith(
       expect.stringMatching(/^test-job-/),
       'not_for_me',
@@ -134,15 +142,15 @@ describe('DailyBatch', () => {
     )
   })
 
-  it('Save for later shows confirmation and calls server action', async () => {
+  it('Save for later shows confirmation and calls server action after undo window', async () => {
     const user = userEvent.setup()
-    vi.mocked(voteOnJob).mockClear()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const saveButtons = screen.getAllByRole('button', { name: /Save/i })
     await user.click(saveButtons[0])
 
     expect(screen.getByText('Saved for later')).toBeDefined()
+
     expect(voteOnJob).toHaveBeenCalledWith(
       expect.stringMatching(/^test-job-/),
       'save_for_later',
@@ -151,14 +159,14 @@ describe('DailyBatch', () => {
   })
 
   it('shows "That\'s enough for today" button', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const exitButton = screen.getByRole('button', { name: /enough for today/i })
     expect(exitButton).toBeDefined()
   })
 
   it('clicking "enough for today" shows exit message with Keep going option', async () => {
     const user = userEvent.setup()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const exitButton = screen.getByRole('button', { name: /enough for today/i })
     await user.click(exitButton)
@@ -170,7 +178,7 @@ describe('DailyBatch', () => {
   })
 
   it('shows progress count with tabular nums', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const progress = screen.getByText(/0 of 8 reviewed/i)
     expect(progress).toBeDefined()
   })
@@ -182,7 +190,7 @@ describe('DailyBatch', () => {
 
   it('expanded view shows why_fits and skills', async () => {
     const user = userEvent.setup()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     const cards = screen.getAllByTestId(/^pick-card-test-job-/)
     const firstCardButton = cards[0].querySelector('button[type="button"]')
@@ -197,14 +205,14 @@ describe('DailyBatch', () => {
 
 describe('Daily batch scoring integration', () => {
   it('batch uses top 8 jobs by urgency score', () => {
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
     const cards = screen.getAllByTestId(/^pick-card-test-job-/)
     expect(cards.length).toBe(8)
   })
 
   it('progress updates as cards are voted on', async () => {
     const user = userEvent.setup()
-    render(<DailyBatch jobs={testJobs} userState={userState} />)
+    render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
 
     expect(screen.getByText(/0 of 8 reviewed/i)).toBeDefined()
 
