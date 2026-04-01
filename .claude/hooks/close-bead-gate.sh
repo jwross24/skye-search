@@ -45,10 +45,10 @@ fi
 # ── Step 1b: Validate review disposition (universal requirement) ──────────
 
 DISP_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-disposition-${_SESSION}-${BEAD_ID}.json"
+_CLAUDE_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
 
 # Adopt orphaned disposition files (subagents may not know parent session ID)
 if [ ! -f "$DISP_FILE" ]; then
-  _CLAUDE_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
   # Try: no session prefix
   _ORPHAN="${_CLAUDE_DIR}/.review-disposition-${BEAD_ID}.json"
   [ -f "$_ORPHAN" ] && mv "$_ORPHAN" "$DISP_FILE"

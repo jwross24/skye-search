@@ -99,6 +99,17 @@ export async function GET() {
     }
 
     // Add export metadata
+    // Build the file list to match exactly what was added to the archive above.
+    const docFileEntries: string[] = []
+    for (const d of docs) {
+      if (d.file_path) {
+        docFileEntries.push(`documents/${d.file_path.split('/').pop() ?? `document-${d.id}`}`)
+      }
+      if (d.structured_data_json) {
+        docFileEntries.push(`documents/${d.id}-structured.json`)
+      }
+    }
+
     addJson('_export_metadata.json', {
       exported_at: new Date().toISOString(),
       user_id: userId,
@@ -113,13 +124,13 @@ export async function GET() {
         'plans.json',
         'job_votes.json',
         'preferences.json',
-        ...docs.map(d => `documents/${d.file_path?.split('/').pop() ?? d.id}`),
+        ...docFileEntries,
       ],
     })
 
-    archive.finalize()
-
-    // Convert Node.js stream to Web ReadableStream for Next.js Response
+    // Convert Node.js stream to Web ReadableStream for Next.js Response.
+    // Listeners are registered in start() (runs synchronously in constructor)
+    // before archive.finalize() is called, so no data is lost.
     const webStream = new ReadableStream({
       start(controller) {
         // Forward archiver errors (e.g. invalid entry, internal ZIP failure)
@@ -135,6 +146,9 @@ export async function GET() {
         passThrough.on('error', (err) => {
           controller.error(err)
         })
+        // Finalize after all listeners are attached — guarantees no data events
+        // can fire before the controller is ready to receive them.
+        archive.finalize()
       },
     })
 

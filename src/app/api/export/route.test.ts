@@ -158,6 +158,29 @@ describe('GET /api/export', () => {
     expect(parsed.exported_at).toBeTruthy()
   })
 
+  it('[export] Step 1: metadata files list includes structured JSON entries when docs have structured_data_json', async () => {
+    setupMocks({
+      documents: [
+        { id: 'doc-1', file_path: 'user-123/cv.pdf', structured_data_json: { name: 'Test' } },
+        { id: 'doc-2', file_path: null, structured_data_json: { name: 'Test2' } },
+      ],
+    })
+
+    const { GET } = await import('./route')
+    const res = await GET()
+    const zip = await JSZip.loadAsync(await res.arrayBuffer())
+
+    const content = await zip.file('_export_metadata.json')!.async('text')
+    const parsed = JSON.parse(content)
+    console.log('[export] Step 2: metadata files:', parsed.files)
+
+    expect(parsed.files).toContain('documents/cv.pdf')
+    expect(parsed.files).toContain('documents/doc-1-structured.json')
+    expect(parsed.files).toContain('documents/doc-2-structured.json')
+    // doc-2 has no file_path — should not have a binary entry
+    expect(parsed.files.filter((f: string) => f === 'documents/doc-2')).toHaveLength(0)
+  })
+
   it('[export] Step 1: no cooldown — can be called repeatedly', async () => {
     setupMocks()
 

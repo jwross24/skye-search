@@ -103,6 +103,16 @@ COMMITS_REVIEWED=${COMMITS_REVIEWED:-3}
 # Build the verified results file
 RESULTS_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.cross-review-results.json"
 
+# Sanitize numeric values — strip whitespace, default to safe values
+FINDING_COUNT=$(echo "$FINDING_COUNT" | tr -d '[:space:]')
+FINDING_COUNT=${FINDING_COUNT:-0}
+COMMITS_REVIEWED=$(echo "$COMMITS_REVIEWED" | tr -d '[:space:]')
+COMMITS_REVIEWED=${COMMITS_REVIEWED:-3}
+# Ensure STRUCTURED_FINDINGS is valid JSON array
+if [ -z "$STRUCTURED_FINDINGS" ] || ! printf '%s' "$STRUCTURED_FINDINGS" | jq -e 'type == "array"' &>/dev/null; then
+  STRUCTURED_FINDINGS="[]"
+fi
+
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 VERDICT="${PASS_VERDICT:-Review completed with $FINDING_COUNT finding(s).}"
 
