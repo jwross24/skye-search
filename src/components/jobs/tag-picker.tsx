@@ -57,6 +57,7 @@ export function TagPicker({ onSelect, onSkip }: TagPickerProps) {
           <div key={group.label} className="flex flex-wrap gap-1.5">
             {group.tags.map((tag) => (
               <button
+                type="button"
                 key={tag.value}
                 onClick={() => onSelect([tag.value])}
                 className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-ocean/30 hover:text-foreground hover:bg-ocean/5 active:scale-95"
@@ -67,6 +68,7 @@ export function TagPicker({ onSelect, onSkip }: TagPickerProps) {
           </div>
         ))}
         <button
+          type="button"
           onClick={onSkip}
           className="rounded-full px-2.5 py-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
         >

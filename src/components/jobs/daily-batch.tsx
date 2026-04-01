@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { Coffee } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PickCard } from './pick-card'
@@ -122,7 +123,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
       </div>
 
       {/* Card stack */}
-      <div>
+      <AnimatePresence mode="popLayout">
         {batch.map(({ job, score }, i) => {
           if (votes.has(job.id)) {
             // Show voted confirmation inline
@@ -155,7 +156,7 @@ export function DailyBatch({ jobs, userState }: DailyBatchProps) {
             />
           )
         })}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }

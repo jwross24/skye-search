@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
 import {
   MapPin,
   Building2,
@@ -20,6 +21,9 @@ import { getImmigrationContext, formatDeadline } from './job-row'
 import type { Job } from '@/types/job'
 import type { VoteDecision, DismissTag } from '@/app/jobs/actions'
 
+const SWIPE_THRESHOLD = 100 // px offset to trigger action
+const VELOCITY_THRESHOLD = 500 // px/s velocity to trigger even below offset
+
 interface PickCardProps {
   job: Job
   urgencyScore: number
@@ -31,6 +35,14 @@ interface PickCardProps {
 export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: PickCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showTags, setShowTags] = useState(false)
+  const [swiped, setSwiped] = useState<'left' | 'right' | null>(null)
+
+  const x = useMotionValue(0)
+  // Subtle tilt: max ~3 degrees at full drag
+  const rotate = useTransform(x, [-200, 0, 200], [-3, 0, 3])
+  // Fade hint colors at edges
+  const rightGlow = useTransform(x, [0, SWIPE_THRESHOLD], [0, 0.15])
+  const leftGlow = useTransform(x, [-SWIPE_THRESHOLD, 0], [0.15, 0])
 
   const immigrationContext = getImmigrationContext(job)
   const deadline = formatDeadline(job.application_deadline, today)
@@ -40,7 +52,6 @@ export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: Pic
       setShowTags(true)
       return
     }
-    // Parent (DailyBatch) handles the voted state and re-renders
     onVote(job.id, decision)
   }
 
@@ -54,13 +65,63 @@ export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: Pic
     onVote(job.id, 'not_for_me')
   }
 
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    const offset = info.offset.x
+    const velocity = info.velocity.x
+
+    // Right swipe → Interested
+    if (offset > SWIPE_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+      setSwiped('right')
+      onVote(job.id, 'interested')
+      return
+    }
+
+    // Left swipe → Not for me (open tag picker first, animate out after selection)
+    if (offset < -SWIPE_THRESHOLD || velocity < -VELOCITY_THRESHOLD) {
+      setShowTags(true)
+      return
+    }
+
+    // Below threshold — snap back (handled by dragSnapToOrigin)
+  }
+
   return (
-    <article
-      className="animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both"
-      style={{ animationDelay: `${Math.min(staggerIndex, 8) * 50}ms` }}
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        x: swiped === 'right' ? 400 : swiped === 'left' ? -400 : 0,
+      }}
+      exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+      transition={{
+        layout: { type: 'spring', stiffness: 300, damping: 30 },
+        opacity: { duration: 0.2, delay: Math.min(staggerIndex, 8) * 0.05 },
+        y: { duration: 0.3, delay: Math.min(staggerIndex, 8) * 0.05 },
+        x: { type: 'spring', stiffness: 200, damping: 25 },
+      }}
       data-testid={`pick-card-${job.id}`}
     >
-      <div className="py-5 group">
+      <motion.div
+        className="py-5 group relative"
+        drag="x"
+        dragSnapToOrigin
+        dragElastic={0.15}
+        dragMomentum
+        onDragEnd={handleDragEnd}
+        style={{ x, rotate }}
+        whileDrag={{ cursor: 'grabbing' }}
+      >
+        {/* Swipe hint overlays */}
+        <motion.div
+          className="absolute inset-0 rounded-xl bg-jade/10 pointer-events-none"
+          style={{ opacity: rightGlow }}
+        />
+        <motion.div
+          className="absolute inset-0 rounded-xl bg-muted pointer-events-none"
+          style={{ opacity: leftGlow }}
+        />
+
         {/* Main card content — tappable to expand */}
         <button
           type="button"
@@ -189,10 +250,10 @@ export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: Pic
             </Button>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Separator */}
       <div className="h-px bg-border/50" />
-    </article>
+    </motion.article>
   )
 }
