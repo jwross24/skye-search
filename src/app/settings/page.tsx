@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/db/supabase-server'
 import { SettingsPageContent } from '@/components/settings/settings-page-content'
 import { BudgetSection } from '@/components/settings/budget-section'
+import { DataExportSection } from '@/components/settings/data-export-section'
 import type { UserProfile } from '@/types/cv-extraction'
 import { DEFAULT_CAPS } from '@/lib/budget-guard'
 
@@ -60,6 +61,7 @@ export default async function SettingsPage() {
           weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? DEFAULT_CAPS.weekly_soft_cap_cents}
           weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? DEFAULT_CAPS.weekly_alert_threshold_cents}
         />
+        <DataExportSection />
       </div>
     </div>
   )
