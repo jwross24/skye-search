@@ -126,13 +126,15 @@ jobs:
           done
           curl -sf http://127.0.0.1:54321/auth/v1/health || (echo "Supabase auth not healthy" && exit 1)
 
-      - name: Run E2E tests
+      - name: Write .env.local for Next.js production server
         run: |
-          if ls tests/e2e/*.spec.ts 1>/dev/null 2>&1; then
-            bun run test:e2e
-          else
-            echo "No e2e specs found — skipping"
-          fi
+          echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" > .env.local
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" >> .env.local
+          echo "SUPABASE_SECRET_KEY=$SUPABASE_SECRET_KEY" >> .env.local
+          echo "CRON_SECRET=$CRON_SECRET" >> .env.local
+
+      - name: Run E2E tests
+        run: bun run test:e2e
         env:
           CI: 'true'
 
@@ -145,12 +147,11 @@ jobs:
     steps:
       - name: Check all jobs passed
         run: |
-          # E2E excluded from gate — auth setup fails in CI (see skye-search-7d6)
-          results=("${{ needs.typecheck.result }}" "${{ needs.lint.result }}" "${{ needs.test.result }}" "${{ needs.build.result }}")
+          results=("${{ needs.typecheck.result }}" "${{ needs.lint.result }}" "${{ needs.test.result }}" "${{ needs.build.result }}" "${{ needs.e2e.result }}")
           for r in "${results[@]}"; do
             if [[ "$r" != "success" ]]; then
               echo "::error::CI failed — one or more jobs did not succeed"
               exit 1
             fi
           done
-          echo "All CI jobs passed"
+          echo "All CI jobs passed (including e2e)"
