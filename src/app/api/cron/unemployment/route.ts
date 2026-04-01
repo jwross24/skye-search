@@ -39,7 +39,10 @@ async function handler(req: NextRequest) {
   // ─── Parse optional params ─────────────────────────────────────────────
   let userId: string | undefined
   let targetDate: string | undefined
-  let triggerSource: TriggerSource = 'keepalive_gha'
+  // Detect trigger source from caller identity
+  const ua = req.headers.get('user-agent') ?? ''
+  const isVercelCron = ua.includes('vercel-cron')
+  let triggerSource: TriggerSource = isVercelCron ? 'pg_cron' : 'keepalive_gha'
 
   try {
     const body = await req.json().catch(() => ({}))
@@ -49,6 +52,9 @@ async function handler(req: NextRequest) {
   } catch {
     // Empty body is fine — all params are optional
   }
+
+  // Log the actual caller for debugging
+  console.log(`[unemployment-cron] trigger=${triggerSource} method=${req.method} ua=${req.headers.get('user-agent')?.slice(0, 50)}`)
 
   // ─── Run checkpoint ────────────────────────────────────────────────────
   try {
