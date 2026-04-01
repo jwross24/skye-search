@@ -33,7 +33,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Task not found' }, { status: 404 })
   }
 
-  if (task.status !== 'failed_validation' && !task.dead_lettered_at) {
+  const RETRYABLE_STATUSES = ['failed_validation', 'failed_retry']
+  if (!RETRYABLE_STATUSES.includes(task.status) && !task.dead_lettered_at) {
     return NextResponse.json({ error: `Task is ${task.status}, not retryable` }, { status: 400 })
   }
 

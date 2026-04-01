@@ -235,9 +235,7 @@ describe('POST /api/admin/retry-task', () => {
     log('retry-task', 'Rejected: missing taskId')
   })
 
-  it('[admin] retries a failed task', async () => {
-    // First .from('task_queue').select().eq().eq().single() returns the task
-    // Then .from('task_queue').update().eq().eq() succeeds
+  it('[admin] retries a failed_validation task', async () => {
     mockSupabase.from.mockReturnValue(
       chainable({ data: { id: 'task-123', status: 'failed_validation', dead_lettered_at: null }, error: null })
     )
@@ -253,6 +251,43 @@ describe('POST /api/admin/retry-task', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.taskId).toBe('task-123')
-    log('retry-task', 'Task retried successfully')
+    log('retry-task', 'Task retried successfully (failed_validation)')
+  })
+
+  it('[admin] retries a failed_retry task', async () => {
+    mockSupabase.from.mockReturnValue(
+      chainable({ data: { id: 'task-456', status: 'failed_retry', dead_lettered_at: null }, error: null })
+    )
+
+    const { POST } = await import('./retry-task/route')
+    const req = new Request('http://localhost:3000/api/admin/retry-task', {
+      method: 'POST',
+      body: JSON.stringify({ taskId: 'task-456' }),
+    })
+    const res = await POST(req)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.taskId).toBe('task-456')
+    log('retry-task', 'Task retried successfully (failed_retry)')
+  })
+
+  it('[admin] rejects retry of pending task', async () => {
+    mockSupabase.from.mockReturnValue(
+      chainable({ data: { id: 'task-789', status: 'pending', dead_lettered_at: null }, error: null })
+    )
+
+    const { POST } = await import('./retry-task/route')
+    const req = new Request('http://localhost:3000/api/admin/retry-task', {
+      method: 'POST',
+      body: JSON.stringify({ taskId: 'task-789' }),
+    })
+    const res = await POST(req)
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toContain('not retryable')
+    log('retry-task', 'Rejected: pending task is not retryable')
   })
 })

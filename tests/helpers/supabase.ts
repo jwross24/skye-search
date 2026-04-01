@@ -137,7 +137,7 @@ export async function cleanupTestData(): Promise<void> {
 
   // Delete in dependency order (children first)
   await service.from('applications').delete().eq('user_id', userId)
-  await service.from('job_votes').delete().eq('user_id', userId)
+  await service.from('votes').delete().eq('user_id', userId)
   await service.from('jobs').delete().eq('user_id', userId)
   await service.from('contacts').delete().eq('user_id', userId)
   await service.from('plans').delete().eq('user_id', userId)
