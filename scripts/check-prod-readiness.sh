@@ -61,7 +61,7 @@ fi
 # env var references — they deploy to different runtimes.
 VERCEL_ENV_REFS=""
 SUPA_ENV_REFS=""
-for f in $(echo "$CHANGED" | grep -E '\.(ts|tsx)$'); do
+for f in $(echo "$CHANGED" | grep -E '\.(ts|tsx)$' | grep -vE '\.test\.(ts|tsx)$|\.integration\.test\.(ts|tsx)$|\.spec\.(ts|tsx)$|^tests/'); do
   [ -f "$f" ] || continue
   REFS=$(grep -ohE "process\.env\.([A-Z_]+)|Deno\.env\.get\(['\"]([A-Z_]+)" "$f" 2>/dev/null | grep -ohE '[A-Z_]{3,}' | sort -u) || true
   if echo "$f" | grep -q '^supabase/functions/'; then
