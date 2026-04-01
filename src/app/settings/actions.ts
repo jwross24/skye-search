@@ -280,3 +280,42 @@ export async function getUserProfile() {
     latestCv: latestCv ?? null,
   }
 }
+
+export async function activateBreakMode(days: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  // Enforce max 7 days
+  const safeDays = Math.min(Math.max(1, Math.round(days)), 7)
+  const until = new Date()
+  until.setDate(until.getDate() + safeDays)
+
+  const { error } = await supabase
+    .from('users')
+    .update({ break_mode_until: until.toISOString() })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/settings')
+  revalidatePath('/jobs')
+  return { success: true, breakModeUntil: until.toISOString() }
+}
+
+export async function deactivateBreakMode() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('users')
+    .update({ break_mode_until: null })
+    .eq('id', user.id)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/settings')
+  revalidatePath('/jobs')
+  return { success: true }
+}

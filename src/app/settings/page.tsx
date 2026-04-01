@@ -3,6 +3,7 @@ import { createClient } from '@/db/supabase-server'
 import { SettingsPageContent } from '@/components/settings/settings-page-content'
 import { BudgetSection } from '@/components/settings/budget-section'
 import { DataExportSection } from '@/components/settings/data-export-section'
+import { BreakModeSection } from '@/components/settings/break-mode-section'
 import type { UserProfile } from '@/types/cv-extraction'
 import { DEFAULT_CAPS } from '@/lib/budget-guard'
 
@@ -13,10 +14,10 @@ export default async function SettingsPage() {
 
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 
-  const [userData, latestCv, dailySpend, weeklySpend] = await Promise.all([
+  const [userData, latestCv, dailySpend, weeklySpend, clockData] = await Promise.all([
     supabase
       .from('users')
-      .select('profile, skills, user_preferences')
+      .select('profile, skills, user_preferences, break_mode_until')
       .eq('id', user.id)
       .single(),
     supabase
@@ -38,6 +39,11 @@ export default async function SettingsPage() {
       .select('total_cents')
       .eq('user_id', user.id)
       .maybeSingle(),
+    supabase
+      .from('immigration_clock')
+      .select('days_remaining')
+      .eq('user_id', user.id)
+      .maybeSingle(),
   ])
 
   const budgetCaps = (userData.data?.user_preferences as Record<string, unknown> | null)?.budget as {
@@ -53,6 +59,10 @@ export default async function SettingsPage() {
           profile={(userData.data?.profile ?? {}) as UserProfile}
           skills={(userData.data?.skills ?? []) as string[]}
           latestCv={latestCv.data}
+        />
+        <BreakModeSection
+          breakModeUntil={(userData.data?.break_mode_until as string | null) ?? null}
+          daysRemaining={clockData.data?.days_remaining ?? null}
         />
         <BudgetSection
           dailyCents={dailySpend.data?.total_cents ?? 0}

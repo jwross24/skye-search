@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { DailyBatch } from '@/components/jobs/daily-batch'
+import { BreakCard } from '@/components/jobs/break-card'
 import { JobsHeader } from '@/components/jobs/jobs-header'
 import { createClient } from '@/db/supabase-server'
 import type { UserState } from '@/lib/urgency-scoring'
@@ -15,7 +16,7 @@ export default async function JobsPage() {
 
   // ─── Parallel queries ────────────────────────────────────────────────
 
-  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult] = await Promise.all([
+  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult] = await Promise.all([
     supabase.from('jobs').select('*').eq('user_id', user.id),
     supabase.from('votes').select('job_id').eq('user_id', user.id),
     supabase.from('applications').select('job_id').eq('user_id', user.id),
@@ -40,6 +41,11 @@ export default async function JobsPage() {
       .gt('start_date', today)
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from('users')
+      .select('break_mode_until')
+      .eq('id', user.id)
+      .single(),
   ])
 
   // ─── Filter out already-voted / already-applied jobs ─────────────────
@@ -124,11 +130,19 @@ export default async function JobsPage() {
         today,
       }
 
+  // ─── Break mode check ─────────────────────────────────────────────────
+  const breakModeUntil = userResult.data?.break_mode_until as string | null
+  const isOnBreak = breakModeUntil && new Date(breakModeUntil) > new Date()
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
       <JobsHeader />
 
-      <DailyBatch jobs={jobs} userState={userState} />
+      {isOnBreak ? (
+        <BreakCard breakModeUntil={breakModeUntil} />
+      ) : (
+        <DailyBatch jobs={jobs} userState={userState} />
+      )}
     </div>
   )
 }
