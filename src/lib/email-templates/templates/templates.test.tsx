@@ -172,7 +172,7 @@ describe('CronFailureAlert', () => {
     )
 
     log('Step 2', 'Verifying failure content')
-    expect(html).toContain('Unemployment checkpoint failed')
+    expect(html).toContain('Health check failed')
     expect(html).toContain('2026-03-26')
     expect(html).toContain('pg_cron')
     expect(html).toContain('user-123')
@@ -188,7 +188,7 @@ describe('CronFailureAlert', () => {
       />,
     )
 
-    expect(html).toContain('CRON FAILURE')
+    expect(html).toContain('health check failed')
   })
 
   it('renders without userId (optional field)', async () => {
@@ -213,6 +213,6 @@ describe('CronFailureAlert', () => {
       />,
     )
 
-    expect(html).toContain('manual backfill')
+    expect(html).toContain('cron_execution_log')
   })
 })

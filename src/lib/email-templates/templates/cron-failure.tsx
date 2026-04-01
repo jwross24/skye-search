@@ -16,11 +16,11 @@ export function CronFailureAlert({
   userId,
 }: CronFailureAlertProps) {
   return (
-    <BaseLayout preview={`CRON FAILURE — unemployment checkpoint missed for ${executionDate}`}>
+    <BaseLayout preview={`SkyeSearch health check failed — ${triggerSource} — ${executionDate}`}>
       <AlertBanner
         level="urgent"
-        title="Unemployment checkpoint failed"
-        message="The daily unemployment clock checkpoint did not complete. The clock may have missed today."
+        title="Health check failed"
+        message="A scheduled health check detected a problem. Review the failure details below."
       />
 
       <Section
@@ -61,8 +61,8 @@ export function CronFailureAlert({
       </Section>
 
       <Text style={{ fontSize: '13px', color: BRAND.textMuted, lineHeight: '1.5', margin: '0 0 12px' }}>
-        Check the <Link href="https://supabase.com/dashboard" style={{ color: BRAND.ocean }}>Supabase dashboard</Link> and{' '}
-        cron_execution_log table for more context. A manual backfill may be needed.
+        Check the <Link href="https://supabase.com/dashboard" style={{ color: BRAND.ocean }}>Supabase dashboard</Link>,{' '}
+        Vercel function logs, and cron_execution_log table for more context.
       </Text>
     </BaseLayout>
   )

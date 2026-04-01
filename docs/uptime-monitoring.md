@@ -1,48 +1,51 @@
-# Uptime Monitoring Setup
+# Uptime Monitoring
 
-## Health Endpoint
+## How it works
 
-**Production URL:** `https://skye-search.vercel.app/api/health`
+A daily cron at 6:00 UTC calls `/api/health?ready=true` internally. If any check fails, it emails the developer via Resend. No external services needed.
 
-### Liveness (lightweight, no DB)
+**Cron schedule (vercel.json):**
 ```
-GET https://skye-search.vercel.app/api/health
-→ 200 { "status": "alive", "timestamp": "..." }
-```
-
-### Readiness (DB + all pipelines)
-```
-GET https://skye-search.vercel.app/api/health?ready=true
-→ 200 { "status": "ready", "checks": { db, unemployment_cron, queue_worker, exa_pipeline, scoring_pipeline } }
-→ 503 { "status": "degraded", ... } if any check fails
+/api/cron/healthcheck → 6:00 UTC daily (after scoring + unemployment crons finish)
 ```
 
-## BetterStack Setup (recommended, free tier)
+**What gets checked:**
+| Check | Stale threshold | What it catches |
+|-------|----------------|-----------------|
+| DB connectivity | immediate | Supabase down |
+| Unemployment cron | >50 hours | Missed checkpoint |
+| Queue worker | >24 hours | Stuck tasks |
+| Exa discovery | >8 days | Pipeline stopped |
+| AI scoring | >26 hours + backlog | Scoring stalled |
 
-1. Sign up at [betterstack.com](https://betterstack.com) (free tier: 5 monitors)
-2. Create a monitor:
-   - **URL:** `https://skye-search.vercel.app/api/health?ready=true`
-   - **Check interval:** 5 minutes
-   - **Request method:** GET
-   - **Expected status code:** 200
-   - **Keyword check:** Body contains `"ready"` (catches degraded state)
-   - **Confirmation period:** 3 checks (15 min before alert)
-3. Add alert contact:
-   - SMS to your phone number
-   - Email to your inbox
-4. Optional: Create a status page (free) for public visibility
+**Alert goes to:** `DEVELOPER_ALERT_EMAIL` env var (falls back to `RESEND_FROM_EMAIL`)
 
-## Alternative: UptimeRobot (free tier)
+## Health endpoint
 
-1. Sign up at [uptimerobot.com](https://uptimerobot.com) (free: 50 monitors, 5-min intervals)
-2. Add HTTP(s) monitor → same URL and settings as above
-3. Add alert contact (SMS requires paid, email is free)
+```
+GET /api/health              → liveness (app is up)
+GET /api/health?ready=true   → readiness (all systems checked)
+```
 
-## What Gets Monitored
+Both are public (no auth) — excluded from proxy auth redirect via `/api` prefix.
 
-| Layer | What | Alert trigger |
-|-------|------|--------------|
-| **Uptime** (this) | App reachable, DB connected, pipelines healthy | 15 min down |
-| **Daily email** | Scoring + email cron ran | Stale checkpoint >50h |
-| **Scoring** | AI scoring completed | Unscored backlog >26h |
-| **Discovery** | Exa pipeline found new jobs | No discoveries >8 days |
+## Testing locally
+
+```bash
+# Liveness
+curl http://localhost:3000/api/health
+
+# Readiness
+curl "http://localhost:3000/api/health?ready=true"
+
+# Trigger healthcheck cron
+curl -X POST http://localhost:3000/api/cron/healthcheck \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+## Production URLs
+
+```
+https://skye-search.vercel.app/api/health
+https://skye-search.vercel.app/api/health?ready=true
+```
