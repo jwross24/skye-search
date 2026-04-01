@@ -34,7 +34,7 @@ Follow every step. No skipping. The pre-commit hook will block you if you skip v
 
 **Integration test rule:** `*.integration.test.ts` files MUST NOT use `vi.mock` on Supabase. Enforced by `scripts/check-integration-mocks.sh`.
 
-**Enforcement:** `scripts/check-test-coverage.sh` validates that staged files have tests. Wired into `close-bead-gate.sh` — blocks bead close if NEW components/actions/routes lack tests. Existing untested files tracked in bead skye-search-efpj (backlog).
+**Enforcement:** `scripts/check-test-coverage.sh` validates that staged files have tests. Runs in the pre-commit hook — blocks commit if NEW components/actions/routes lack tests. Existing untested files tracked in bead skye-search-efpj (backlog).
 
 ## After completing each bead (EVERY step, in order)
 

@@ -145,7 +145,7 @@ jobs:
     steps:
       - name: Check all jobs passed
         run: |
-          # E2E excluded from gate — auth setup fails in CI (see skye-search-TODO bead)
+          # E2E excluded from gate — auth setup fails in CI (see skye-search-7d6)
           results=("${{ needs.typecheck.result }}" "${{ needs.lint.result }}" "${{ needs.test.result }}" "${{ needs.build.result }}")
           for r in "${results[@]}"; do
             if [[ "$r" != "success" ]]; then

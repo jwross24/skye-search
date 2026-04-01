@@ -91,7 +91,7 @@ export function PickCard({ job, urgencyScore, onVote, staggerIndex, today }: Pic
       animate={{
         opacity: 1,
         y: 0,
-        x: swiped === 'right' ? 400 : swiped === 'left' ? -400 : 0,
+        x: swiped === 'right' ? 400 : 0,
       }}
       exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
       transition={{
