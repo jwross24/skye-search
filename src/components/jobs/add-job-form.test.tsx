@@ -27,8 +27,8 @@ describe('AddJobForm', () => {
     expect(screen.getByLabelText(/company/i)).toBeTruthy()
     expect(screen.getByLabelText(/job url/i)).toBeTruthy()
     expect(screen.getByLabelText(/location/i)).toBeTruthy()
-    expect(screen.getByLabelText(/visa path/i)).toBeTruthy()
-    expect(screen.getByLabelText(/employer type/i)).toBeTruthy()
+    expect(screen.getByLabelText(/sponsorship path/i)).toBeTruthy()
+    expect(screen.getByLabelText(/organization type/i)).toBeTruthy()
     expect(screen.getByText('Add job')).toBeTruthy()
   })
 
@@ -58,8 +58,8 @@ describe('AddJobForm', () => {
     await user.type(screen.getByLabelText(/company/i), 'MIT')
     await user.type(screen.getByLabelText(/job url/i), 'https://mit.edu/jobs/123')
     await user.type(screen.getByLabelText(/location/i), 'Cambridge, MA')
-    await user.selectOptions(screen.getByLabelText(/visa path/i), 'cap_exempt')
-    await user.selectOptions(screen.getByLabelText(/employer type/i), 'university')
+    await user.selectOptions(screen.getByLabelText(/sponsorship path/i), 'cap_exempt')
+    await user.selectOptions(screen.getByLabelText(/organization type/i), 'university')
     await user.type(screen.getByLabelText(/notes/i), 'Great ocean color lab')
     await user.click(screen.getByText('Add job'))
 

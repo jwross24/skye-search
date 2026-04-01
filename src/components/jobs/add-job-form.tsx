@@ -69,7 +69,10 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-6 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-base font-semibold text-foreground">Add a job</h3>
+        <div>
+          <h3 className="text-base font-semibold text-foreground">Add a job</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Found something outside your daily picks? Add it here.</p>
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -85,7 +88,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1">
-              Job title <span className="text-amber-warm">*</span>
+              Job title <span className="text-muted-foreground">*</span>
             </label>
             <input
               id="title"
@@ -98,7 +101,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
           </div>
           <div>
             <label htmlFor="company" className="block text-sm font-medium text-foreground mb-1">
-              Company / Org <span className="text-amber-warm">*</span>
+              Company / Org <span className="text-muted-foreground">*</span>
             </label>
             <input
               id="company"
@@ -145,7 +148,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="visa_path" className="block text-sm font-medium text-foreground mb-1">
-              Visa path
+              Sponsorship path
             </label>
             <select
               id="visa_path"
@@ -160,7 +163,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
           </div>
           <div>
             <label htmlFor="employer_type" className="block text-sm font-medium text-foreground mb-1">
-              Employer type
+              Organization type
             </label>
             <select
               id="employer_type"
@@ -192,12 +195,12 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
             <label htmlFor="notes" className="block text-sm font-medium text-foreground mb-1">
               Notes
             </label>
-            <input
+            <textarea
               id="notes"
               name="notes"
-              type="text"
+              rows={2}
               placeholder="Why this role caught your eye"
-              className="w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ocean/30"
+              className="w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ocean/30 resize-none"
             />
           </div>
         </div>

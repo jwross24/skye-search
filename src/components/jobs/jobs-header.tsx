@@ -21,15 +21,17 @@ export function JobsHeader() {
             Roles matched to your immigration timeline. Take your time.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowForm(!showForm)}
-          className="gap-1.5 shrink-0"
-        >
-          <Plus className="size-3.5" />
-          Add job
-        </Button>
+        {!showForm && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowForm(true)}
+            className="gap-1.5 shrink-0"
+          >
+            <Plus className="size-3.5" />
+            Add job
+          </Button>
+        )}
       </div>
       {showForm && (
         <AddJobForm
