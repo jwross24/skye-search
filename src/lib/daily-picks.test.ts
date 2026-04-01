@@ -16,6 +16,7 @@ function createChain(resolvedValue: { data: unknown; count?: number; error?: nul
   chain.eq = vi.fn().mockReturnValue(chain)
   chain.not = vi.fn().mockReturnValue(chain)
   chain.neq = vi.fn().mockReturnValue(chain)
+  chain.or = vi.fn().mockReturnValue(chain)
   chain.order = vi.fn().mockReturnValue(chain)
   chain.limit = vi.fn().mockReturnValue(chain)
   chain.gte = vi.fn().mockReturnValue(chain)
@@ -291,8 +292,8 @@ describe('selectTopPicks', () => {
     expect(picks[0].title).toBe('Until Filled')
   })
 
-  it('neq filter is applied to citizenship and security clearance columns', async () => {
-    log('Step 1', 'Verifying neq filter calls on jobs chain')
+  it('or filter handles null-safe citizenship and security clearance exclusion', async () => {
+    log('Step 1', 'Verifying .or() filter calls on jobs chain')
     setupHandlers()
     const { selectTopPicks } = await import('./daily-picks')
     const { createClient } = await import('@supabase/supabase-js')
@@ -301,10 +302,10 @@ describe('selectTopPicks', () => {
     await selectTopPicks(supabase as ReturnType<typeof createClient>, 'user-1')
 
     const jobsChain = fromHandlers['jobs']
-    const neqCalls = (jobsChain.neq as ReturnType<typeof vi.fn>).mock.calls
-    log('Step 2', `neq called ${neqCalls.length} times`)
-    expect(neqCalls).toContainEqual(['requires_citizenship', true])
-    expect(neqCalls).toContainEqual(['requires_security_clearance', true])
+    const orCalls = (jobsChain.or as ReturnType<typeof vi.fn>).mock.calls
+    log('Step 2', `or called ${orCalls.length} times`)
+    expect(orCalls).toContainEqual(['requires_citizenship.is.null,requires_citizenship.neq.true'])
+    expect(orCalls).toContainEqual(['requires_security_clearance.is.null,requires_security_clearance.neq.true'])
   })
 })
 
