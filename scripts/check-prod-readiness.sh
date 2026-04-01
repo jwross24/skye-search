@@ -63,7 +63,9 @@ VERCEL_ENV_REFS=""
 SUPA_ENV_REFS=""
 for f in $(echo "$CHANGED" | grep -E '\.(ts|tsx)$' | grep -vE '\.test\.(ts|tsx)$|\.integration\.test\.(ts|tsx)$|\.spec\.(ts|tsx)$|^tests/'); do
   [ -f "$f" ] || continue
-  REFS=$(grep -ohE "process\.env\.([A-Z_]+)|Deno\.env\.get\(['\"]([A-Z_]+)" "$f" 2>/dev/null | grep -ohE '[A-Z_]{3,}' | sort -u) || true
+  # Exclude: Vercel builtins (NODE_ENV, VERCEL, VERCEL_URL, CI) — auto-provided
+  # Exclude: NEXT_PUBLIC_* — baked into build at compile time, not deployment secrets
+  REFS=$(grep -ohE "process\.env\.([A-Z_]+)|Deno\.env\.get\(['\"]([A-Z_]+)" "$f" 2>/dev/null | grep -ohE '[A-Z_]{3,}' | grep -vE '^(NODE_ENV|VERCEL|VERCEL_URL|CI|NEXT_PUBLIC_.*)$' | sort -u) || true
   if echo "$f" | grep -q '^supabase/functions/'; then
     SUPA_ENV_REFS="$SUPA_ENV_REFS $REFS"
   else
