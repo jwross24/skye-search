@@ -99,14 +99,18 @@ export async function uninterestApplication(
 
   if (deleteError) return { success: false, error: deleteError.message }
 
-  // Guard against duplicate votes (user may have dismissed from daily picks previously)
-  const { data: existingVote } = await supabase
+  // Guard against duplicate votes (user may have dismissed from daily picks previously).
+  // maybeSingle() is correct here: 0 or 1 rows expected. single() returns PGRST116 on
+  // 0 rows which would be silently discarded, masking real errors.
+  const { data: existingVote, error: voteCheckError } = await supabase
     .from('votes')
     .select('id')
     .eq('user_id', user.id)
     .eq('job_id', app.job_id)
     .limit(1)
-    .single()
+    .maybeSingle()
+
+  if (voteCheckError) return { success: false, error: voteCheckError.message }
 
   if (!existingVote) {
     // Create a dismiss vote so the job is excluded from future picks

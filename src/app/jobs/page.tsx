@@ -131,14 +131,14 @@ export default async function JobsPage() {
       }
 
   // ─── Break mode check ─────────────────────────────────────────────────
-  const breakModeUntil = userResult.data?.break_mode_until as string | null
-  const isOnBreak = breakModeUntil && new Date(breakModeUntil) > new Date()
+  const breakModeUntilRaw = userResult.data?.break_mode_until as string | null
+  const breakModeUntil = breakModeUntilRaw && new Date(breakModeUntilRaw) > new Date() ? breakModeUntilRaw : null
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
       <JobsHeader />
 
-      {isOnBreak ? (
+      {breakModeUntil ? (
         <BreakCard breakModeUntil={breakModeUntil} />
       ) : (
         <DailyBatch jobs={jobs} userState={userState} />

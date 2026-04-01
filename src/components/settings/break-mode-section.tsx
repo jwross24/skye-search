@@ -77,6 +77,7 @@ export function BreakModeSection({ breakModeUntil, daysRemaining }: BreakModeSec
             </div>
           </div>
           <button
+            type="button"
             onClick={handleDeactivate}
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-lg bg-jade/10 text-jade px-3 py-2 text-sm font-medium transition-colors hover:bg-jade/20 disabled:opacity-60"
@@ -113,6 +114,7 @@ export function BreakModeSection({ breakModeUntil, daysRemaining }: BreakModeSec
               {availableOptions.map(d => (
                 <button
                   key={d}
+                  type="button"
                   onClick={() => setSelectedDays(d)}
                   aria-pressed={selectedDays === d}
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors
@@ -150,6 +152,7 @@ export function BreakModeSection({ breakModeUntil, daysRemaining }: BreakModeSec
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleActivate}
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-lg bg-ocean px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-ocean-deep disabled:opacity-60"
@@ -163,6 +166,7 @@ export function BreakModeSection({ breakModeUntil, daysRemaining }: BreakModeSec
               Start break
             </button>
             <button
+              type="button"
               onClick={() => setShowConfirm(false)}
               className="rounded-lg px-4 py-2 text-sm text-foreground/60 hover:text-foreground transition-colors"
             >
@@ -175,6 +179,7 @@ export function BreakModeSection({ breakModeUntil, daysRemaining }: BreakModeSec
         </div>
       ) : (
         <button
+          type="button"
           onClick={() => setShowConfirm(true)}
           className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground/70 transition-colors hover:border-ocean/30 hover:text-foreground hover:bg-ocean/5"
           data-testid="break-mode-toggle"
