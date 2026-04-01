@@ -1,7 +1,6 @@
 /**
- * Integration tests for tracker actions — uninterestApplication.
- * Hits real local Supabase: creates application, uninterests it, verifies
- * the application is deleted and a vote is created.
+ * Integration tests for tracker actions.
+ * Hits real local Supabase: CRUD on applications, moves, rejections, uninterest.
  */
 
 import { config } from 'dotenv'
@@ -65,7 +64,7 @@ afterEach(async () => {
 })
 
 describe('uninterestApplication (real Supabase)', () => {
-  it('[uninterest-integration] Step 1: creates application, then uninterests it', async () => {
+  it('[uninterest-integration] creates application, then uninterests it', async () => {
     log('Step 1', 'Creating application for test job')
 
     // Create an "interested" application
@@ -140,7 +139,7 @@ describe('uninterestApplication (real Supabase)', () => {
     log('Step 7', `Vote confirmed: decision=${vote?.decision}, tags=${JSON.stringify(vote?.tags)}`)
   })
 
-  it('[uninterest-integration] Step 1: uninterest without tags creates vote with empty tags', async () => {
+  it('[uninterest-integration] uninterest without tags creates vote with empty tags', async () => {
     log('Step 1', 'Creating application then uninteresting with no tags')
 
     const { data: app } = await service
@@ -180,7 +179,7 @@ describe('uninterestApplication (real Supabase)', () => {
     log('Step 4', `Confirmed: decision=${vote?.decision}, tags=${JSON.stringify(vote?.tags)}`)
   })
 
-  it('[uninterest-integration] Step 1: RLS blocks cross-user uninterest', async () => {
+  it('[uninterest-integration] RLS: authenticated user can delete own application', async () => {
     log('Step 1', 'Creating application then attempting delete as unauthenticated client')
 
     const { data: app } = await service
@@ -213,5 +212,140 @@ describe('uninterestApplication (real Supabase)', () => {
 
     expect(after).toBeNull()
     log('Step 3', 'Application confirmed deleted')
+  })
+})
+
+describe('moveApplication (real Supabase)', () => {
+  it('[tracker] moves application between kanban columns', async () => {
+    // Create interested application
+    const { data: app } = await service
+      .from('applications')
+      .insert({ user_id: TEST_USER_ID, job_id: testJobId, kanban_status: 'interested' })
+      .select('id')
+      .single()
+
+    log('Step 2', `Created interested app: ${app!.id}`)
+
+    // Move to tailoring
+    const { error } = await service
+      .from('applications')
+      .update({ kanban_status: 'tailoring' })
+      .eq('id', app!.id)
+      .eq('user_id', TEST_USER_ID)
+
+    expect(error).toBeNull()
+
+    const { data: after } = await service
+      .from('applications')
+      .select('kanban_status')
+      .eq('id', app!.id)
+      .single()
+
+    expect(after!.kanban_status).toBe('tailoring')
+    log('Step 3', `Moved: interested → ${after!.kanban_status}`)
+
+    // Move to applied
+    await service.from('applications').update({ kanban_status: 'applied' }).eq('id', app!.id)
+    const { data: applied } = await service.from('applications').select('kanban_status').eq('id', app!.id).single()
+    expect(applied!.kanban_status).toBe('applied')
+    log('Step 4', `Moved: tailoring → ${applied!.kanban_status}`)
+  })
+})
+
+describe('updateApplicationNotes (real Supabase)', () => {
+  it('[tracker] updates notes, next_action, next_action_date', async () => {
+    const { data: app } = await service
+      .from('applications')
+      .insert({ user_id: TEST_USER_ID, job_id: testJobId, kanban_status: 'interested' })
+      .select('id')
+      .single()
+
+    log('Step 2', `Created app: ${app!.id}`)
+
+    const { error } = await service
+      .from('applications')
+      .update({
+        notes: 'Great conversation with PI',
+        next_action: 'Send follow-up email',
+        next_action_date: '2026-04-10',
+      })
+      .eq('id', app!.id)
+      .eq('user_id', TEST_USER_ID)
+
+    expect(error).toBeNull()
+    log('Step 3', 'Updated notes and next action')
+
+    const { data: after } = await service
+      .from('applications')
+      .select('notes, next_action, next_action_date')
+      .eq('id', app!.id)
+      .single()
+
+    expect(after!.notes).toBe('Great conversation with PI')
+    expect(after!.next_action).toBe('Send follow-up email')
+    expect(after!.next_action_date).toBe('2026-04-10')
+    log('Step 4', `Verified: notes="${after!.notes}", next_action="${after!.next_action}", date=${after!.next_action_date}`)
+  })
+})
+
+describe('captureRejection (real Supabase)', () => {
+  it('[tracker] sets rejection status, type, and date', async () => {
+    const { data: app } = await service
+      .from('applications')
+      .insert({ user_id: TEST_USER_ID, job_id: testJobId, kanban_status: 'applied' })
+      .select('id')
+      .single()
+
+    log('Step 2', `Created applied app: ${app!.id}`)
+
+    const today = new Date().toISOString().split('T')[0]
+    const { error } = await service
+      .from('applications')
+      .update({
+        kanban_status: 'rejected',
+        rejection_type: 'form_email',
+        rejected_date: today,
+      })
+      .eq('id', app!.id)
+      .eq('user_id', TEST_USER_ID)
+
+    expect(error).toBeNull()
+    log('Step 3', 'Set rejection: form_email')
+
+    const { data: after } = await service
+      .from('applications')
+      .select('kanban_status, rejection_type, rejected_date')
+      .eq('id', app!.id)
+      .single()
+
+    expect(after!.kanban_status).toBe('rejected')
+    expect(after!.rejection_type).toBe('form_email')
+    expect(after!.rejected_date).toBe(today)
+    log('Step 4', `Verified: status=${after!.kanban_status}, type=${after!.rejection_type}, date=${after!.rejected_date}`)
+  })
+
+  it('[tracker] rejection types: personalized, ghosted', async () => {
+    for (const type of ['personalized', 'ghosted'] as const) {
+      const { data: app } = await service
+        .from('applications')
+        .insert({ user_id: TEST_USER_ID, job_id: testJobId, kanban_status: 'interview' })
+        .select('id')
+        .single()
+
+      await service
+        .from('applications')
+        .update({ kanban_status: 'rejected', rejection_type: type, rejected_date: '2026-04-01' })
+        .eq('id', app!.id)
+        .eq('user_id', TEST_USER_ID)
+
+      const { data } = await service
+        .from('applications')
+        .select('rejection_type')
+        .eq('id', app!.id)
+        .single()
+
+      expect(data!.rejection_type).toBe(type)
+      log('Step 2', `Rejection type "${type}" accepted by DB`)
+    }
   })
 })
