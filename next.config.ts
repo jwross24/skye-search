@@ -5,6 +5,10 @@ const isDev = process.env.NODE_ENV === "development";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
 const supabaseDomain = new URL(supabaseUrl).hostname;
 
+// Only upgrade to HTTPS in production (Vercel). On localhost (CI, dev),
+// upgrade-insecure-requests forces http→https which breaks server actions.
+const isVercel = !!process.env.VERCEL;
+
 const cspHeader = `
   default-src 'self';
   script-src 'self'${isDev ? " 'unsafe-eval'" : ""} 'unsafe-inline';
@@ -15,8 +19,7 @@ const cspHeader = `
   object-src 'none';
   base-uri 'self';
   form-action 'self';
-  frame-ancestors 'none';
-  upgrade-insecure-requests;
+  frame-ancestors 'none';${isVercel ? '\n  upgrade-insecure-requests;' : ''}
 `;
 
 const nextConfig: NextConfig = {
@@ -25,10 +28,11 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: [
-          {
+          // CSP only on Vercel — locally it interferes with server actions over http
+          ...(isVercel ? [{
             key: "Content-Security-Policy",
             value: cspHeader.replace(/\s{2,}/g, " ").trim(),
-          },
+          }] : []),
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",

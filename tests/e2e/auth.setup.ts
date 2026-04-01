@@ -9,7 +9,8 @@
  * that Supabase SSR (@supabase/ssr) recognises on the next request.
  *
  * Cookie format: Supabase SSR stores the session under the key
- * `supabase.auth.token` (GoTrue default) encoded as `base64-<base64url-json>`.
+ * `sb-<hostname-prefix>-auth-token` (e.g. `sb-127-auth-token` locally,
+ * `sb-<project-ref>-auth-token` on hosted Supabase) encoded as `base64-<base64url-json>`.
  * We set this cookie via context.addCookies() before any navigation so the
  * middleware picks it up on the very first request.
  */
@@ -21,8 +22,18 @@ const AUTH_FILE = path.join(__dirname, '..', '.auth', 'user.json')
 const TEST_EMAIL = 'dev@skye-search.test'
 const TEST_PASSWORD = 'testpass123'
 
-/** Cookie key used by @supabase/ssr createBrowserClient (GoTrue default). */
-const SUPABASE_COOKIE_KEY = 'supabase.auth.token'
+/**
+ * Cookie key used by @supabase/ssr.
+ * Format: sb-<hostname-prefix>-auth-token
+ * Derived from NEXT_PUBLIC_SUPABASE_URL hostname.
+ */
+function getSupabaseCookieKey(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'http://127.0.0.1:54321'
+  const hostname = new URL(url).hostname
+  // Use first segment of hostname (e.g., "127" from "127.0.0.1", "tuqfrmcxxhbujpgvqufs" from "tuqfrmcxxhbujpgvqufs.supabase.co")
+  const prefix = hostname.split('.')[0]
+  return `sb-${prefix}-auth-token`
+}
 
 setup('authenticate test user', async ({ page, context }) => {
   if (process.env.CI) {
@@ -88,12 +99,16 @@ async function apiBasedAuth(
   const cookieValue = `base64-${base64url}`
 
   // Step 3: Inject the session cookie before any navigation so the Next.js
-  // middleware (proxy.ts) can call getUser() and establish the session.
+  // proxy (proxy.ts) can call getUser() and establish the session.
+  const cookieKey = getSupabaseCookieKey()
+
+  // Set cookie on localhost (Playwright's baseURL) not 127.0.0.1 (Supabase URL).
+  // Cookies for 127.0.0.1 don't get sent to localhost requests.
   await context.addCookies([
     {
-      name: SUPABASE_COOKIE_KEY,
+      name: cookieKey,
       value: cookieValue,
-      domain: '127.0.0.1',
+      domain: 'localhost',
       path: '/',
       httpOnly: false,
       secure: false,
