@@ -80,9 +80,7 @@ describe('DELETE /api/push/subscribe', () => {
   it('removes subscription for authenticated user', async () => {
     log('unsubscribe', 'Remove subscription')
     const { DELETE } = await import('./route')
-    const res = await DELETE(new Request('http://localhost/api/push/subscribe', {
-      method: 'DELETE',
-    }))
+    const res = await DELETE()
     const body = await res.json()
 
     expect(body.ok).toBe(true)

@@ -156,7 +156,7 @@ describe('POST /api/cron/push-nudge', () => {
 
     expect(body.sent).toBe(0)
     // Verify the update call to clear push_subscription was made
-    const updateCalls = mockFrom.mock.calls.filter(([t]: [string]) => t === 'users')
+    const updateCalls = mockFrom.mock.calls.filter((args) => args[0] === 'users')
     expect(updateCalls.length).toBeGreaterThan(1) // initial query + cleanup update
     log('result', 'Expired subscription cleaned up')
   })
