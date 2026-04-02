@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { selectTemplate, buildMessage, type NudgeContext } from './sms-templates'
+import { selectTemplate, buildMessage, type NudgeContext } from './nudge-templates'
 
 function log(step: string, detail: string) {
-  process.stdout.write(`  [sms-templates] ${step}: ${detail}\n`)
+  process.stdout.write(`  [nudge-templates] ${step}: ${detail}\n`)
 }
 
 const basePick = {
