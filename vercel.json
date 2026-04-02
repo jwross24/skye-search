@@ -21,6 +21,10 @@
       "schedule": "0 12 * * *"
     },
     {
+      "path": "/api/cron/push-nudge",
+      "schedule": "30 12 * * *"
+    },
+    {
       "path": "/api/cron/healthcheck",
       "schedule": "0 6 * * *"
     }
