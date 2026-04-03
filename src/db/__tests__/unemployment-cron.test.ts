@@ -477,10 +477,10 @@ describe('Cron execution logging', () => {
     }))
   })
 
-  it('trigger_source correctly identifies pg_cron vs keepalive_gha vs manual_backfill', async () => {
+  it('trigger_source correctly identifies pg_cron vs gha_cron vs keepalive_gha vs manual_backfill', async () => {
     log('Step 1', 'Running with each trigger source')
 
-    for (const source of ['pg_cron', 'keepalive_gha', 'manual_backfill'] as TriggerSource[]) {
+    for (const source of ['pg_cron', 'gha_cron', 'keepalive_gha', 'manual_backfill'] as TriggerSource[]) {
       const db = createMockDb()
 
       await runDailyCheckpoint(db, {

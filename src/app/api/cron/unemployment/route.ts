@@ -42,7 +42,7 @@ async function handler(req: NextRequest) {
   // Detect trigger source from caller identity
   const ua = req.headers.get('user-agent') ?? ''
   const isVercelCron = ua.includes('vercel-cron')
-  let triggerSource: TriggerSource = isVercelCron ? 'vercel_cron' : 'keepalive_gha'
+  let triggerSource: TriggerSource = isVercelCron ? 'vercel_cron' : 'gha_cron'
 
   try {
     const body = await req.json().catch(() => ({}))

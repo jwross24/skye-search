@@ -19,7 +19,7 @@ export type StatusSnapshot =
   | 'grace_period'
   | 'CONFLICT'
 
-export type TriggerSource = 'pg_cron' | 'vercel_cron' | 'manual_backfill' | 'keepalive_gha'
+export type TriggerSource = 'pg_cron' | 'vercel_cron' | 'gha_cron' | 'manual_backfill' | 'keepalive_gha'
 
 export interface ImmigrationStatusRow {
   user_id: string

@@ -1,0 +1,152 @@
+name: Cron Jobs
+
+# Primary cron scheduler — replaces Vercel Hobby Cron (silently drops jobs).
+# Three batches at different schedules. All endpoints use CRON_SECRET auth.
+# GHA cron has ±5-20 min drift on free tier — acceptable for daily jobs.
+
+on:
+  schedule:
+    # Morning batch: score → unemployment → alerts → healthcheck (4:15 UTC daily)
+    - cron: '15 4 * * *'
+    # Discovery batch: discover (8:15 UTC Tue/Fri)
+    - cron: '15 8 * * 2,5'
+    # Midday batch: daily-email → push-nudge (12:00 UTC daily)
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Which batch to run (morning, discovery, midday, all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - morning
+          - discovery
+          - midday
+
+env:
+  BASE_URL: https://skye-search.vercel.app
+
+jobs:
+  morning:
+    name: Morning Batch (score → unemployment → alerts → healthcheck)
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '15 4 * * *' ||
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.batch == 'morning' || inputs.batch == 'all')
+    steps:
+      - name: Score
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/score" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Score: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
+      - name: Unemployment checkpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/unemployment" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Unemployment: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
+      - name: Alerts
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/alerts" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Alerts: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
+      - name: Healthcheck
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        continue-on-error: true
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/healthcheck" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Healthcheck: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+
+  discovery:
+    name: Discovery Batch (Tue/Fri)
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '15 8 * * 2,5' ||
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.batch == 'discovery' || inputs.batch == 'all')
+    steps:
+      - name: Discover jobs
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/discover" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Discover: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
+  midday:
+    name: Midday Batch (daily-email → push-nudge)
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '0 12 * * *' ||
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.batch == 'midday' || inputs.batch == 'all')
+    steps:
+      - name: Daily email
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/daily-email" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Daily email: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
+      - name: Push nudge
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        continue-on-error: true
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 30 \
+            -X POST "$BASE_URL/api/cron/push-nudge" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Push nudge: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""

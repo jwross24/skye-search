@@ -154,7 +154,7 @@ describe('POST /api/cron/unemployment', () => {
 
     expect(runDailyCheckpoint).toHaveBeenCalledWith(
       expect.anything(),
-      { userId: undefined, targetDate: undefined, triggerSource: 'keepalive_gha' },
+      { userId: undefined, targetDate: undefined, triggerSource: 'gha_cron' },
     )
   })
 

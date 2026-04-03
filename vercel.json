@@ -1,32 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/unemployment",
-      "schedule": "15 5 * * *"
-    },
-    {
-      "path": "/api/cron/discover",
-      "schedule": "15 8 * * 2,5"
-    },
-    {
-      "path": "/api/cron/score",
-      "schedule": "15 4 * * *"
-    },
-    {
-      "path": "/api/alerts",
-      "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/cron/daily-email",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/push-nudge",
-      "schedule": "30 12 * * *"
-    },
-    {
-      "path": "/api/cron/healthcheck",
-      "schedule": "0 6 * * *"
-    }
-  ]
+  "crons": []
 }
