@@ -22,6 +22,14 @@ const SUPABASE_URL = requireEnv('NEXT_PUBLIC_SUPABASE_URL')
 const SERVICE_KEY = requireEnv('SUPABASE_SECRET_KEY')
 const ANON_KEY = requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')
 
+// Prod guard: abort if URL points to hosted Supabase (not local Docker)
+if (SUPABASE_URL.includes('.supabase.co') && !process.argv.includes('--force')) {
+  console.error('ABORT: SUPABASE_URL points to hosted Supabase (.supabase.co).')
+  console.error('Seed data should only go into local Docker Supabase.')
+  console.error('If you really mean to seed a hosted instance, pass --force.')
+  process.exit(1)
+}
+
 const DEFAULT_TEST_USER_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_EMAIL = 'dev@skye-search.test'
 const TEST_PASSWORD = 'testpass123'
@@ -163,6 +171,7 @@ async function main() {
       .from('jobs')
       .insert({
         user_id: USER_ID,
+        source: 'seed',
         title: job.title,
         company: job.company,
         company_domain: job.company_domain,
