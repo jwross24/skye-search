@@ -16,11 +16,36 @@ STOP_ACTIVE=$(printf '%s' "$INPUT" | jq -r '.stop_hook_active // false' 2>/dev/n
 
 WARNINGS=""
 
-# Check for beads left in_progress
-IN_PROGRESS=$(br list --limit 0 --json 2>/dev/null | jq -r '[.[] | select(.status == "in_progress")] | length' 2>/dev/null || echo "0")
-if [ "$IN_PROGRESS" -gt 0 ]; then
-  BEADS=$(br list --limit 0 --json 2>/dev/null | jq -r '[.[] | select(.status == "in_progress")] | .[].id' 2>/dev/null || echo "unknown")
-  WARNINGS="${WARNINGS}⚠️ $IN_PROGRESS bead(s) left in_progress: $BEADS. Release or close before leaving.\n"
+# Check for beads left in_progress BY THIS SESSION
+# Only warn about beads this session claimed (tracked by track-bead-claim.sh).
+# Other sessions' in_progress beads are not our responsibility.
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // "default"' 2>/dev/null) || SESSION_ID="default"
+CLAIM_FILE="${PROJECT_DIR}/.claude/.session-beads-${SESSION_ID}.txt"
+
+if [ -f "$CLAIM_FILE" ]; then
+  DANGLING_BEADS=""
+  DANGLING_COUNT=0
+  while IFS= read -r BEAD_ID; do
+    [ -z "$BEAD_ID" ] && continue
+    STATUS=$(br show "$BEAD_ID" --json 2>/dev/null | jq -r '.status // ""' 2>/dev/null) || STATUS=""
+    if [ "$STATUS" = "in_progress" ]; then
+      DANGLING_BEADS="${DANGLING_BEADS}${DANGLING_BEADS:+, }${BEAD_ID}"
+      DANGLING_COUNT=$((DANGLING_COUNT + 1))
+    fi
+  done < "$CLAIM_FILE"
+
+  IN_PROGRESS=$DANGLING_COUNT
+  if [ "$DANGLING_COUNT" -gt 0 ]; then
+    WARNINGS="${WARNINGS}⚠️ $DANGLING_COUNT bead(s) you claimed still in_progress: $DANGLING_BEADS. Release or close before leaving.\n"
+  fi
+else
+  # No claim file — fall back to global check (backward compat for sessions
+  # started before this hook existed)
+  IN_PROGRESS=$(br list --limit 0 --json 2>/dev/null | jq -r '[.[] | select(.status == "in_progress")] | length' 2>/dev/null || echo "0")
+  if [ "$IN_PROGRESS" -gt 0 ]; then
+    BEADS=$(br list --limit 0 --json 2>/dev/null | jq -r '[.[] | select(.status == "in_progress")] | .[].id' 2>/dev/null || echo "unknown")
+    WARNINGS="${WARNINGS}⚠️ $IN_PROGRESS bead(s) left in_progress: $BEADS. Release or close before leaving.\n"
+  fi
 fi
 
 # Check for uncommitted changes

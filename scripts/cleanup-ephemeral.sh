@@ -147,6 +147,34 @@ for f in "$CLAUDE_DIR"/.command-log-*.jsonl; do
   fi
 done
 
+# ── 4b. Session bead claim files ───────────────────────────────────────────
+# Pattern: .session-beads-{session_id}.txt
+# Keep: current session. Delete: everything else older than MAX_AGE.
+
+for f in "$CLAUDE_DIR"/.session-beads-*.txt; do
+  [ -f "$f" ] || continue
+  basename=$(basename "$f")
+
+  if [ -n "$CURRENT_SESSION" ] && echo "$basename" | grep -q "$CURRENT_SESSION"; then
+    skip_file
+    continue
+  fi
+
+  if [ "$(uname)" = "Darwin" ]; then
+    mod_time=$(stat -f %m "$f")
+  else
+    mod_time=$(stat -c %Y "$f")
+  fi
+  now=$(date +%s)
+  age_minutes=$(( (now - mod_time) / 60 ))
+
+  if [ "$age_minutes" -gt "$MAX_AGE_MINUTES" ]; then
+    cleanup_file "$f" "stale bead claims, ${age_minutes}min old"
+  else
+    skip_file
+  fi
+done
+
 # ── 5. Cross-review results ────────────────────────────────────────────────
 # Single file, stale after 1 hour (cross-review enforce checks freshness anyway)
 
