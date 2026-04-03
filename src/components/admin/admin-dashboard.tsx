@@ -7,6 +7,7 @@ import { DiscoverySources } from './discovery-sources'
 import { CostTracker } from './cost-tracker'
 import { CronHistory } from './cron-history'
 import { ScoringStats } from './scoring-stats'
+import { PipelineEval } from './pipeline-eval'
 
 interface PipelineHealthData {
   discovery: { status: string; lastRun: string | null; completed: number; failed: number; sources: string[] }
@@ -76,6 +77,9 @@ export function AdminDashboard() {
 
         {/* Section 6: Scoring Quality */}
         <ScoringStats />
+
+        {/* Section 7: Pipeline Eval Metrics */}
+        <PipelineEval />
       </div>
     </div>
   )

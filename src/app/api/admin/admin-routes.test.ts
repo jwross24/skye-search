@@ -67,6 +67,7 @@ describe('admin auth rejection', () => {
       { path: './scoring-stats/route', method: 'GET' },
       { path: './sources/route', method: 'GET' },
       { path: './task-queue/route', method: 'GET' },
+      { path: './pipeline-eval/route', method: 'GET' },
     ]
 
     for (const route of routes) {
@@ -289,5 +290,59 @@ describe('POST /api/admin/retry-task', () => {
     const body = await res.json()
     expect(body.error).toContain('not retryable')
     log('retry-task', 'Rejected: pending task is not retryable')
+  })
+})
+
+// ─── Pipeline Eval ──────────────────────────────────────────────────────────
+
+describe('GET /api/admin/pipeline-eval', () => {
+  it('[admin] returns eval metrics with empty data', async () => {
+    mockSupabase.from.mockReturnValue(
+      chainable({ data: [], count: 0 }),
+    )
+
+    const { GET } = await import('./pipeline-eval/route')
+    const req = new Request('http://localhost:3000/api/admin/pipeline-eval')
+    const res = await GET(req)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+
+    expect(body.period).toBe('30d')
+    expect(body.metrics.posting_precision).toBeDefined()
+    expect(body.metrics.us_canada_rate).toBeDefined()
+    expect(body.metrics.visa_known_rate).toBeDefined()
+    expect(body.metrics.interested_rate).toBeDefined()
+    expect(body.metrics.duplicate_rate).toBeDefined()
+    expect(body.source_breakdown).toBeDefined()
+    log('pipeline-eval', `All 5 metrics present, period=${body.period}`)
+  })
+
+  it('[admin] computes rates from job data', async () => {
+    const jobs = [
+      { location: 'Boston, MA', visa_path: 'cap_exempt', company: 'MIT', title: 'Research Scientist' },
+      { location: 'Vancouver, Canada', visa_path: 'unknown', company: 'UBC', title: 'Postdoc' },
+      { location: 'London, UK', visa_path: 'cap_subject', company: 'Imperial', title: 'Lecturer' },
+    ]
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'jobs') return chainable({ data: jobs, count: jobs.length })
+      return chainable({ data: [], count: 0 })
+    })
+
+    const { GET } = await import('./pipeline-eval/route')
+    const req = new Request('http://localhost:3000/api/admin/pipeline-eval')
+    const res = await GET(req)
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+
+    // 2/3 jobs are US/Canada (Boston + Vancouver)
+    expect(body.metrics.us_canada_rate.value).toBeCloseTo(2 / 3, 2)
+    // 2/3 have known visa_path (cap_exempt + cap_subject; unknown excluded)
+    expect(body.metrics.visa_known_rate.value).toBeCloseTo(2 / 3, 2)
+    // 0 duplicates
+    expect(body.metrics.duplicate_rate.value).toBe(0)
+    log('pipeline-eval', `US rate=${(body.metrics.us_canada_rate.value * 100).toFixed(1)}%, visa known=${(body.metrics.visa_known_rate.value * 100).toFixed(1)}%`)
   })
 })
