@@ -3,6 +3,7 @@ import { createClient } from '@/db/supabase-server'
 import { SettingsPageContent } from '@/components/settings/settings-page-content'
 import { BudgetSection } from '@/components/settings/budget-section'
 import { DataExportSection } from '@/components/settings/data-export-section'
+import { AttorneyExportSection } from '@/components/settings/attorney-export-section'
 import { BreakModeSection } from '@/components/settings/break-mode-section'
 import { PushNotificationSection } from '@/components/settings/push-notification-section'
 import type { UserProfile } from '@/types/cv-extraction'
@@ -73,6 +74,7 @@ export default async function SettingsPage() {
           weeklyCapCents={budgetCaps?.weekly_soft_cap_cents ?? DEFAULT_CAPS.weekly_soft_cap_cents}
           weeklyAlertCents={budgetCaps?.weekly_alert_threshold_cents ?? DEFAULT_CAPS.weekly_alert_threshold_cents}
         />
+        <AttorneyExportSection />
         <DataExportSection />
       </div>
     </div>
