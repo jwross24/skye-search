@@ -221,4 +221,29 @@ describe('Daily batch scoring integration', () => {
 
     expect(screen.getByText(/1 of 8 reviewed/i)).toBeDefined()
   })
+
+  it('respects custom batchSize prop', () => {
+    render(<DailyBatch jobs={testJobs} userState={userState} batchSize={3} undoDelayMs={0} />)
+    expect(screen.getByText(/0 of 3 reviewed/i)).toBeDefined()
+  })
+
+  it('shows warm framing message when batchSize > 8', () => {
+    render(<DailyBatch jobs={testJobs} userState={userState} batchSize={12} undoDelayMs={0} />)
+    expect(screen.getByText(/extra strong matches/i)).toBeDefined()
+  })
+
+  it('no framing message at default batch size', () => {
+    render(<DailyBatch jobs={testJobs} userState={userState} batchSize={8} undoDelayMs={0} />)
+    expect(screen.queryByText(/extra strong matches/i)).toBeNull()
+  })
+
+  it('"That\'s enough for today" visible at all batch sizes', () => {
+    for (const size of [3, 8, 12, 15]) {
+      const { unmount } = render(
+        <DailyBatch jobs={testJobs} userState={userState} batchSize={size} undoDelayMs={0} />,
+      )
+      expect(screen.getByText(/enough for today/i)).toBeDefined()
+      unmount()
+    }
+  })
 })

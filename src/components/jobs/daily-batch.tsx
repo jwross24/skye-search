@@ -9,12 +9,14 @@ import { UndoToast } from './undo-toast'
 import { computeUrgencyScore, jobToInput, type UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
 import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
+import { getBatchFramingMessage } from '@/lib/batch-sizing'
 
-const BATCH_SIZE = 8
+const DEFAULT_BATCH_SIZE = 8
 
 interface DailyBatchProps {
   jobs: Job[]
   userState: UserState
+  batchSize?: number
   undoDelayMs?: number
 }
 
@@ -31,7 +33,7 @@ interface PendingVote {
 
 const DEFAULT_UNDO_DELAY = 4000
 
-export function DailyBatch({ jobs, userState, undoDelayMs = DEFAULT_UNDO_DELAY }: DailyBatchProps) {
+export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, undoDelayMs = DEFAULT_UNDO_DELAY }: DailyBatchProps) {
   const [votes, setVotes] = useState<Map<string, VoteRecord>>(new Map())
   const [exitedEarly, setExitedEarly] = useState(false)
   const [pendingUndo, setPendingUndo] = useState<PendingVote | null>(null)
@@ -42,7 +44,9 @@ export function DailyBatch({ jobs, userState, undoDelayMs = DEFAULT_UNDO_DELAY }
     if (timerRef.current) clearTimeout(timerRef.current)
   }, [])
 
-  // Score, sort, and pick top 8
+  const framingMessage = getBatchFramingMessage(batchSize)
+
+  // Score, sort, and pick top N (dynamic based on clock pressure)
   const batch = useMemo(() => {
     return jobs
       .map((job) => {
@@ -51,8 +55,8 @@ export function DailyBatch({ jobs, userState, undoDelayMs = DEFAULT_UNDO_DELAY }
       })
       .filter((item) => item.score >= 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, BATCH_SIZE)
-  }, [jobs, userState])
+      .slice(0, batchSize)
+  }, [jobs, userState, batchSize])
 
   const commitVote = useCallback((jobId: string, decision: VoteDecision, tags: DismissTag[]) => {
     voteOnJob(jobId, decision, tags)
@@ -169,6 +173,11 @@ export function DailyBatch({ jobs, userState, undoDelayMs = DEFAULT_UNDO_DELAY }
 
   return (
     <div className="relative">
+      {/* Warm framing when batch is larger than default */}
+      {framingMessage && (
+        <p className="text-sm text-ocean mb-3">{framingMessage}</p>
+      )}
+
       {/* Progress + exit */}
       <div className="flex items-center justify-between pb-3 mb-1">
         <p

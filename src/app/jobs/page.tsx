@@ -5,6 +5,7 @@ import { JobsHeader } from '@/components/jobs/jobs-header'
 import { createClient } from '@/db/supabase-server'
 import type { UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
+import { getBatchSize, type EmploymentMode } from '@/lib/batch-sizing'
 
 export default async function JobsPage() {
   const supabase = await createClient()
@@ -16,7 +17,7 @@ export default async function JobsPage() {
 
   // ─── Parallel queries ────────────────────────────────────────────────
 
-  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult] = await Promise.all([
+  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult, activeOfferResult] = await Promise.all([
     supabase.from('jobs').select('*').eq('user_id', user.id)
       .or('requires_citizenship.is.null,requires_citizenship.neq.true')
       .or('requires_security_clearance.is.null,requires_security_clearance.neq.true'),
@@ -48,6 +49,15 @@ export default async function JobsPage() {
       .select('break_mode_until')
       .eq('id', user.id)
       .single(),
+    // Check for active cap-exempt offer (determines employment mode for batch sizing)
+    supabase
+      .from('applications')
+      .select('jobs(employer_type, visa_path)')
+      .eq('user_id', user.id)
+      .eq('kanban_status', 'offer_accepted')
+      .not('job_id', 'is', null)
+      .limit(1)
+      .maybeSingle(),
   ])
 
   // ─── Filter out already-voted / already-applied jobs ─────────────────
@@ -132,6 +142,21 @@ export default async function JobsPage() {
         today,
       }
 
+  // ─── Employment mode for batch sizing ───────────────────────────────────
+  const activeOfferJob = activeOfferResult.data?.jobs
+  const offerEmployer = Array.isArray(activeOfferJob) ? activeOfferJob[0] : activeOfferJob
+  const isCapExemptEmployed = !!(
+    immRow?.employment_active && offerEmployer && (
+      offerEmployer.visa_path === 'cap_exempt' ||
+      ['university', 'nonprofit_research', 'cooperative_institute', 'government_direct'].includes(offerEmployer.employer_type ?? '')
+    )
+  )
+  const employmentMode: EmploymentMode = immRow?.employment_active
+    ? (isCapExemptEmployed ? 'cap_exempt' : 'bridge')
+    : null
+
+  const batchSize = getBatchSize(daysRemaining, immRow?.employment_active ?? false, employmentMode)
+
   // ─── Break mode check ─────────────────────────────────────────────────
   const breakModeUntilRaw = userResult.data?.break_mode_until as string | null
   const breakModeUntil = breakModeUntilRaw && new Date(breakModeUntilRaw) > new Date() ? breakModeUntilRaw : null
@@ -143,7 +168,7 @@ export default async function JobsPage() {
       {breakModeUntil ? (
         <BreakCard breakModeUntil={breakModeUntil} />
       ) : (
-        <DailyBatch jobs={jobs} userState={userState} />
+        <DailyBatch jobs={jobs} userState={userState} batchSize={batchSize} />
       )}
     </div>
   )
