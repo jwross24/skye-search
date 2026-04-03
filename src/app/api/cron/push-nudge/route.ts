@@ -142,6 +142,7 @@ async function handler(req: NextRequest) {
     }
 
     results.push({
+      userId: user.id,
       sent: result.success,
       reason: result.error,
     })

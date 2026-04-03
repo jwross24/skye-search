@@ -44,7 +44,13 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
-  const data = event.data.json()
+  let data
+  try {
+    data = event.data.json()
+  } catch {
+    return
+  }
+
   const options = {
     body: data.body,
     icon: '/icon-192x192.png',
