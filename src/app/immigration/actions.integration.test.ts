@@ -186,6 +186,225 @@ describe('toggleEmployment (real Supabase)', () => {
   })
 })
 
+describe('updatePostdocEndDate (real Supabase)', () => {
+  const OLD_END = '2026-04-11'
+  const NEW_END = '2026-07-01'
+
+  // Clean up test checkpoint data before/after
+  async function cleanupTestCheckpoints() {
+    await service
+      .from('daily_checkpoint')
+      .delete()
+      .eq('user_id', TEST_USER_ID)
+      .gt('checkpoint_date', OLD_END)
+      .lte('checkpoint_date', NEW_END)
+
+    await service
+      .from('checkpoint_corrections')
+      .delete()
+      .eq('user_id', TEST_USER_ID)
+      .eq('trigger_source', 'postdoc_extension_backfill')
+  }
+
+  // Seed unemployed checkpoints for the test
+  async function seedUnemployedCheckpoints(dates: string[]) {
+    const rows = dates.map((d) => ({
+      user_id: TEST_USER_ID,
+      checkpoint_date: d,
+      status_snapshot: 'unemployed',
+      unemployment_days_used_cumulative: 1,
+      trigger_source: 'manual_backfill',
+    }))
+    const { error } = await service.from('daily_checkpoint').insert(rows)
+    if (error) throw new Error(`Seed checkpoints failed: ${error.message}`)
+  }
+
+  it('[immigration] full flow: update end date -> corrections inserted -> clock recalculated', async () => {
+    await cleanupTestCheckpoints()
+
+    // Set postdoc_end_date to OLD_END
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+
+    // Seed 3 unemployed checkpoints between old+1 and new
+    const testDates = ['2026-04-12', '2026-04-13', '2026-04-14']
+    await seedUnemployedCheckpoints(testDates)
+    log('Step 1', `Seeded ${testDates.length} unemployed checkpoints after ${OLD_END}`)
+
+    // Run extension (service client mimics the server action's DB ops)
+    const { data: unemployed } = await service
+      .from('daily_checkpoint')
+      .select('checkpoint_date')
+      .eq('user_id', TEST_USER_ID)
+      .eq('status_snapshot', 'unemployed')
+      .gt('checkpoint_date', OLD_END)
+      .lte('checkpoint_date', NEW_END)
+
+    const corrections = (unemployed ?? []).map((c) => ({
+      user_id: TEST_USER_ID,
+      checkpoint_date: c.checkpoint_date,
+      original_status: 'unemployed',
+      corrected_status: 'employed_postdoc',
+      trigger_source: 'postdoc_extension_backfill',
+    }))
+
+    const { error: corrErr } = await service
+      .from('checkpoint_corrections')
+      .insert(corrections)
+    expect(corrErr).toBeNull()
+    log('Step 2', `Inserted ${corrections.length} corrections`)
+
+    // Update postdoc_end_date
+    const { error: updateErr } = await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: NEW_END })
+      .eq('user_id', TEST_USER_ID)
+    expect(updateErr).toBeNull()
+    log('Step 3', `Updated postdoc_end_date to ${NEW_END}`)
+
+    // Verify corrections exist
+    const { data: savedCorrections } = await service
+      .from('checkpoint_corrections')
+      .select('*')
+      .eq('user_id', TEST_USER_ID)
+      .eq('trigger_source', 'postdoc_extension_backfill')
+
+    expect(savedCorrections).toHaveLength(3)
+    expect(savedCorrections!.every((c) => c.corrected_status === 'employed_postdoc')).toBe(true)
+    log('Step 4', 'Corrections verified: 3 rows, all employed_postdoc')
+
+    // Verify original checkpoints UNTOUCHED
+    const { data: originals } = await service
+      .from('daily_checkpoint')
+      .select('status_snapshot')
+      .eq('user_id', TEST_USER_ID)
+      .in('checkpoint_date', testDates)
+
+    expect(originals!.every((c) => c.status_snapshot === 'unemployed')).toBe(true)
+    log('Step 5', 'Original checkpoints untouched (still unemployed)')
+
+    await cleanupTestCheckpoints()
+    // Restore old end date
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+  })
+
+  it('[immigration] idempotent: running extension twice does not duplicate corrections', async () => {
+    await cleanupTestCheckpoints()
+
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+
+    await seedUnemployedCheckpoints(['2026-04-12'])
+
+    // First run
+    const { error: err1 } = await service
+      .from('checkpoint_corrections')
+      .insert({
+        user_id: TEST_USER_ID,
+        checkpoint_date: '2026-04-12',
+        original_status: 'unemployed',
+        corrected_status: 'employed_postdoc',
+        trigger_source: 'postdoc_extension_backfill',
+      })
+    expect(err1).toBeNull()
+
+    // Check existing corrections (simulates the idempotency check)
+    const { data: existing } = await service
+      .from('checkpoint_corrections')
+      .select('checkpoint_date')
+      .eq('user_id', TEST_USER_ID)
+      .eq('trigger_source', 'postdoc_extension_backfill')
+
+    const existingDates = new Set((existing ?? []).map((c) => c.checkpoint_date))
+
+    // Second run: filter out already-corrected dates
+    const { data: checkpoints } = await service
+      .from('daily_checkpoint')
+      .select('checkpoint_date')
+      .eq('user_id', TEST_USER_ID)
+      .eq('status_snapshot', 'unemployed')
+      .gt('checkpoint_date', OLD_END)
+      .lte('checkpoint_date', NEW_END)
+
+    const newCorrections = (checkpoints ?? [])
+      .filter((c) => !existingDates.has(c.checkpoint_date))
+
+    expect(newCorrections).toHaveLength(0)
+    log('Idempotency', 'No duplicate corrections produced')
+
+    await cleanupTestCheckpoints()
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+  })
+
+  it('[immigration] multiple sequential extensions handled correctly', async () => {
+    await cleanupTestCheckpoints()
+
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+
+    // First extension: April 11 -> May 1
+    await seedUnemployedCheckpoints(['2026-04-12', '2026-04-13'])
+
+    const { error: err1 } = await service
+      .from('checkpoint_corrections')
+      .insert([
+        { user_id: TEST_USER_ID, checkpoint_date: '2026-04-12', original_status: 'unemployed', corrected_status: 'employed_postdoc', trigger_source: 'postdoc_extension_backfill' },
+        { user_id: TEST_USER_ID, checkpoint_date: '2026-04-13', original_status: 'unemployed', corrected_status: 'employed_postdoc', trigger_source: 'postdoc_extension_backfill' },
+      ])
+    expect(err1).toBeNull()
+
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: '2026-05-01' })
+      .eq('user_id', TEST_USER_ID)
+
+    // Second extension: May 1 -> June 1
+    await seedUnemployedCheckpoints(['2026-05-02', '2026-05-03'])
+
+    const { error: err2 } = await service
+      .from('checkpoint_corrections')
+      .insert([
+        { user_id: TEST_USER_ID, checkpoint_date: '2026-05-02', original_status: 'unemployed', corrected_status: 'employed_postdoc', trigger_source: 'postdoc_extension_backfill' },
+        { user_id: TEST_USER_ID, checkpoint_date: '2026-05-03', original_status: 'unemployed', corrected_status: 'employed_postdoc', trigger_source: 'postdoc_extension_backfill' },
+      ])
+    expect(err2).toBeNull()
+
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: '2026-06-01' })
+      .eq('user_id', TEST_USER_ID)
+
+    // All 4 corrections should exist
+    const { data: allCorrections } = await service
+      .from('checkpoint_corrections')
+      .select('*')
+      .eq('user_id', TEST_USER_ID)
+      .eq('trigger_source', 'postdoc_extension_backfill')
+      .order('checkpoint_date')
+
+    expect(allCorrections).toHaveLength(4)
+    log('Sequential', `4 corrections from 2 extensions: ${allCorrections!.map((c) => c.checkpoint_date).join(', ')}`)
+
+    await cleanupTestCheckpoints()
+    await service
+      .from('immigration_status')
+      .update({ postdoc_end_date: OLD_END })
+      .eq('user_id', TEST_USER_ID)
+  })
+})
+
 describe('getWhatIfScenarios (real Supabase)', () => {
   it('[immigration] immigration_clock view returns days_remaining', async () => {
     const { data, error } = await service

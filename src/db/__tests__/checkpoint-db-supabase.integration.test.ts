@@ -38,6 +38,12 @@ afterEach(async () => {
     .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
 
   await adminClient
+    .from('checkpoint_corrections')
+    .delete()
+    .eq('user_id', TEST_USER_ID)
+    .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
+
+  await adminClient
     .from('cron_execution_log')
     .delete()
     .eq('user_id', TEST_USER_ID)
@@ -48,6 +54,12 @@ afterAll(async () => {
   // Final cleanup
   await adminClient
     .from('daily_checkpoint')
+    .delete()
+    .eq('user_id', TEST_USER_ID)
+    .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
+
+  await adminClient
+    .from('checkpoint_corrections')
     .delete()
     .eq('user_id', TEST_USER_ID)
     .gte('checkpoint_date', `${TEST_YEAR}-01-01`)
@@ -184,6 +196,60 @@ describe('countUnemployedCheckpoints', () => {
 
     const countBefore = await db.countUnemployedCheckpoints(TEST_USER_ID, `${TEST_YEAR}-06-02`)
     expect(countBefore).toBe(1) // Only 06-01
+  })
+
+  it('subtracts corrections that change unemployed to non-unemployed', async () => {
+    await db.insertCheckpoint({
+      user_id: TEST_USER_ID,
+      checkpoint_date: `${TEST_YEAR}-06-01`,
+      status_snapshot: 'unemployed',
+      unemployment_days_used_cumulative: 10,
+      trigger_source: 'manual_backfill',
+      evidence_notes: null,
+    })
+    await db.insertCheckpoint({
+      user_id: TEST_USER_ID,
+      checkpoint_date: `${TEST_YEAR}-06-02`,
+      status_snapshot: 'unemployed',
+      unemployment_days_used_cumulative: 11,
+      trigger_source: 'manual_backfill',
+      evidence_notes: null,
+    })
+
+    // Correct 06-01 to employed_postdoc (should reduce count)
+    await adminClient.from('checkpoint_corrections').insert({
+      user_id: TEST_USER_ID,
+      checkpoint_date: `${TEST_YEAR}-06-01`,
+      original_status: 'unemployed',
+      corrected_status: 'employed_postdoc',
+      trigger_source: 'postdoc_extension_backfill',
+    })
+
+    const count = await db.countUnemployedCheckpoints(TEST_USER_ID, `${TEST_YEAR}-06-03`)
+    expect(count).toBe(1) // 06-02 remains unemployed; 06-01 corrected out
+  })
+
+  it('does not subtract no-op corrections (corrected_status = unemployed)', async () => {
+    await db.insertCheckpoint({
+      user_id: TEST_USER_ID,
+      checkpoint_date: `${TEST_YEAR}-06-01`,
+      status_snapshot: 'unemployed',
+      unemployment_days_used_cumulative: 10,
+      trigger_source: 'manual_backfill',
+      evidence_notes: null,
+    })
+
+    // No-op correction: original_status = unemployed, corrected_status = unemployed
+    await adminClient.from('checkpoint_corrections').insert({
+      user_id: TEST_USER_ID,
+      checkpoint_date: `${TEST_YEAR}-06-01`,
+      original_status: 'unemployed',
+      corrected_status: 'unemployed',
+      trigger_source: 'postdoc_extension_backfill',
+    })
+
+    const count = await db.countUnemployedCheckpoints(TEST_USER_ID, `${TEST_YEAR}-06-02`)
+    expect(count).toBe(1) // No-op correction should not reduce the count
   })
 })
 

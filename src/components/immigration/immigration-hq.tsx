@@ -6,6 +6,7 @@ import { ClockDisplay } from './clock-display'
 import { CalibrationFlow } from './calibration-flow'
 import { DisclaimerBanner } from './disclaimer-banner'
 import { EmploymentToggle, type EmploymentData } from './employment-toggle'
+import { PostdocExtension } from './postdoc-extension'
 import { StrategyMap } from './strategy-map'
 import { saveCalibration, acknowledgeDisclaimer, toggleEmployment } from '@/app/immigration/actions'
 import type { SeedImmigrationStatus, SeedPlan } from '@/db/seed'
@@ -40,6 +41,9 @@ export function ImmigrationHQ({
   )
   const [haltSource, setHaltSource] = useState<string | null>(
     immigrationStatus?.employment_active ? 'PostDoc' : null,
+  )
+  const [postdocEndDate, setPostdocEndDate] = useState(
+    immigrationStatus?.postdoc_end_date ?? '',
   )
 
   // Update PWA app badge with unemployment day count
@@ -86,7 +90,7 @@ export function ImmigrationHQ({
   // Resolve status label for display
   const getStatusLabel = (): string | undefined => {
     if (!calibrated) return undefined
-    if (today <= (immigrationStatus?.postdoc_end_date ?? '')) return 'Employed (PostDoc)'
+    if (today <= postdocEndDate) return 'Employed (PostDoc)'
     if (employed) return 'Employed (Bridge)'
     if (isGracePeriod) return 'Grace Period'
     if (daysRemaining <= 0) return 'Clock Exhausted'
@@ -153,6 +157,17 @@ export function ImmigrationHQ({
                 </p>
               )}
             </div>
+
+            {/* PostDoc extension */}
+            {postdocEndDate && (
+              <div className="mt-8 border-t border-border/50 pt-6">
+                <PostdocExtension
+                  currentEndDate={postdocEndDate}
+                  today={today}
+                  onExtended={setPostdocEndDate}
+                />
+              </div>
+            )}
           </>
         )}
 

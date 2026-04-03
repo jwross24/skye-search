@@ -90,15 +90,29 @@ export function createCheckpointDbSupabase(): CheckpointDb {
     },
 
     async countUnemployedCheckpoints(userId: string, beforeDate: string): Promise<number> {
-      const { count, error } = await supabase
+      const { count: rawCount, error: err1 } = await supabase
         .from('daily_checkpoint')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('status_snapshot', 'unemployed')
         .lt('checkpoint_date', beforeDate)
 
-      if (error) return 0
-      return count ?? 0
+      if (err1) return 0
+
+      // Subtract corrected checkpoints (e.g., postdoc extension backfill).
+      // Filter to corrections that actually change status away from unemployed
+      // (neq ensures no-op corrections with corrected_status='unemployed' don't skew the count).
+      const { count: correctedCount, error: err2 } = await supabase
+        .from('checkpoint_corrections')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('original_status', 'unemployed')
+        .neq('corrected_status', 'unemployed')
+        .lt('checkpoint_date', beforeDate)
+
+      if (err2) return rawCount ?? 0
+
+      return Math.max(0, (rawCount ?? 0) - (correctedCount ?? 0))
     },
 
     async getExistingCheckpointDates(
