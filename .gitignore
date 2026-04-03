@@ -57,6 +57,7 @@ next-env.d.ts
 .claude/.cross-review-results.json
 .claude/.bead-close-count*
 .claude/.session-beads-*
+.claude/worktrees/
 .claude/.review-write-authorized
 .claude/.review-session-id
 .claude/settings.local.json
