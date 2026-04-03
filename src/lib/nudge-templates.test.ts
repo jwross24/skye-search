@@ -126,7 +126,7 @@ describe('buildMessage', () => {
     expect(msg).toContain('92% match')
   })
 
-  it('messages are under 320 chars (2 SMS segments)', () => {
+  it('messages are under 320 chars (web push payload limit)', () => {
     log('1', 'Checking message lengths')
     const contexts: NudgeContext[] = [
       { daysRemaining: 119, topPick: basePick },

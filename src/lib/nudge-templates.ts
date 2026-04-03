@@ -1,5 +1,5 @@
 /**
- * SMS nudge message templates.
+ * Push notification nudge message templates.
  *
  * Design principles (from bead spec):
  * - Clock status FIRST (reduces anxiety by confirming safety)

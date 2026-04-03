@@ -1,5 +1,5 @@
 // SkyeSearch Service Worker
-// Minimal: offline fallback + push event listener (for future bead 6aa)
+// Offline fallback + Web Push notification handler
 
 const CACHE_NAME = 'skye-v1'
 const OFFLINE_URL = '/offline'
@@ -40,7 +40,7 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
-// Push notification handler (stub for bead 6aa: Push Notifications)
+// Push notification handler
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
