@@ -4,6 +4,7 @@ import { SettingsPageContent } from '@/components/settings/settings-page-content
 import { BudgetSection } from '@/components/settings/budget-section'
 import { DataExportSection } from '@/components/settings/data-export-section'
 import { BreakModeSection } from '@/components/settings/break-mode-section'
+import { PushNotificationSection } from '@/components/settings/push-notification-section'
 import type { UserProfile } from '@/types/cv-extraction'
 import { DEFAULT_CAPS } from '@/lib/budget-guard'
 
@@ -60,6 +61,7 @@ export default async function SettingsPage() {
           skills={(userData.data?.skills ?? []) as string[]}
           latestCv={latestCv.data}
         />
+        <PushNotificationSection />
         <BreakModeSection
           breakModeUntil={(userData.data?.break_mode_until as string | null) ?? null}
           daysRemaining={clockData.data?.days_remaining ?? null}
