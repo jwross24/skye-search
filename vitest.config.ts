@@ -8,7 +8,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./tests/setup.ts'],
     include: ['**/*.test.{ts,tsx}'],
-    exclude: ['**/node_modules/**', '**/.next/**', '**/tests/e2e/**', '**/*.integration.test.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/.next/**', '**/tests/e2e/**', '**/*.integration.test.{ts,tsx}', '**/.claude/worktrees/**'],
     globals: true,
     css: false,
     coverage: {
