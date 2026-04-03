@@ -2,6 +2,11 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
+// Mock toast
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
+
 // Mock server actions (they call cookies() which requires Next.js request scope)
 vi.mock('@/app/immigration/actions', () => ({
   saveCalibration: vi.fn().mockResolvedValue({ success: true }),
@@ -634,5 +639,69 @@ describe('Immigration HQ with seed data', () => {
     )
     expect(screen.getByTestId('grace-period-view')).toBeDefined()
     log('Step 2', 'Grace period view rendered')
+  })
+})
+
+// ─── Error Toast + Rollback ─────────────────────────────────────────────────
+
+describe('Server action error handling', () => {
+  it('rolls back disclaimer ack and shows toast on failure', async () => {
+    const { toast } = await import('sonner')
+    const { acknowledgeDisclaimer } = await import('@/app/immigration/actions')
+    vi.mocked(acknowledgeDisclaimer).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    const status = { ...seedImmigrationStatus, initial_days_used: 0 }
+    render(<ImmigrationHQ immigrationStatus={status} today={TODAY} plans={seedPlans} />)
+
+    log('Step 1', 'Acknowledging disclaimer (will fail)')
+    await user.click(screen.getByRole('button', { name: /I understand/i }))
+
+    log('Step 2', 'Verifying rollback: disclaimer banner should reappear')
+    expect(screen.getByTestId('disclaimer-banner')).toBeDefined()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('acknowledgment'))
+  })
+
+  it('rolls back calibration and shows toast on failure', async () => {
+    const { toast } = await import('sonner')
+    const { saveCalibration } = await import('@/app/immigration/actions')
+    vi.mocked(saveCalibration).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    const status = { ...seedImmigrationStatus, initial_days_used: 0 }
+    render(<ImmigrationHQ immigrationStatus={status} today={TODAY} plans={seedPlans} />)
+
+    // First acknowledge disclaimer
+    vi.mocked((await import('@/app/immigration/actions')).acknowledgeDisclaimer).mockResolvedValueOnce({ success: true })
+    await user.click(screen.getByRole('button', { name: /I understand/i }))
+
+    log('Step 1', 'Entering calibration data (will fail on save)')
+    const input = screen.getByLabelText(/Days already used/i)
+    await user.clear(input)
+    await user.type(input, '31')
+    await user.click(screen.getByRole('button', { name: /Set my clock/i }))
+
+    log('Step 2', 'Verifying rollback: calibration flow should reappear')
+    expect(screen.getByTestId('calibration-flow')).toBeDefined()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('calibration'))
+  })
+
+  it('rolls back employment toggle and shows toast on failure', async () => {
+    const { toast } = await import('sonner')
+    vi.mocked(toast.error).mockClear()
+    const { toggleEmployment } = await import('@/app/immigration/actions')
+    vi.mocked(toggleEmployment).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    render(<ImmigrationHQ immigrationStatus={seedImmigrationStatus} today={TODAY} plans={seedPlans} />)
+
+    log('Step 1', 'Toggling employment off (will fail)')
+    const toggle = screen.getByRole('switch', { name: /Employment status/i })
+    await user.click(toggle)
+
+    log('Step 2', 'Verifying rollback and toast')
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('employment'))
+    // Verify toggle state rolled back to employed
+    expect(screen.getByText('Employed')).toBeDefined()
   })
 })

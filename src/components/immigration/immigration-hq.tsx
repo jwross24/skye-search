@@ -8,6 +8,7 @@ import { DisclaimerBanner } from './disclaimer-banner'
 import { EmploymentToggle, type EmploymentData } from './employment-toggle'
 import { PostdocExtension } from './postdoc-extension'
 import { StrategyMap } from './strategy-map'
+import { toast } from 'sonner'
 import { saveCalibration, acknowledgeDisclaimer, toggleEmployment } from '@/app/immigration/actions'
 import type { SeedImmigrationStatus, SeedPlan } from '@/db/seed'
 
@@ -53,23 +54,40 @@ export function ImmigrationHQ({
     }
   }, [daysUsed])
 
-  const handleDisclaimerAck = () => {
+  const handleDisclaimerAck = async () => {
     setDisclaimerAcked(true)
-    acknowledgeDisclaimer()
+    const result = await acknowledgeDisclaimer()
+    if (result && !result.success) {
+      setDisclaimerAcked(false)
+      toast.error("Couldn't save your acknowledgment. Try again in a moment.")
+    }
   }
 
-  const handleCalibration = (days: number, dsoConfirmed: boolean) => {
+  const handleCalibration = async (days: number, dsoConfirmed: boolean) => {
+    const prevDays = daysUsed
+    const prevSource = dataSource
+    const prevCalibrated = calibrated
     setDaysUsed(days)
     setDataSource(dsoConfirmed ? 'dso_confirmed' : 'user_reported')
     setCalibrated(true)
-    saveCalibration({
+    const result = await saveCalibration({
       initial_days_used: days,
       dso_confirmed: dsoConfirmed,
       calibration_date: today,
     })
+    if (result && !result.success) {
+      setDaysUsed(prevDays)
+      setDataSource(prevSource)
+      setCalibrated(prevCalibrated)
+      toast.error("Couldn't save your calibration. Try again in a moment.")
+    }
   }
 
-  const handleEmploymentToggle = (isEmployed: boolean, data?: EmploymentData) => {
+  const handleEmploymentToggle = async (isEmployed: boolean, data?: EmploymentData) => {
+    const prevEmployed = employed
+    const prevOverride = employmentOverride
+    const prevHaltedSince = haltedSince
+    const prevHaltSource = haltSource
     setEmployed(isEmployed)
     if (isEmployed && data) {
       setEmploymentOverride(data.eligibility_override)
@@ -79,7 +97,14 @@ export function ImmigrationHQ({
       setHaltedSince(null)
       setHaltSource(null)
     }
-    toggleEmployment(isEmployed, data?.start_date)
+    const result = await toggleEmployment(isEmployed, data?.start_date)
+    if (result && !result.success) {
+      setEmployed(prevEmployed)
+      setEmploymentOverride(prevOverride)
+      setHaltedSince(prevHaltedSince)
+      setHaltSource(prevHaltSource)
+      toast.error("Couldn't update your employment status. Try again in a moment.")
+    }
   }
 
   const daysRemaining = 150 - daysUsed

@@ -10,6 +10,7 @@ import { CardDetail } from './card-detail'
 import { RejectionCapture } from './rejection-capture'
 import { OfferVerification } from './offer-verification'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { toast } from 'sonner'
 import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection, uninterestApplication } from '@/app/tracker/actions'
 import { TagPicker } from '@/components/jobs/tag-picker'
 import type { DismissTag } from '@/app/jobs/actions'
@@ -110,65 +111,95 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
     [showPhoneScreen],
   )
 
-  const moveApplication = (appId: string, newStatus: KanbanStatus) => {
-    // Intercept moves to Rejected — show quick-capture first
+  const moveApplication = async (appId: string, newStatus: KanbanStatus) => {
     if (newStatus === 'rejected') {
       setPendingReject(appId)
       return
     }
-    // Intercept moves to Offer — show verification prompt first
     if (newStatus === 'offer') {
       setPendingOffer(appId)
       return
     }
-    // Optimistic update + persist
+    const prevStatus = applications.find((a) => a.id === appId)?.status
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, status: newStatus } : app)),
     )
-    moveApplicationAction(appId, newStatus)
+    const result = await moveApplicationAction(appId, newStatus)
+    if (result && !result.success) {
+      setApplications((prev) =>
+        prev.map((app) => (app.id === appId ? { ...app, status: prevStatus ?? app.status } : app)),
+      )
+      toast.error("Couldn't move this application. Try again in a moment.")
+    }
   }
 
-  const confirmReject = (appId: string, rejectionType?: RejectionType) => {
-    // Optimistic update + persist
+  const confirmReject = async (appId: string, rejectionType?: RejectionType) => {
+    const prevApp = applications.find((a) => a.id === appId)
     setApplications((prev) =>
       prev.map((app) =>
         app.id === appId ? { ...app, status: 'rejected' as KanbanStatus, rejectionType } : app,
       ),
     )
     setPendingReject(null)
-    captureRejection(appId, rejectionType ?? 'ghosted')
+    const result = await captureRejection(appId, rejectionType ?? 'ghosted')
+    if (result && !result.success) {
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.id === appId ? { ...app, status: prevApp?.status ?? app.status, rejectionType: prevApp?.rejectionType } : app,
+        ),
+      )
+      toast.error("Couldn't save the rejection. Try again in a moment.")
+    }
   }
 
-  const confirmOffer = (appId: string) => {
-    // Optimistic update + persist
+  const confirmOffer = async (appId: string) => {
+    const prevApp = applications.find((a) => a.id === appId)
     setApplications((prev) =>
       prev.map((app) =>
         app.id === appId ? { ...app, status: 'offer' as KanbanStatus, offerVerified: true } : app,
       ),
     )
     setPendingOffer(null)
-    moveApplicationAction(appId, 'offer')
+    const result = await moveApplicationAction(appId, 'offer')
+    if (result && !result.success) {
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.id === appId ? { ...app, status: prevApp?.status ?? app.status, offerVerified: prevApp?.offerVerified } : app,
+        ),
+      )
+      toast.error("Couldn't save the offer. Try again in a moment.")
+    }
   }
 
-  const confirmUninterest = (appId: string, tags: DismissTag[]) => {
-    // Optimistic: remove the card from the list
+  const confirmUninterest = async (appId: string, tags: DismissTag[]) => {
+    const removedApp = applications.find((app) => app.id === appId)
     setApplications((prev) => prev.filter((app) => app.id !== appId))
     setPendingUninterest(null)
-    uninterestApplication(appId, tags)
+    const result = await uninterestApplication(appId, tags)
+    if (result && !result.success && removedApp) {
+      setApplications((prev) => [...prev, removedApp])
+      toast.error("Couldn't remove this application. Try again in a moment.")
+    }
   }
 
-  const updateApplication = (appId: string, updates: Partial<TrackedApplication>) => {
+  const updateApplication = async (appId: string, updates: Partial<TrackedApplication>) => {
+    const prevApp = applications.find((a) => a.id === appId)
     setApplications((prev) =>
       prev.map((app) => (app.id === appId ? { ...app, ...updates } : app)),
     )
     if (updates.notes !== undefined || updates.nextAction !== undefined || updates.nextActionDate !== undefined) {
-      const app = applications.find((a) => a.id === appId)
-      updateApplicationNotes(
+      const result = await updateApplicationNotes(
         appId,
-        updates.notes ?? app?.notes ?? '',
-        updates.nextAction ?? app?.nextAction ?? '',
-        updates.nextActionDate ?? app?.nextActionDate ?? '',
+        updates.notes ?? prevApp?.notes ?? '',
+        updates.nextAction ?? prevApp?.nextAction ?? '',
+        updates.nextActionDate ?? prevApp?.nextActionDate ?? '',
       )
+      if (result && !result.success && prevApp) {
+        setApplications((prev) =>
+          prev.map((app) => (app.id === appId ? { ...app, notes: prevApp.notes, nextAction: prevApp.nextAction, nextActionDate: prevApp.nextActionDate } : app)),
+        )
+        toast.error("Couldn't save your notes. Try again in a moment.")
+      }
     }
   }
 

@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/app-sidebar'
 import { MobileNav } from '@/components/mobile-nav'
 import { PWAProvider } from '@/components/pwa-provider'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const geistMono = Geist_Mono({
@@ -46,6 +47,7 @@ export default function RootLayout({
             <MobileNav />
           </TooltipProvider>
         </PWAProvider>
+        <Toaster position="bottom-right" richColors closeButton duration={4000} offset="72px" />
       </body>
     </html>
   )

@@ -8,6 +8,12 @@ function log(step: string, detail: string) {
   process.stdout.write(`  [kanban test] ${step}: ${detail}\n`)
 }
 
+// ─── Toast mock ──────────────────────────────────────────────────────────
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
+}))
+
 // ─── Server action mocks ──────────────────────────────────────────────────
 
 vi.mock('@/app/tracker/actions', () => ({
@@ -614,5 +620,66 @@ describe('Uninterest ("Changed my mind")', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByTestId('card-app-bu-sif')).toBeDefined()
     log('Step 4', 'Dialog closed, card still in Interested column')
+  })
+})
+
+// ─── Error Toast + Rollback ──────────────────────────────────────────────
+
+describe('Server action error handling', () => {
+  it('rolls back card move and shows toast on failure', async () => {
+    const { toast } = await import('sonner')
+    const { moveApplication: moveAction } = await import('@/app/tracker/actions')
+    vi.mocked(moveAction).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    log('Step 1', 'Moving card from Interested to Applied (will fail)')
+    const moveBtn = screen.getByTestId('card-app-bu-sif-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-applied'))
+
+    log('Step 2', 'Verifying rollback: card returns to Interested')
+    const interestedCol = screen.getByTestId('column-interested')
+    expect(within(interestedCol).getByTestId('card-app-bu-sif')).toBeDefined()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('move'))
+  })
+
+  it('rolls back rejection and shows toast on failure', async () => {
+    const { toast } = await import('sonner')
+    const { captureRejection: rejectAction } = await import('@/app/tracker/actions')
+    vi.mocked(rejectAction).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    log('Step 1', 'Moving card to Rejected (will fail)')
+    const moveBtn = screen.getByTestId('card-app-ibss-move-button')
+    await user.click(moveBtn)
+    await user.click(screen.getByTestId('status-rejected'))
+    await user.click(screen.getByTestId('rejection-form_email'))
+
+    log('Step 2', 'Verifying rollback: card returns to Interview')
+    const interviewCol = screen.getByTestId('column-interview')
+    expect(within(interviewCol).getByTestId('card-app-ibss')).toBeDefined()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('rejection'))
+  })
+
+  it('restores card on uninterest failure', async () => {
+    const { toast } = await import('sonner')
+    const { uninterestApplication: uninterestAction } = await import('@/app/tracker/actions')
+    vi.mocked(uninterestAction).mockResolvedValueOnce({ success: false, error: 'DB error' })
+
+    const user = userEvent.setup()
+    render(<KanbanBoard initialApplications={SEED_APPS} />)
+
+    log('Step 1', 'Removing card via uninterest (will fail)')
+    await user.click(screen.getByTestId('card-app-bu-sif-uninterest'))
+    await user.click(screen.getByText('Wrong field'))
+
+    log('Step 2', 'Verifying rollback: card reappears')
+    expect(screen.getByTestId('card-app-bu-sif')).toBeDefined()
+    expect(screen.getByText('5 applications')).toBeDefined()
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('remove'))
   })
 })
