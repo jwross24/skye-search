@@ -160,12 +160,16 @@ export const exaAdapter: JobSourceAdapter = {
       const searchText = query.keywords.join(' ')
 
       try {
+        const isIndustryQuery = !query.domains?.length
         const response = await exa.searchAndContents(searchText, {
           text: { maxCharacters: 3000 },
           numResults: 10,
           type: 'neural',
+          userLocation: 'US',
+          filterEmptyResults: true,
           includeDomains: query.domains?.length ? query.domains : undefined,
-          excludeDomains: query.domains?.length ? undefined : INDUSTRY_EXCLUDE_DOMAINS,
+          excludeDomains: isIndustryQuery ? INDUSTRY_EXCLUDE_DOMAINS : undefined,
+          includeText: isIndustryQuery ? ['apply'] : undefined,
           startPublishedDate: thirtyDaysAgo(),
         })
         requestCount++
@@ -185,6 +189,9 @@ export const exaAdapter: JobSourceAdapter = {
         const response = await exa.findSimilarAndContents(seed.url, {
           text: { maxCharacters: 3000 },
           numResults: 5,
+          userLocation: 'US',
+          filterEmptyResults: true,
+          startPublishedDate: seed.source_type === 'academic' ? ninetyDaysAgo() : thirtyDaysAgo(),
         })
         requestCount++
 
@@ -233,5 +240,11 @@ export const exaAdapter: JobSourceAdapter = {
 function thirtyDaysAgo(): string {
   const d = new Date()
   d.setDate(d.getDate() - 30)
+  return d.toISOString().split('T')[0]
+}
+
+function ninetyDaysAgo(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 90)
   return d.toISOString().split('T')[0]
 }

@@ -97,12 +97,94 @@ describe('Exa adapter', () => {
     )
   })
 
+  it('passes userLocation US to all searchAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery, industryQuery])
+
+    for (const call of mockSearch.mock.calls) {
+      expect(call[1]).toEqual(expect.objectContaining({ userLocation: 'US' }))
+    }
+  })
+
+  it('passes filterEmptyResults to all searchAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery, industryQuery])
+
+    for (const call of mockSearch.mock.calls) {
+      expect(call[1]).toEqual(expect.objectContaining({ filterEmptyResults: true }))
+    }
+  })
+
+  it('includes includeText for industry queries (no domains)', async () => {
+    await exaAdapter.discover([industryQuery])
+
+    expect(mockSearch).toHaveBeenCalledWith(
+      'satellite data pipeline engineer',
+      expect.objectContaining({ includeText: ['apply'] }),
+    )
+  })
+
+  it('does NOT include includeText for academic queries (has domains)', async () => {
+    await exaAdapter.discover([academicQuery])
+
+    expect(mockSearch).toHaveBeenCalledWith(
+      'ocean color remote sensing',
+      expect.objectContaining({ includeText: undefined }),
+    )
+  })
+
   it('runs findSimilar on all seed URLs', async () => {
     await exaAdapter.discover([academicQuery])
 
     expect(mockFindSimilar).toHaveBeenCalledTimes(FIND_SIMILAR_SEEDS.length)
     for (const seed of FIND_SIMILAR_SEEDS) {
       expect(mockFindSimilar).toHaveBeenCalledWith(seed.url, expect.objectContaining({ numResults: 5 }))
+    }
+  })
+
+  it('passes userLocation US to all findSimilarAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery])
+
+    for (const call of mockFindSimilar.mock.calls) {
+      expect(call[1]).toEqual(expect.objectContaining({ userLocation: 'US' }))
+    }
+  })
+
+  it('passes filterEmptyResults to all findSimilarAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery])
+
+    for (const call of mockFindSimilar.mock.calls) {
+      expect(call[1]).toEqual(expect.objectContaining({ filterEmptyResults: true }))
+    }
+  })
+
+  it('passes startPublishedDate to findSimilarAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery])
+
+    for (const call of mockFindSimilar.mock.calls) {
+      expect(call[1].startPublishedDate).toBeDefined()
+      // Date format: YYYY-MM-DD
+      expect(call[1].startPublishedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+  })
+
+  it('uses 90-day window for academic findSimilar seeds', async () => {
+    await exaAdapter.discover([academicQuery])
+
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+    const expected90 = ninetyDaysAgo.toISOString().split('T')[0]
+
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const expected30 = thirtyDaysAgo.toISOString().split('T')[0]
+
+    for (let i = 0; i < FIND_SIMILAR_SEEDS.length; i++) {
+      const seed = FIND_SIMILAR_SEEDS[i]
+      const callOpts = mockFindSimilar.mock.calls[i][1]
+      if (seed.source_type === 'academic') {
+        expect(callOpts.startPublishedDate).toBe(expected90)
+      } else {
+        expect(callOpts.startPublishedDate).toBe(expected30)
+      }
     }
   })
 
