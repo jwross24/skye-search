@@ -88,6 +88,14 @@ if [ ! -f "$CANONICAL" ]; then
   exit 0
 fi
 
+# Ensure reviewer field is set (subagent may have omitted it).
+# Safe to inject because this hook ONLY fires for PostToolUse[Agent],
+# so a subagent definitely wrote it.
+HAS_REVIEWER=$(jq -r '.reviewer // ""' "$CANONICAL" 2>/dev/null) || HAS_REVIEWER=""
+if [ -z "$HAS_REVIEWER" ]; then
+  jq '.reviewer = "subagent"' "$CANONICAL" > "${CANONICAL}.tmp" && mv "${CANONICAL}.tmp" "$CANONICAL"
+fi
+
 # Validate disposition structure
 RESULT=$(bash "$SCRIPTS_DIR/validate-disposition.sh" "$CANONICAL" 2>/dev/null) || RESULT='{"pass":false,"error":"validation crashed"}'
 PASS=$(printf '%s' "$RESULT" | jq -r '.pass // false' 2>/dev/null) || PASS="false"
