@@ -104,6 +104,47 @@ function isRelevant(item: RdfItem): boolean {
   return RELEVANCE_KEYWORDS.some(kw => searchable.includes(kw))
 }
 
+// ─── Geographic Filter ─────────────────────────────────────────────────────
+
+// AJO is a global board. Non-US/Canada postings waste Claude scoring budget.
+// Blocklist approach: conservative — only filters when a clear non-US/Canada
+// indicator is present. Ambiguous postings pass through for Claude to decide.
+const INTERNATIONAL_COUNTRY_NAMES = [
+  'australia', 'germany', 'united kingdom', 'france', 'china', 'japan',
+  'india', 'netherlands', 'switzerland', 'sweden', 'norway', 'denmark',
+  'new zealand', 'singapore', 'hong kong', 'korea', 'brazil',
+  'south africa', 'ireland', 'israel', 'italy', 'spain', 'austria',
+  'belgium', 'finland', 'portugal', 'czech republic', 'poland', 'taiwan',
+  'saudi arabia', 'qatar', 'uae', 'chile', 'mexico', 'argentina',
+]
+
+const INTERNATIONAL_INSTITUTION_PATTERNS = [
+  'max planck', 'cnrs', 'eth zurich', 'epfl',
+  'university of oxford', 'university of cambridge',
+  'imperial college', 'king\'s college london',
+  'australian national university', 'university of melbourne',
+  'university of sydney', 'university of queensland',
+  'technion', 'weizmann institute', 'hebrew university',
+  'tsinghua', 'peking university', 'chinese academy',
+  'university of tokyo', 'kyoto university',
+  'kaist', 'seoul national',
+  'national university of singapore', 'nanyang technological',
+]
+
+function isInternational(item: RdfItem): boolean {
+  const searchable = `${item.title} ${item.department} ${item.university}`.toLowerCase()
+
+  if (INTERNATIONAL_COUNTRY_NAMES.some(country => searchable.includes(country))) {
+    return true
+  }
+
+  if (INTERNATIONAL_INSTITUTION_PATTERNS.some(pattern => searchable.includes(pattern))) {
+    return true
+  }
+
+  return false
+}
+
 // ─── Adapter Implementation ────────────────────────────────────────────────
 
 function mapToDiscoveredJob(item: RdfItem): DiscoveredJob {
@@ -141,13 +182,15 @@ export const ajoRssAdapter: JobSourceAdapter = {
       const xml = await response.text()
       const allItems = parseRdfFeed(xml)
       const relevant = allItems.filter(isRelevant)
+      const filteredIntl = relevant.filter(item => isInternational(item))
+      const domestic = relevant.filter(item => !isInternational(item))
 
-      for (const item of relevant) {
+      for (const item of domestic) {
         jobs.push(mapToDiscoveredJob(item))
       }
 
       console.log(
-        `AJO RSS: ${relevant.length} relevant of ${allItems.length} total items`,
+        `AJO RSS: ${domestic.length} domestic of ${relevant.length} relevant (${filteredIntl.length} filtered international) of ${allItems.length} total`,
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
@@ -184,5 +227,5 @@ export const ajoRssAdapter: JobSourceAdapter = {
 }
 
 // Exported for testing
-export { parseRdfFeed, isRelevant, RELEVANCE_KEYWORDS, AJO_FEED_URL }
+export { parseRdfFeed, isRelevant, isInternational, RELEVANCE_KEYWORDS, INTERNATIONAL_COUNTRY_NAMES, INTERNATIONAL_INSTITUTION_PATTERNS, AJO_FEED_URL }
 export type { RdfItem }

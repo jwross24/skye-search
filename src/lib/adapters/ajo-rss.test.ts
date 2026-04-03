@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseRdfFeed, isRelevant, RELEVANCE_KEYWORDS, AJO_FEED_URL } from './ajo-rss'
+import { parseRdfFeed, isRelevant, isInternational, RELEVANCE_KEYWORDS, INTERNATIONAL_COUNTRY_NAMES, AJO_FEED_URL } from './ajo-rss'
 import type { RdfItem } from './ajo-rss'
 
 // ─── Sample RSS/RDF fixture ────────────────────────────────────────────────
@@ -133,6 +133,80 @@ describe('isRelevant', () => {
       university: 'National Center for Atmospheric Research',
     }
     expect(isRelevant(item)).toBe(true)
+  })
+})
+
+// ─── isInternational (geographic filter) ──────────────────────────────────
+
+describe('isInternational', () => {
+  it('filters Australian university', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/10',
+      title: 'Research Fellow in Marine Ecology',
+      description: 'Coral reef research',
+      department: 'Marine Science',
+      university: 'University of Melbourne, Australia',
+    }
+    expect(isInternational(item)).toBe(true)
+  })
+
+  it('filters UK university by institution pattern', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/11',
+      title: 'Postdoc in Climate Modelling',
+      description: 'Atmospheric research',
+      department: 'Earth Sciences',
+      university: 'University of Oxford',
+    }
+    expect(isInternational(item)).toBe(true)
+  })
+
+  it('filters Max Planck Institute', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/12',
+      title: 'Postdoc in Biogeochemistry',
+      description: 'Ocean carbon cycle',
+      department: 'Biogeochemistry',
+      university: 'Max Planck Institute for Chemistry',
+    }
+    expect(isInternational(item)).toBe(true)
+  })
+
+  it('does NOT filter US university', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/13',
+      title: 'Research Scientist in Remote Sensing',
+      description: 'Satellite data analysis',
+      department: 'Geography',
+      university: 'University of Michigan',
+    }
+    expect(isInternational(item)).toBe(false)
+  })
+
+  it('does NOT filter Canadian university', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/14',
+      title: 'Postdoc in Ocean Color',
+      description: 'Remote sensing',
+      department: 'Earth Ocean Atmospheric',
+      university: 'UBC',
+    }
+    expect(isInternational(item)).toBe(false)
+  })
+
+  it('does NOT filter posting with empty university', () => {
+    const item: RdfItem = {
+      url: 'https://ajo.org/test/16',
+      title: 'Oceanography Postdoc',
+      description: 'Research position',
+      department: '',
+      university: 'Unknown',
+    }
+    expect(isInternational(item)).toBe(false)
+  })
+
+  it('blocklist covers at least 30 countries', () => {
+    expect(INTERNATIONAL_COUNTRY_NAMES.length).toBeGreaterThanOrEqual(30)
   })
 })
 
