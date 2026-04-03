@@ -25,11 +25,10 @@ export const FIND_SIMILAR_SEEDS: { url: string; source_type: SourceType }[] = [
   // High performers from eval (precision >= 0.8)
   { url: 'https://ioccg.org/resources/employment', source_type: 'academic' },
   { url: 'https://science.gsfc.nasa.gov/610/research.html', source_type: 'government' },  // NASA GSFC Earth Science research opportunities
-  // HigherEdJobs seeds — Exa crawls through their WAF via findSimilar
-  // Environmental science / oceanography / remote sensing postings
-  { url: 'https://www.higheredjobs.com/faculty/details.cfm?JobCode=179396510', source_type: 'academic' },  // UTA Postdoc Remote Sensing
-  { url: 'https://www.higheredjobs.com/faculty/details.cfm?JobCode=179209603', source_type: 'academic' },  // Water Resources & Hydrology
-  { url: 'https://www.higheredjobs.com/details.cfm?JobCode=178814456', source_type: 'academic' },          // UT Natural Resources
+  // Program-level career/jobs index pages (long-lived, regularly updated)
+  { url: 'https://careers.noaa.gov/', source_type: 'government' },             // NOAA careers portal
+  { url: 'https://recruit.ucar.edu/', source_type: 'academic' },              // UCAR/NCAR jobs portal (atmospheric/earth science)
+  { url: 'https://www.pnnl.gov/careers', source_type: 'government' },         // Pacific Northwest National Lab (DOE, Battelle-operated)
   // Specific postdoc program pages (not career homepages — findSimilar on index pages returns index pages)
   { url: 'https://www.whoi.edu/what-we-do/educate/postdoctoral/postdocs-scholar-fellowship-appointments/postdoctoral-fellowships/special-postdoctoral-fellowships/', source_type: 'academic' },  // WHOI Postdoc Fellowships
   { url: 'https://cires.colorado.edu/award-programs/visiting-fellows-program', source_type: 'academic' },  // CIRES Visiting Fellows

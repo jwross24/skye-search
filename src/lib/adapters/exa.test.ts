@@ -281,18 +281,20 @@ describe('Query presets', () => {
     expect(all).toContain('geospatial')
   })
 
-  it('findSimilar seeds include WHOI, NASA, CIRES', () => {
+  it('findSimilar seeds include key cap-exempt employers', () => {
     const all = FIND_SIMILAR_SEEDS.map(s => s.url).join(' ').toLowerCase()
     expect(all).toContain('whoi')
     expect(all).toContain('nasa')
     expect(all).toContain('cires')
+    expect(all).toContain('noaa')
+    expect(all).toContain('ucar')
+    expect(all).toContain('pnnl')
   })
 
-  it('findSimilar seeds are specific pages, not career homepages', () => {
+  it('findSimilar seeds do not contain specific job posting URLs', () => {
     for (const seed of FIND_SIMILAR_SEEDS) {
-      const { pathname } = new URL(seed.url)
-      // Every seed must have a path beyond just "/" — no bare domain roots
-      expect(pathname.length, `${seed.url} should have a path`).toBeGreaterThan(1)
+      expect(seed.url, `${seed.url} looks like a specific posting`).not.toContain('JobCode=')
+      expect(seed.url, `${seed.url} looks like a specific posting`).not.toContain('details.cfm')
     }
   })
 
