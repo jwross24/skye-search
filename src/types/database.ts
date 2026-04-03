@@ -538,6 +538,7 @@ export type Database = {
           canonical_url: string | null
           company: string | null
           created_at: string
+          discovery_source_detail: string | null
           id: string
           indexed_date: string | null
           normalized_company: string | null
@@ -559,6 +560,7 @@ export type Database = {
           canonical_url?: string | null
           company?: string | null
           created_at?: string
+          discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
           normalized_company?: string | null
@@ -580,6 +582,7 @@ export type Database = {
           canonical_url?: string | null
           company?: string | null
           created_at?: string
+          discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
           normalized_company?: string | null

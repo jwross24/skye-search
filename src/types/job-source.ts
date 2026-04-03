@@ -23,6 +23,7 @@ export interface DiscoveredJob {
   normalized_company: string
   indexed_date: string // ISO timestamptz
   source_type: SourceType
+  discovery_source_detail?: string | null
   structured_deadline?: string | null
   structured_salary?: string | null
   structured_location?: string | null

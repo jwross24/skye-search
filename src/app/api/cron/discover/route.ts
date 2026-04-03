@@ -156,6 +156,7 @@ async function handler(req: NextRequest) {
           normalized_company: job.normalized_company,
           indexed_date: job.indexed_date,
           source_type: job.source_type,
+          discovery_source_detail: job.discovery_source_detail ?? 'rss:ajo',
           scored: false,
         }))
         await supabase.from('discovered_jobs').upsert(ajoRows, {

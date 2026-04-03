@@ -125,6 +125,7 @@ interface ExaSearchResult {
 function mapToDiscoveredJob(
   result: ExaSearchResult,
   sourceType: SourceType,
+  discoverySourceDetail?: string,
 ): DiscoveredJob {
   const url = result.url || null
   const title = result.title ?? 'Untitled'
@@ -140,6 +141,7 @@ function mapToDiscoveredJob(
     normalized_company: normalizeCompany(company),
     indexed_date: result.publishedDate ?? new Date().toISOString(),
     source_type: sourceType,
+    discovery_source_detail: discoverySourceDetail ?? null,
   }
 }
 
@@ -169,7 +171,7 @@ export const exaAdapter: JobSourceAdapter = {
         requestCount++
 
         for (const result of response.results) {
-          jobs.push(mapToDiscoveredJob(result as ExaSearchResult, query.source_type))
+          jobs.push(mapToDiscoveredJob(result as ExaSearchResult, query.source_type, `query:${searchText}`))
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
@@ -187,7 +189,7 @@ export const exaAdapter: JobSourceAdapter = {
         requestCount++
 
         for (const result of response.results) {
-          jobs.push(mapToDiscoveredJob(result as ExaSearchResult, seed.source_type))
+          jobs.push(mapToDiscoveredJob(result as ExaSearchResult, seed.source_type, `seed:${seed.url}`))
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)

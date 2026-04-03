@@ -40,6 +40,7 @@ interface DiscoveredJobRow {
   normalized_company: string
   indexed_date: string
   source_type: string
+  discovery_source_detail: string | null
 }
 
 function canonicalizeUrl(url: string): string {
@@ -89,7 +90,7 @@ interface ExaResult {
   publishedDate?: string | null
 }
 
-function mapToRow(result: ExaResult, userId: string, sourceType: string): DiscoveredJobRow {
+function mapToRow(result: ExaResult, userId: string, sourceType: string, sourceDetail: string | null = null): DiscoveredJobRow {
   const url = result.url ?? ''
   const company = extractCompany(url)
   return {
@@ -103,6 +104,7 @@ function mapToRow(result: ExaResult, userId: string, sourceType: string): Discov
     normalized_company: normalizeCompany(company),
     indexed_date: result.publishedDate ?? new Date().toISOString(),
     source_type: sourceType,
+    discovery_source_detail: sourceDetail,
   }
 }
 
@@ -141,7 +143,7 @@ registerHandler({
     await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
-      mapToRow(r, task.user_id, payload.source_type ?? 'academic'),
+      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `query:${payload.query}`),
     )
 
     const inserted = await upsertJobs(rows)
@@ -185,7 +187,7 @@ registerHandler({
     await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
-      mapToRow(r, task.user_id, payload.source_type ?? 'academic'),
+      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `seed:${payload.seed_url}`),
     )
 
     const inserted = await upsertJobs(rows)
