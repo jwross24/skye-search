@@ -80,7 +80,9 @@ export function PostdocExtension({
           </p>
           <p className="text-xs text-muted-foreground/70 mt-0.5">
             {isPostdocActive
-              ? `${daysUntilEnd} day${daysUntilEnd === 1 ? '' : 's'} remaining`
+              ? daysUntilEnd === 0
+                ? 'Last day today'
+                : `${daysUntilEnd} day${daysUntilEnd === 1 ? '' : 's'} remaining`
               : 'PostDoc period has ended'}
           </p>
         </div>

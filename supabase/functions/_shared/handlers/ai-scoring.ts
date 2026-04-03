@@ -456,8 +456,13 @@ async function processBatch(
     circuitBreakerTrips: 0,
   }
 
-  // Mark skipped jobs (no description) as scored to avoid re-processing
-  const skippedIds = jobs.filter(j => !j.raw_description || j.raw_description.length <= 50).map(j => j.id)
+  // Mark all skipped jobs as scored to avoid re-processing:
+  // - jobs with no/short description (not scorable)
+  // - jobs filtered by isNonJobEntry (non-job URLs, bad titles)
+  // Both categories will never produce a useful score, so marking them prevents
+  // them from being re-queued on every subsequent scoring run.
+  const scorableIds = new Set(scorable.map(j => j.id))
+  const skippedIds = jobs.filter(j => !scorableIds.has(j.id)).map(j => j.id)
   if (skippedIds.length > 0) {
     await supabase
       .from('discovered_jobs')

@@ -36,6 +36,11 @@ describe('PostdocExtension', () => {
     expect(screen.getByText(/PostDoc period has ended/)).toBeTruthy()
   })
 
+  it('shows "Last day today" when today equals end date', () => {
+    render(<PostdocExtension {...defaultProps} today="2026-04-11" currentEndDate="2026-04-11" />)
+    expect(screen.getByText(/Last day today/)).toBeTruthy()
+  })
+
   it('opens confirmation dialog on "Update date" click', async () => {
     const user = userEvent.setup()
     render(<PostdocExtension {...defaultProps} />)
