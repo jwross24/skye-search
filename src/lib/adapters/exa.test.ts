@@ -206,6 +206,14 @@ describe('Query presets', () => {
     expect(all).toContain('cires')
   })
 
+  it('findSimilar seeds are specific pages, not career homepages', () => {
+    for (const seed of FIND_SIMILAR_SEEDS) {
+      const { pathname } = new URL(seed.url)
+      // Every seed must have a path beyond just "/" — no bare domain roots
+      expect(pathname.length, `${seed.url} should have a path`).toBeGreaterThan(1)
+    }
+  })
+
   it('academic job domains include major boards', () => {
     expect(ACADEMIC_JOB_DOMAINS).toContain('academicjobsonline.org')
     expect(ACADEMIC_JOB_DOMAINS).toContain('sciencecareers.org')
