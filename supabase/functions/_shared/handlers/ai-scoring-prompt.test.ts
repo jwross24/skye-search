@@ -114,14 +114,25 @@ describe('Company+title dedup logic', () => {
   it('processBatch includes dedup check before scoring', async () => {
     const { readFileSync } = await import('fs')
     const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
-    // Dedup queries jobs table with ilike on company and title
-    expect(content).toContain(".ilike('company', job.company)")
-    expect(content).toContain(".ilike('title', job.title)")
+    // Dedup uses a single batch query + in-memory Set (not N+1 per-job)
+    expect(content).toContain('existingPairs')
+    expect(content).toContain('toLowerCase()')
     // 30-day window prevents filtering legitimate re-listings
     expect(content).toContain('thirtyDaysAgo')
     // Deduped jobs are marked scored to prevent re-processing
     expect(content).toContain('dedupIds')
     expect(content).toContain('dedupedScorable')
+  })
+
+  it('zero-score jobs are skipped — not inserted into jobs table', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // Career pages and international jobs (match_score=0) must not be upserted
+    expect(content).toContain('match_score === 0')
+    // They should be marked scored in discovered_jobs to prevent re-processing
+    expect(content).toContain("update({ scored: true })")
+    // And the loop must skip to next job
+    expect(content).toContain('result.skipped++')
   })
 })
 

@@ -467,24 +467,29 @@ async function processBatch(
 
   // Company+title dedup: skip jobs that already exist in the jobs table
   // within 30 days. Saves Claude budget and prevents duplicate entries.
+  // Single batch query — fetch existing company+title pairs, then check in memory
+  // to avoid N+1 per-job queries.
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString()
 
+  const { data: existingJobs } = await supabase
+    .from('jobs')
+    .select('company, title')
+    .eq('user_id', userId)
+    .gte('created_at', thirtyDaysAgoStr)
+    .not('company', 'is', null)
+    .not('title', 'is', null)
+
+  const existingPairs = new Set(
+    (existingJobs ?? []).map(j => `${j.company!.toLowerCase()}|${j.title!.toLowerCase()}`)
+  )
+
   const dedupIds: string[] = []
   for (const job of scorable) {
     if (!job.company || !job.title) continue
-    const { data: existing } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('user_id', userId)
-      .ilike('company', job.company)
-      .ilike('title', job.title)
-      .gte('created_at', thirtyDaysAgoStr)
-      .limit(1)
-      .maybeSingle()
-
-    if (existing) {
+    const key = `${job.company.toLowerCase()}|${job.title.toLowerCase()}`
+    if (existingPairs.has(key)) {
       dedupIds.push(job.id)
     }
   }
@@ -563,6 +568,18 @@ async function processBatch(
       if (output.match_score > 0 && isInternationalLocation(output.location)) {
         output.match_score = 0
         output.why_fits = 'Filtered: international location (outside US/Canada)'
+      }
+
+      // Skip inserting zero-score jobs — career pages, non-postings, and international
+      // jobs that Claude (or the safety net) correctly rejected. Storing them in the
+      // jobs table would pollute picks and dedup checks.
+      if (output.match_score === 0) {
+        await supabase
+          .from('discovered_jobs')
+          .update({ scored: true })
+          .eq('id', job.id)
+        result.skipped++
+        continue
       }
 
       // Guard: null out non-ISO-8601 dates to prevent DB cast errors
