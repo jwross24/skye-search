@@ -25,6 +25,8 @@ const mockData = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockFetchResponse.mockReturnValue(mockData)
+  // Default fetch mock returns ok=true
+  vi.mocked(fetch).mockResolvedValue({ ok: true, json: () => Promise.resolve(mockFetchResponse()) } as Response)
 })
 
 describe('PipelineEval', () => {
@@ -50,5 +52,12 @@ describe('PipelineEval', () => {
     expect(await screen.findByText('query: 50')).toBeTruthy()
     expect(screen.getByText('seed: 25')).toBeTruthy()
     expect(screen.getByText('rss: 5')).toBeTruthy()
+  })
+
+  it('shows error message when fetch fails', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 401 } as Response)
+    render(<PipelineEval />)
+
+    expect(await screen.findByText(/Couldn't load eval data/)).toBeTruthy()
   })
 })

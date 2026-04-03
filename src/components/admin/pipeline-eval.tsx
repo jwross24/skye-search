@@ -41,19 +41,32 @@ function formatPercent(value: number | null): string {
 export function PipelineEval() {
   const [data, setData] = useState<EvalData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchFailed, setFetchFailed] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/pipeline-eval')
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d) => { if (d) setData(d) })
+      .catch(() => setFetchFailed(true))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader><CardTitle className="text-base font-medium text-zinc-300">Pipeline Eval</CardTitle></CardHeader>
         <CardContent><Skeleton className="h-48 bg-zinc-800" /></CardContent>
+      </Card>
+    )
+  }
+
+  if (fetchFailed || !data) {
+    return (
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardHeader><CardTitle className="text-base font-medium text-zinc-300">Pipeline Eval</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-zinc-500">Couldn&apos;t load eval data. Check admin access and try again.</p>
+        </CardContent>
       </Card>
     )
   }
