@@ -15,6 +15,7 @@ import { checkBudget } from '../budget-guard.ts'
 import { computeUrgencyScore } from '../urgency-scoring.ts'
 import { CircuitBreaker, retryWithBackoff, delay } from '../rate-limiter.ts'
 import { isNonJobEntry } from '../url-filter.ts'
+import { isInternationalLocation } from '../location-filter.ts'
 import type { TaskRow, TaskResult } from '../task-types.ts'
 import type { VisaPath, CapExemptConfidence, EmployerType, EmploymentType, SourceType, UserState } from '../urgency-scoring.ts'
 import Anthropic from 'npm:@anthropic-ai/sdk@0.80'
@@ -94,6 +95,25 @@ Cooperative institute → university-government research partnership (cap-exempt
 
 const SCORING_RUBRIC = `
 ## Scoring Instructions
+
+### FIRST: Is this an actual job posting?
+Before scoring, determine if this is a specific, open job posting for a
+defined role. If this is ANY of the following, set match_score = 0.0 and
+skip all other scoring:
+- A careers landing page ("Why Work at...", "Life at...", "About Us")
+- An employer information page (general company/lab description)
+- A job board index page (list of many positions, not one specific role)
+- A news article, blog post, or research paper
+- An expired or closed position
+Only proceed with scoring if this is an active posting for ONE specific role.
+
+### Geographic requirement
+This candidate requires positions in the United States or Canada only
+(visa sponsorship context). If the position is clearly located in Europe,
+Asia, Australia, South America, or Africa — set match_score = 0.0.
+US territories and remote-friendly US-based positions are acceptable.
+"International fieldwork" from a US-based employer is acceptable.
+Ambiguous locations: score normally but note the uncertainty in why_fits.
 
 For each job posting, analyze and return structured data:
 
@@ -226,6 +246,45 @@ ${immRow?.niw_status ? `EB-2 NIW: ${immRow.niw_status}` : ''}
 Priority: Cap-exempt employers (universities, nonprofits, government labs) are highest priority because they can sponsor H1-B without annual cap limits. This candidate missed the FY2027 H1-B lottery.
 `.trim()
 
+  // Fetch known cap-exempt employers for reference lookup
+  const { data: employers } = await supabase
+    .from('cap_exempt_employers')
+    .select('employer_name, employer_domain, cap_exempt_basis, confidence_level')
+    .in('confidence_level', ['confirmed', 'likely'])
+    .limit(100)
+
+  const employerSection = employers && employers.length > 0
+    ? `## Known Cap-Exempt Employers (reference lookup)
+When you encounter these employers, classify as cap_exempt with the noted confidence:
+${employers.map(e => `- ${e.employer_name}${e.employer_domain ? ` (${e.employer_domain})` : ''} — ${e.cap_exempt_basis}, ${e.confidence_level}`).join('\n')}`
+    : ''
+
+  // Fetch vote dismiss patterns for feedback injection
+  const { data: dismissVotes } = await supabase
+    .from('votes')
+    .select('tags')
+    .eq('user_id', userId)
+    .eq('decision', 'not_for_me')
+
+  let voteSection = ''
+  if (dismissVotes && dismissVotes.length > 0) {
+    const tagCounts: Record<string, number> = {}
+    for (const vote of dismissVotes) {
+      for (const tag of (vote.tags ?? [])) {
+        tagCounts[tag] = (tagCounts[tag] ?? 0) + 1
+      }
+    }
+    const topPatterns = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+
+    if (topPatterns.length > 0) {
+      voteSection = `## User Feedback Patterns
+This user frequently dismisses jobs with these characteristics. Reduce match_score for matching patterns:
+${topPatterns.map(([tag, count]) => `- ${tag} (dismissed ${count}x)`).join('\n')}`
+    }
+  }
+
   return `You are an immigration-aware job scoring system for an international PhD scientist.
 
 ${profileSection}
@@ -233,7 +292,7 @@ ${profileSection}
 ## Academic ↔ Industry Translation Table
 ${TRANSLATION_TABLE}
 
-${SCORING_RUBRIC}`
+${employerSection ? `${employerSection}\n\n` : ''}${voteSection ? `${voteSection}\n\n` : ''}${SCORING_RUBRIC}`
 }
 
 // ─── Build User Message ─────────────────────────────────────────────────────
@@ -463,6 +522,12 @@ async function processBatch(
       const { value: scored, retries } = outcome.value
       result.totalRetries += retries
       const output = scored.output
+
+      // Safety net: if Claude assigned match_score > 0 but location is clearly international
+      if (output.match_score > 0 && isInternationalLocation(output.location)) {
+        output.match_score = 0
+        output.why_fits = 'Filtered: international location (outside US/Canada)'
+      }
 
       // Guard: null out non-ISO-8601 dates to prevent DB cast errors
       const deadline = output.application_deadline
