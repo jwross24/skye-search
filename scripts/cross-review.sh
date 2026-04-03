@@ -12,7 +12,7 @@ set -euo pipefail
 # Default: reviews last 3 commits
 
 NUM_COMMITS=${1:-3}
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 RESULTS="$PROJECT_DIR/.claude/.cross-review-results.json"
 
 echo "Cross-review: checking last $NUM_COMMITS commits..."

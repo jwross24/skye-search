@@ -62,7 +62,16 @@ if [ -n "$LOG_FILES" ]; then
     RULES_MODIFIED=$(find "$PROJECT_DIR/.claude/rules" -type f -newer "$LOG_FILES" 2>/dev/null | wc -l | tr -d ' ')
     LEARN_WRITES=$((LEARN_WRITES + RULES_MODIFIED))
   fi
-  MEMORY_DIR="$HOME/.claude/projects/-Users-${USER}-Documents-skye-search/memory"
+  # Compute memory dir from main repo path (works in worktrees too)
+  GIT_COMMON=$(git -C "$PROJECT_DIR" rev-parse --git-common-dir 2>/dev/null || echo ".git")
+  if [ "$GIT_COMMON" = ".git" ] || [ "$GIT_COMMON" = "$PROJECT_DIR/.git" ]; then
+    MAIN_REPO="$PROJECT_DIR"
+  else
+    # Worktree: git-common-dir points to main repo's .git dir
+    MAIN_REPO="$(cd "$(dirname "$GIT_COMMON")" && pwd)"
+  fi
+  ENCODED_PATH=$(echo "$MAIN_REPO" | sed 's|/|-|g')
+  MEMORY_DIR="$HOME/.claude/projects/${ENCODED_PATH}/memory"
   if [ -d "$MEMORY_DIR" ]; then
     MEMORY_MODIFIED=$(find "$MEMORY_DIR" -type f -newer "$LOG_FILES" 2>/dev/null | wc -l | tr -d ' ')
     LEARN_WRITES=$((LEARN_WRITES + MEMORY_MODIFIED))
