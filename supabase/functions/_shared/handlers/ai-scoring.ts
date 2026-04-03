@@ -465,11 +465,47 @@ async function processBatch(
       .in('id', skippedIds)
   }
 
+  // Company+title dedup: skip jobs that already exist in the jobs table
+  // within 30 days. Saves Claude budget and prevents duplicate entries.
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString()
+
+  const dedupIds: string[] = []
+  for (const job of scorable) {
+    if (!job.company || !job.title) continue
+    const { data: existing } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('user_id', userId)
+      .ilike('company', job.company)
+      .ilike('title', job.title)
+      .gte('created_at', thirtyDaysAgoStr)
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) {
+      dedupIds.push(job.id)
+    }
+  }
+
+  if (dedupIds.length > 0) {
+    // Mark as scored so they don't get re-queued
+    await supabase
+      .from('discovered_jobs')
+      .update({ scored: true })
+      .in('id', dedupIds)
+    result.skipped += dedupIds.length
+  }
+
+  const dedupSet = new Set(dedupIds)
+  const dedupedScorable = scorable.filter(j => !dedupSet.has(j.id))
+
   // Dynamic chunking: recompute chunk size each iteration so circuit breaker
   // trips are reflected immediately (not pre-split and then sliced)
   let processed = 0
 
-  for (let chunkIdx = 0; processed < scorable.length && chunkIdx < MAX_CHUNKS; chunkIdx++) {
+  for (let chunkIdx = 0; processed < dedupedScorable.length && chunkIdx < MAX_CHUNKS; chunkIdx++) {
     // Adaptive concurrency: drops after circuit breaker trips
     const chunkSize = cb.effectiveConcurrency(CHUNK_SIZE)
 
@@ -488,7 +524,7 @@ async function processBatch(
     const budgetSize = budgetVerdict.action === 'reduce_batch'
       ? Math.min(chunkSize, budgetVerdict.maxBatchSize)
       : chunkSize
-    const chunkJobs = scorable.slice(processed, processed + budgetSize)
+    const chunkJobs = dedupedScorable.slice(processed, processed + budgetSize)
     if (chunkJobs.length === 0) break
     processed += chunkJobs.length
 
@@ -614,7 +650,7 @@ async function processBatch(
     }
 
     // Inter-chunk delay for prompt cache TTL
-    if (processed < scorable.length) {
+    if (processed < dedupedScorable.length) {
       await delay(INTER_CHUNK_DELAY_MS)
     }
   }

@@ -110,6 +110,21 @@ describe('isInternationalLocation', () => {
   })
 })
 
+describe('Company+title dedup logic', () => {
+  it('processBatch includes dedup check before scoring', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // Dedup queries jobs table with ilike on company and title
+    expect(content).toContain(".ilike('company', job.company)")
+    expect(content).toContain(".ilike('title', job.title)")
+    // 30-day window prevents filtering legitimate re-listings
+    expect(content).toContain('thirtyDaysAgo')
+    // Deduped jobs are marked scored to prevent re-processing
+    expect(content).toContain('dedupIds')
+    expect(content).toContain('dedupedScorable')
+  })
+})
+
 describe('SCORING_RUBRIC content', () => {
   // We can't easily import the rubric from the Deno module in Vitest,
   // so we read the file and check string content
