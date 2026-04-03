@@ -22,17 +22,19 @@ if [ -z "$CHANGED" ]; then
   exit 0
 fi
 
-# Read all commands from log
-ALL_CMDS=""
+# Read all commands from log (write to temp file to avoid SIGPIPE in pipelines with set -o pipefail)
+_CMDS_TMP=$(mktemp)
+trap 'rm -f "$_CMDS_TMP"' EXIT
 if [ -f "$LOG_FILE" ]; then
-  ALL_CMDS=$(jq -r '.cmd' "$LOG_FILE" 2>/dev/null) || ALL_CMDS=""
+  jq -r '.cmd' "$LOG_FILE" > "$_CMDS_TMP" 2>/dev/null || true
 fi
+ALL_CMDS=$(cat "$_CMDS_TMP" 2>/dev/null) || ALL_CMDS=""
 
 MISSING="[]"
 
 # ── Rule 1: New migrations → supabase db push ────────────────────────────
 if echo "$CHANGED" | grep -q '^supabase/migrations/'; then
-  if ! echo "$ALL_CMDS" | grep -qE 'supabase db push|supabase db reset'; then
+  if ! grep -qE 'supabase db push|supabase db reset' "$_CMDS_TMP"; then
     MISSING=$(printf '%s' "$MISSING" | jq -c '. + [{
       "step": "supabase db push",
       "reason": "New migration files committed but not pushed to production",
@@ -46,7 +48,7 @@ if echo "$CHANGED" | grep -q '^supabase/functions/' && ! echo "$CHANGED" | grep 
   # Extract which functions changed (directory name after supabase/functions/)
   FUNCS=$(echo "$CHANGED" | grep '^supabase/functions/' | grep -v '^supabase/functions/_shared/' | sed 's|supabase/functions/\([^/]*\)/.*|\1|' | sort -u)
   for func in $FUNCS; do
-    if ! echo "$ALL_CMDS" | grep -qE "supabase functions deploy.*$func|supabase functions deploy$"; then
+    if ! grep -qE "supabase functions deploy.*$func|supabase functions deploy$" "$_CMDS_TMP"; then
       MISSING=$(printf '%s' "$MISSING" | jq -c --arg f "$func" '. + [{
         "step": ("supabase functions deploy " + $f),
         "reason": ("Edge Function " + $f + " modified but not deployed"),
@@ -75,7 +77,7 @@ done
 
 # 3a: Vercel routes (src/**) → vercel env
 if [ -n "$(echo "$VERCEL_ENV_REFS" | xargs)" ]; then
-  if ! echo "$ALL_CMDS" | grep -qE 'vercel env'; then
+  if ! grep -qE 'vercel env' "$_CMDS_TMP"; then
     UNIQUE_VARS=$(echo "$VERCEL_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
     if [ -n "$UNIQUE_VARS" ]; then
       VAR_LIST=$(echo "$UNIQUE_VARS" | tr '\n' ', ' | sed 's/,$//')
@@ -90,7 +92,7 @@ fi
 
 # 3b: Supabase Edge Functions → supabase secrets set
 if [ -n "$(echo "$SUPA_ENV_REFS" | xargs)" ]; then
-  if ! echo "$ALL_CMDS" | grep -qE 'supabase secrets (set|list)'; then
+  if ! grep -qE 'supabase secrets (set|list)' "$_CMDS_TMP"; then
     UNIQUE_VARS=$(echo "$SUPA_ENV_REFS" | tr ' ' '\n' | sort -u | grep -v '^$' | head -5)
     if [ -n "$UNIQUE_VARS" ]; then
       VAR_LIST=$(echo "$UNIQUE_VARS" | tr '\n' ', ' | sed 's/,$//')
