@@ -161,10 +161,13 @@ describe('SCORING_RUBRIC content', () => {
     expect(content).toContain('Known Cap-Exempt Employers')
   })
 
-  it('includes vote dismiss pattern injection in buildScoringPrompt', async () => {
+  it('includes quantified vote feedback injection in buildScoringPrompt', async () => {
     const { readFileSync } = await import('fs')
     const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
     expect(content).toContain("eq('decision', 'not_for_me')")
-    expect(content).toContain('User Feedback Patterns')
+    expect(content).toContain('User Feedback Penalties')
+    expect(content).toContain('TAG_PENALTIES')
+    expect(content).toContain('ninetyDaysAgo')
+    expect(content).toContain('Math.min(1.0, count / 5)')
   })
 })

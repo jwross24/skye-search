@@ -324,12 +324,35 @@ When you encounter these employers, classify as cap_exempt with the noted confid
 ${employers.map(e => `- ${e.employer_name}${e.employer_domain ? ` (${e.employer_domain})` : ''} — ${e.cap_exempt_basis}, ${e.confidence_level}`).join('\n')}`
     : ''
 
-  // Fetch vote dismiss patterns for feedback injection
+  // Fetch vote dismiss patterns for feedback injection (last 90 days only)
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
   const { data: dismissVotes } = await supabase
     .from('votes')
     .select('tags')
     .eq('user_id', userId)
     .eq('decision', 'not_for_me')
+    .gte('created_at', ninetyDaysAgo)
+
+  // Tag → penalty mapping: base_penalty applied when condition matches.
+  // Only tags where the AI prompt can adjust match_score are listed here.
+  // Hard-filter tags (requires_citizenship, requires_clearance, deadline_expired)
+  // are excluded — those already trigger match_score=0.0 via the rubric's
+  // geographic/eligibility rules, so a prompt penalty would be redundant.
+  //
+  // NOTE on stacking: no_visa_path penalty can co-occur with urgency scoring's
+  // Safety Net 3 (visa_path unknown → 30% urgency demotion). These target
+  // DIFFERENT scores (match_score vs urgency_score) so stacking is intentional:
+  // match_score reflects domain fit, urgency_score reflects immigration priority.
+  const TAG_PENALTIES: Record<string, { base: number; condition: string }> = {
+    wrong_location: { base: 0.10, condition: 'position requires relocation outside Boston metro area' },
+    not_remote: { base: 0.08, condition: 'position requires full-time on-site and is not in Boston metro' },
+    no_visa_path: { base: 0.20, condition: 'employer type is unknown AND no cap-exempt indicators present' },
+    wrong_field: { base: 0.12, condition: 'primary field is not environmental, ocean, or remote sensing related' },
+    too_junior: { base: 0.08, condition: 'role explicitly requires <3 years experience' },
+    too_senior: { base: 0.08, condition: 'role explicitly requires >10 years industry experience' },
+    salary_too_low: { base: 0.05, condition: 'stated salary is below $60,000' },
+    already_applied: { base: 0.00, condition: 'N/A — informational only, no penalty' },
+  }
 
   let voteSection = ''
   if (dismissVotes && dismissVotes.length > 0) {
@@ -339,14 +362,24 @@ ${employers.map(e => `- ${e.employer_name}${e.employer_domain ? ` (${e.employer_
         tagCounts[tag] = (tagCounts[tag] ?? 0) + 1
       }
     }
-    const topPatterns = Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
 
-    if (topPatterns.length > 0) {
-      voteSection = `## User Feedback Patterns
-This user frequently dismisses jobs with these characteristics. Reduce match_score for matching patterns:
-${topPatterns.map(([tag, count]) => `- ${tag} (dismissed ${count}x)`).join('\n')}`
+    const penaltyLines: string[] = []
+    for (const [tag, count] of Object.entries(tagCounts).sort((a, b) => b[1] - a[1])) {
+      const config = TAG_PENALTIES[tag]
+      if (!config || config.base === 0) continue
+      // Scale penalty by signal strength: base * min(1.0, count / 5)
+      const effective = +(config.base * Math.min(1.0, count / 5)).toFixed(3)
+      if (effective > 0) {
+        penaltyLines.push(`- ${tag} (${count} dismissals): -${effective} to match_score IF ${config.condition}`)
+      }
+    }
+
+    if (penaltyLines.length > 0) {
+      voteSection = `## User Feedback Penalties (last 90 days)
+Apply these match_score adjustments based on this user's dismiss history.
+Each penalty is CONDITIONAL — only apply if the stated condition matches the job.
+Penalties are additive. Clamp final match_score to [0.0, 1.0].
+${penaltyLines.join('\n')}`
     }
   }
 
