@@ -32,6 +32,22 @@ const JOB_MAX_RETRIES = 3
 const BACKOFF_BASE_429_MS = 2_000
 const BACKOFF_BASE_529_MS = 5_000
 const MODEL = 'claude-haiku-4-5-20251001'
+
+// Regex backup for citizenship/clearance detection — catches phrases Claude may miss.
+// Intentionally does NOT include "work authorization required" — that's standard for
+// all employers and does NOT mean citizenship requirement.
+const INELIGIBILITY_PATTERNS: RegExp[] = [
+  /\bU\.?S\.?\s+citizen(?:s|ship)?\s+(?:only|required)\b/i,
+  /\bmust\s+be\s+a?\s*U\.?S\.?\s+citizen\b/i,
+  /\bU\.?S\.?\s+persons?\s+only\b/i,
+  /\bITAR\b/,
+  /\bsecurity\s+clearance\s+(?:required|needed|necessary)\b/i,
+  /\bTS\/SCI\b/,
+  /\bTop\s+Secret\s+(?:(?:clearance|access)\s+)?(?:required|needed|necessary|eligible)\b/i,
+  /\bcitizenship\s+(?:is\s+)?required\b/i,
+  /\bmust\s+be\s+a?\s*U\.?S\.?\s+national\b/i,
+  /\bDOD\s+clearance\b/i,
+]
 const MAX_TOKENS = 2048
 // Haiku 4.5 pricing
 // Haiku 4.5 pricing: per-token (not per-1K)
@@ -569,10 +585,33 @@ async function processBatch(
       result.totalRetries += retries
       const output = scored.output
 
-      // Safety net: if Claude assigned match_score > 0 but location is clearly international
+      // Safety net 1: international location → zero score
       if (output.match_score > 0 && isInternationalLocation(output.location)) {
         output.match_score = 0
         output.why_fits = 'Filtered: international location (outside US/Canada)'
+      }
+
+      // Safety net 2: citizenship/clearance regex backup
+      // Catches phrases Claude may miss in long descriptions
+      const rawDesc = job.raw_description ?? ''
+      if (rawDesc && !output.requires_citizenship && !output.requires_security_clearance) {
+        if (INELIGIBILITY_PATTERNS.some((p: RegExp) => p.test(rawDesc))) {
+          output.requires_citizenship = true
+          output.match_score = 0
+          output.why_fits = 'Filtered: citizenship or security clearance requirement detected'
+          console.warn(`Citizenship regex caught what Claude missed: ${job.id} "${job.title}"`)
+        }
+      }
+
+      // Safety net 3: visa_path unknown demotion
+      if (output.visa_path === 'unknown' && output.match_score > 0.4) {
+        output.match_score = Math.round(output.match_score * 0.70 * 100) / 100
+        output.why_fits += ' [Visa path could not be determined — verify employer status before applying]'
+      }
+
+      // Safety net 4: null location warning
+      if (output.location === null && output.match_score > 0) {
+        output.why_fits += ' [Location not specified — verify US/Canada before applying]'
       }
 
       // Skip inserting zero-score jobs — career pages, non-postings, and international
