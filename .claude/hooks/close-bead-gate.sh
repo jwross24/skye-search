@@ -194,7 +194,31 @@ if [ -n "$UNPUSHED" ] && [ "$UNPUSHED" -gt 0 ]; then
   exit 2
 fi
 
-# ── Step 1f: CI status check ─────────────────────────────────────────────
+# ── Step 1f: Marching order compliance ───────────────────────────────────
+# Checks that marching order steps were followed based on what files changed:
+# - .tsx changed → /impeccable required
+# - UI page/component changed → agent-browser E2E required
+# - Scoring files changed → golden set regression required
+# - Server/DB code changed → integration tests required
+
+MARCH_RESULT=$(bash "$SCRIPTS_DIR/check-marching-compliance.sh" "$_SESSION" 2>/dev/null) || true
+MARCH_PASS=$(printf '%s' "$MARCH_RESULT" | jq -r '.pass // true' 2>/dev/null) || MARCH_PASS="true"
+
+if [ "$MARCH_PASS" != "true" ]; then
+  echo "BLOCKED: Marching order steps not completed for $BEAD_ID" >&2
+  echo "" >&2
+  NUM_MARCH_MISSING=$(printf '%s' "$MARCH_RESULT" | jq '.missing | length' 2>/dev/null) || NUM_MARCH_MISSING=0
+  for i in $(seq 0 $((NUM_MARCH_MISSING - 1))); do
+    STEP=$(printf '%s' "$MARCH_RESULT" | jq -r ".missing[$i].reason")
+    HINT=$(printf '%s' "$MARCH_RESULT" | jq -r ".missing[$i].hint")
+    echo "  ✗ $STEP" >&2
+    echo "    → $HINT" >&2
+  done
+  echo "" >&2
+  exit 2
+fi
+
+# ── Step 1g: CI status check ──────────────────────────────────────────────
 
 if command -v gh &>/dev/null; then
   CI_JSON=$(gh run list --commit "$(git rev-parse HEAD 2>/dev/null)" --json status,conclusion --limit 1 2>/dev/null) || CI_JSON="[]"
@@ -212,7 +236,7 @@ if command -v gh &>/dev/null; then
   fi
 fi
 
-# ── Step 1g: Skill directive check — verify skills from bead spec ───────
+# ── Step 1h: Skill directive check — verify skills from bead spec ───────
 # Parses bead description for "Invoke /skill" or "Use /skill" directives
 # and checks that corresponding stamps exist in this session.
 
