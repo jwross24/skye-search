@@ -8,7 +8,10 @@
       "Write(.claude/settings.json)",
       "Edit(.claude/settings.json)",
       "Write(.claude/rules/*)",
-      "Edit(.claude/rules/*)"
+      "Edit(.claude/rules/*)",
+      "Write(scripts/*)",
+      "Edit(scripts/*)",
+      "Write(supabase/migrations/*)"
     ]
   },
   "hooks": {
