@@ -21,10 +21,18 @@ CLAUDE_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude"
 MISSING="[]"
 CHECKED="[]"
 
-# Get files changed: prefer unpushed commits, fall back to last 5 commits,
-# then fall back to command log (for post-push scenarios)
-CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || true)
-if [ -z "$CHANGED_FILES" ]; then
+# Get files changed: use bead base commit if available, else unpushed, else last 5
+# Bead base commit is saved by track-bead-claim.sh when a bead is claimed.
+BEAD_BASE=""
+for base_file in "${CLAUDE_DIR}/.bead-base-commit-"*; do
+  [ -f "$base_file" ] && BEAD_BASE=$(cat "$base_file" 2>/dev/null) && break
+done
+
+if [ -n "$BEAD_BASE" ]; then
+  CHANGED_FILES=$(git diff --name-only "${BEAD_BASE}..HEAD" 2>/dev/null || true)
+elif [ -n "$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)" ] && [ "$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)" -gt 0 ]; then
+  CHANGED_FILES=$(git diff --name-only origin/main...HEAD 2>/dev/null || true)
+else
   # Already pushed — check recent commits (session work is typically in last 5)
   CHANGED_FILES=$(git diff --name-only HEAD~5..HEAD 2>/dev/null || true)
 fi

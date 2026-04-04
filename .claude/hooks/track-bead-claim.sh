@@ -31,6 +31,12 @@ if printf '%s' "$CMD" | grep -qE 'br update [a-z0-9-]+ --status in_progress'; th
     printf '%s\n' "$BEAD_ID" >> "$CLAIM_FILE"
   fi
 
+  # Save base commit so check-marching-compliance.sh can diff precisely
+  BASE_COMMIT=$(git -C "${CLAUDE_PROJECT_DIR}" rev-parse HEAD 2>/dev/null || true)
+  if [ -n "$BASE_COMMIT" ]; then
+    printf '%s' "$BASE_COMMIT" > "${CLAUDE_PROJECT_DIR}/.claude/.bead-base-commit-${BEAD_ID}"
+  fi
+
   # Inject marching orders reminder
   cat <<'REMINDER'
 {"systemMessage":"MARCHING ORDERS REMINDER for this bead:\n\n□ Read full spec: br show <id>\n□ cm context for relevant rules\n□ Context7 for any library APIs\n□ Write tests ALONGSIDE code (not after)\n□ /impeccable on ANY .tsx changes (no exceptions)\n□ Integration tests for DB/API code (real Supabase, not mocks)\n□ Golden set regression for scoring changes (ai-scoring.ts, urgency-scoring.ts)\n□ agent-browser E2E for UI changes\n□ Self-review via SEPARATE subagent\n□ bun run verify before commit\n□ Create beads for ALL deferred findings (boy scout rule)\n\nThe close-bead-gate WILL BLOCK if you skip /impeccable, agent-browser, golden set, or integration tests."}
