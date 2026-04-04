@@ -192,6 +192,7 @@ registerHandler({
     const response = await exa.findSimilarAndContents(payload.seed_url, {
       text: { maxCharacters: 3000 },
       numResults,
+      userLocation: payload.user_location ?? 'US',
       filterEmptyResults: true,
       startPublishedDate: payload.source_type === 'academic' ? ninetyDaysAgo() : thirtyDaysAgo(),
     })
