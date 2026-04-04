@@ -116,17 +116,31 @@ for i in $(seq 0 $((NUM_FINDINGS - 1))); do
       ;;
     bead)
       # Must reference a bead ID
-      if ! echo "$ACTION" | grep -qE '[a-z]+-[a-z0-9]+'; then
+      BEAD_REF=$(echo "$ACTION" | grep -oE 'skye-search-[a-z0-9]+' | head -1 || true)
+      if [ -z "$BEAD_REF" ]; then
         ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID: $DESC" --arg a "$ACTION" \
-          '. + [{"finding": $f, "problem": "Bead disposition must reference a bead ID (e.g., skye-search-abc)", "action": $a}]')
+          '. + [{"finding": $f, "problem": "Bead disposition must reference a bead ID (e.g., skye-search-abc). Create the bead first with br create.", "action": $a}]')
+      else
+        # Verify the bead actually exists
+        BEAD_EXISTS=$(br show "$BEAD_REF" --json 2>/dev/null | jq -r '.id // ""' 2>/dev/null || true)
+        if [ -z "$BEAD_EXISTS" ]; then
+          ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID: $DESC" --arg b "$BEAD_REF" \
+            '. + [{"finding": $f, "problem": "Referenced bead " + $b + " does not exist. Create it with br create before closing."}]')
+        fi
       fi
       ;;
     not-a-bug)
-      # Hard threshold: CRITICAL/HIGH findings need stronger justification (50+ chars)
+      # CRITICAL/HIGH: 50+ chars justification, or fix/bead instead
       if echo "$SEVERITY" | grep -qiE 'CRITICAL|HIGH'; then
         if [ "${#ACTION}" -lt 50 ]; then
           ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID ($SEVERITY): $DESC" --arg a "$ACTION" \
             '. + [{"finding": $f, "problem": "CRITICAL/HIGH findings marked not-a-bug require detailed justification (>50 chars). Either fix it or create a bead."}]')
+        fi
+      # MEDIUM: 30+ chars — these often represent real improvements being skipped
+      elif echo "$SEVERITY" | grep -qiE 'MEDIUM'; then
+        if [ "${#ACTION}" -lt 30 ]; then
+          ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID ($SEVERITY): $DESC" --arg a "$ACTION" \
+            '. + [{"finding": $f, "problem": "MEDIUM findings marked not-a-bug require meaningful justification (>30 chars). Consider fixing or creating a bead — leave the code better than you found it.", "action": $a}]')
         fi
       elif [ "${#ACTION}" -lt 20 ]; then
         ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID: $DESC" --arg a "$ACTION" \
