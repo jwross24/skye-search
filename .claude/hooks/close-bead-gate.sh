@@ -78,7 +78,10 @@ DISP_PASS=$(printf '%s' "$DISP_RESULT" | jq -r '.pass // false' 2>/dev/null) || 
 # Verify the disposition is for THIS bead, not a stale one from an earlier close
 if [ "$DISP_PASS" = "true" ]; then
   DISP_BEAD=$(jq -r '.bead_id // ""' "$DISP_FILE" 2>/dev/null) || DISP_BEAD=""
-  if [ "$DISP_BEAD" != "$BEAD_ID" ]; then
+  # Accept both short ID (j1tk) and full ID (skye-search-j1tk)
+  DISP_BEAD_NORMALIZED=$(echo "$DISP_BEAD" | sed 's/^skye-search-//')
+  BEAD_ID_NORMALIZED=$(echo "$BEAD_ID" | sed 's/^skye-search-//')
+  if [ "$DISP_BEAD_NORMALIZED" != "$BEAD_ID_NORMALIZED" ]; then
     DISP_PASS="false"
     DISP_RESULT='{"pass":false,"error":"Disposition file is for bead '"'$DISP_BEAD'"', not '"'$BEAD_ID'"'. Write a new disposition for this bead."}'
   fi

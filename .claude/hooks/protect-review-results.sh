@@ -47,14 +47,14 @@ case "$TOOL" in
       exit 2
     fi
     ;;
-  Write|Edit)
+  Write)
     FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || exit 0
     # Cross-review results: always blocked
     if echo "$FILE" | grep -qE "$CROSS_REVIEW_PATTERN"; then
       echo "BLOCKED: Cross-review results are written by the harness hook, not directly." >&2
       exit 2
     fi
-    # Disposition files: blocked unless authorized
+    # Disposition files: Write blocked unless authorized (subagent creates the review)
     if echo "$FILE" | grep -qE "$DISPOSITION_PATTERN"; then
       if is_disposition_authorized; then
         exit 0  # Authorized subagent window
@@ -63,6 +63,16 @@ case "$TOOL" in
       echo "  → Spawn a self-review subagent via the Agent tool." >&2
       exit 2
     fi
+    ;;
+  Edit)
+    FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || exit 0
+    # Cross-review results: always blocked
+    if echo "$FILE" | grep -qE "$CROSS_REVIEW_PATTERN"; then
+      echo "BLOCKED: Cross-review results are written by the harness hook, not directly." >&2
+      exit 2
+    fi
+    # Disposition files: Edit always allowed (main context fixing validation issues)
+    # The bias guard is about CREATING reviews, not fixing formatting.
     ;;
 esac
 

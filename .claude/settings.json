@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Write(.claude/.review-disposition-*)",
-      "Edit(.claude/.review-disposition-*)"
+      "Edit(.claude/.review-disposition-*)",
+      "Write(.claude/hooks/*)",
+      "Edit(.claude/hooks/*)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/rules/*)",
+      "Edit(.claude/rules/*)"
     ]
   },
   "hooks": {
