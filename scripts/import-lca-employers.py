@@ -222,8 +222,24 @@ def main(xlsx_path: str):
     print()
 
     for normalized, info in sorted(filtered.items()):
+        # Use title case for consistency with existing seed data (avoids case-sensitive
+        # ON CONFLICT misses — PostgreSQL unique index is case-sensitive by default)
+        display_name = info['name'].strip()
+        # If all-caps, convert to title case (preserving known acronyms)
+        if display_name == display_name.upper():
+            display_name = display_name.title()
+            # Lowercase prepositions/articles (except first word)
+            words = display_name.split()
+            for j, w in enumerate(words):
+                if j > 0 and w.lower() in ('of', 'the', 'at', 'and', 'for', 'in', 'on', 'to', 'by'):
+                    words[j] = w.lower()
+            display_name = ' '.join(words)
+            # Fix common acronyms that title() breaks
+            for acronym in ['Llc', 'Llp', 'Suny', 'Usc', 'Ucla', 'Uc ', 'Ut ',
+                            'Mit ', 'Nyu', 'Uab', 'Ucf', 'Nih', 'Hhs', 'Nrel']:
+                display_name = display_name.replace(acronym, acronym.upper())
         # Escape single quotes in employer name
-        safe_name = info['name'].replace("'", "''")
+        safe_name = display_name.replace("'", "''")
         print(f"INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)")
         print(f"VALUES ('{safe_name}', '{info['basis']}', '{info['confidence']}', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)")
         print(f"ON CONFLICT (employer_name) DO UPDATE SET")

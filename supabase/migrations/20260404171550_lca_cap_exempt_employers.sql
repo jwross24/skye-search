@@ -12,7 +12,7 @@
 BEGIN;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ABRAHAM BALDWIN AGRICULTURAL COLLEGE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Abraham Baldwin Agricultural College', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -32,7 +32,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ADVENTIST HEALTH SYSTEM SUNBELT HEALTHCARE CORP', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Adventist Health System Sunbelt Healthcare Corp', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -42,7 +42,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ALBANY MEDICAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Albany Medical Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -52,7 +52,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ALBANY MEDICAL COLLEGE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Albany Medical College', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -92,7 +92,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ALLEN INSTITUTE', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Allen Institute', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -332,7 +332,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('BAYLOR UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Baylor University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -372,7 +372,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('BETH ISRAEL MEDICAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Beth Israel Medical Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -402,7 +402,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('BOISE STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Boise State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -462,7 +462,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('BRIGHAM YOUNG UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Brigham Young University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -472,7 +472,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('BRONXCARE HEALTH SYSTEM', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Bronxcare Health System', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -542,7 +542,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('CALIFORNIA POLYTECHNIC STATE UNIVERSITY, SAN LUIS OBISPO', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('California Polytechnic State University, San Luis Obispo', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -642,7 +642,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('CGH MEDICAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Cgh Medical Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1142,7 +1142,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('EAST PHILLIPS COUNTY HOSPITAL DISTRICT', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('East Phillips County Hospital District', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1282,7 +1282,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE FEINSTEIN INSTITUTES FOR MEDICAL RESEARCH', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The Feinstein Institutes for Medical Research', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1322,7 +1322,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('FLORIDA ATLANTIC UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Florida Atlantic University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1332,7 +1332,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('FLORIDA GULF COAST UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Florida Gulf Coast University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1352,7 +1352,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('FLORIDA INTERNATIONAL UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Florida International University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1362,7 +1362,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('FLORIDA POLYTECHNIC UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Florida Polytechnic University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1402,7 +1402,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('FORT VALLEY STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Fort Valley State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1582,7 +1582,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE HEALTH CARE AUTHORITY OF THE CITY OF HUNTSVILLE', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The Health Care Authority of the City of Huntsville', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1742,7 +1742,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('INOVA HEALTH CARE SERVICES', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Inova Health Care Services', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -1882,7 +1882,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('KENNESAW STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Kennesaw State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2082,7 +2082,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('LOUISIANA STATE UNIVERSITY HEALTH SCIENCES CENTER NEW ORLEANS', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Louisiana State University Health Sciences Center New Orleans', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2142,7 +2142,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('MAHARISHI INTERNATIONAL UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Maharishi International University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2352,7 +2352,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE METROHEALTH SYSTEM', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The Metrohealth System', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2402,7 +2402,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('MICHIGAN STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Michigan State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2492,7 +2492,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('MONONGAHELA VALLEY HOSPITAL', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Monongahela Valley Hospital', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2622,7 +2622,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('NATHAN LITTAUER HOSPITAL & NURSING HOME', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Nathan Littauer Hospital & Nursing Home', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2742,7 +2742,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('NORTH DAKOTA STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('North Dakota State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2812,7 +2812,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('NORTHWELL HEALTH', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Northwell Health', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2852,7 +2852,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('NOVA SOUTHEASTERN UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Nova Southeastern University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -2962,7 +2962,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('OLIVET UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Olivet University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3032,7 +3032,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('PARKLAND HEALTH CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Parkland Health Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3082,7 +3082,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('PHYSICIAN AFFILIATE GROUP OF NY, PC', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Physician Affiliate Group of Ny, Pc', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3292,7 +3292,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('RHODE ISLAND HOSPITAL', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Rhode Island Hospital', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3362,7 +3362,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('SAINT FRANCIS HEALTH SYSTEM', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Saint Francis Health System', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3372,7 +3372,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('SAINT FRANCIS UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Saint Francis University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3512,7 +3512,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('SEATTLE CHILDREN''S HOSPITAL', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Seattle Children''S Hospital', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3682,7 +3682,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('ST. LUKE''S-ROOSEVELT HOSPITAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('St. Luke''S-Roosevelt Hospital Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3712,7 +3712,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('STATE UNIVERSITY OF NEW YORK AT BUFFALO', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('State University of New York at Buffalo', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3832,7 +3832,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('TEACHERS COLLEGE, COLUMBIA UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Teachers College, Columbia University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -3962,7 +3962,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('TEXAS TECH UNIVERSITY HEALTH SCIENCES CENTER', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Texas Tech University Health Sciences Center', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4022,7 +4022,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('TRUSTEES OF BOSTON UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Trustees of Boston University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4062,7 +4062,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Trustees of the University of Pennsylvania', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4082,7 +4082,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UCSF MEDICAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Ucsf Medical Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4332,7 +4332,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF CALIFORNIA, IRVINE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of California, Irvine', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4362,7 +4362,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF CALIFORNIA, SAN DIEGO', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of California, San Diego', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4392,7 +4392,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF CENTRAL FLORIDA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Central Florida', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4432,7 +4432,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF CINCINNATI', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Cincinnati', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4502,7 +4502,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF DELAWARE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Delaware', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4522,7 +4522,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF FLORIDA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Florida', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4632,7 +4632,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF KANSAS MEDICAL CENTER', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Kansas Medical Center', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4642,7 +4642,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF KENTUCKY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Kentucky', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4802,7 +4802,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF MIAMI', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of Miami', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4912,7 +4912,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF NORTH CAROLINA AT ASHEVILLE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of North Carolina at Asheville', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4922,7 +4922,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF NORTH CAROLINA AT CHAPEL HILL', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of North Carolina at Chapel Hill', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4942,7 +4942,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF NORTH CAROLINA AT GREENSBORO', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of North Carolina at Greensboro', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4962,7 +4962,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF NORTH GEORGIA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of North Georgia', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -4972,7 +4972,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF NORTH TEXAS', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of North Texas', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5122,7 +5122,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE UNIVERSITY OF TENNESSEE', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The University of Tennessee', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5232,7 +5232,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE UNIVERSITY OF TEXAS M.D. ANDERSON CANCER CENTER', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The University of Texas M.D. Anderson Cancer Center', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5262,7 +5262,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('THE UNIVERSITY OF TEXAS RIO GRANDE VALLEY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('The University of Texas Rio Grande Valley', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5282,7 +5282,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF THE PACIFIC', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of the Pacific', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5362,7 +5362,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UNIVERSITY OF WEST FLORIDA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('University of West Florida', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5472,7 +5472,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('UT-BATTELLE, LLC (OAK RIDGE NATIONAL LABORATORY)', 'nonprofit_research', 'confirmed', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Ut-Battelle, LLC (Oak Ridge National Laboratory)', 'nonprofit_research', 'confirmed', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5592,7 +5592,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WAKE FOREST UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Wake Forest University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5672,7 +5672,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WAYNE STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Wayne State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5722,7 +5722,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WEST CHESTER UNIVERSITY OF PENNSYLVANIA', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('West Chester University of Pennsylvania', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5802,7 +5802,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WICHITA STATE UNIVERSITY', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Wichita State University', 'university', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5842,7 +5842,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WISHEK HOSPITAL CLINIC ASSOCIATION', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Wishek Hospital Clinic Association', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
@@ -5882,7 +5882,7 @@ ON CONFLICT (employer_name) DO UPDATE SET
   verification_date = EXCLUDED.verification_date;
 
 INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)
-VALUES ('WYCKOFF HEIGHTS MEDICAL CENTER', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
+VALUES ('Wyckoff Heights Medical Center', 'nonprofit_research', 'likely', 'DOL OFLC LCA FY2026 Q1', CURRENT_DATE)
 ON CONFLICT (employer_name) DO UPDATE SET
   confidence_level = CASE
     WHEN cap_exempt_employers.confidence_level = 'confirmed' THEN 'confirmed'
