@@ -1,6 +1,9 @@
 /**
  * Golden Set Evaluation — tests AI scoring against manually graded job descriptions.
  *
+ * Uses the PRODUCTION scoring rubric (extracted from ai-scoring.ts at runtime)
+ * to ensure the golden set tests the same prompt the pipeline uses.
+ *
  * Requires ANTHROPIC_API_KEY and RUN_GOLDEN_SET=1 environment variables.
  * Not run in normal `bun run test` — only when explicitly requested.
  *
@@ -10,10 +13,56 @@
  * Regression gate: >2 visa_path mismatches across full set → FAIL
  */
 
+import { readFileSync } from 'fs'
 import { describe, it, expect } from 'vitest'
 import { GOLDEN_SET, type GoldenSetEntry } from './golden-set-data'
 
 const SKIP = !process.env.RUN_GOLDEN_SET
+
+// ─── Extract production rubric and translation table from ai-scoring.ts ────
+// This ensures the golden set always tests against the actual production prompt.
+// Pattern matches the template literal between backticks, same approach as
+// ai-scoring-prompt.test.ts uses for source-level assertions.
+
+const AI_SCORING_SOURCE = readFileSync(
+  'supabase/functions/_shared/handlers/ai-scoring.ts',
+  'utf8',
+)
+
+function extractTemplateLiteral(source: string, varName: string): string {
+  const pattern = new RegExp(`const ${varName} = \`([\\s\\S]*?)\`\\.trim\\(\\)`)
+  const match = source.match(pattern)
+  if (!match?.[1]) {
+    throw new Error(`Failed to extract ${varName} from ai-scoring.ts`)
+  }
+  return match[1].trim()
+}
+
+const SCORING_RUBRIC = extractTemplateLiteral(AI_SCORING_SOURCE, 'SCORING_RUBRIC')
+const TRANSLATION_TABLE = extractTemplateLiteral(AI_SCORING_SOURCE, 'TRANSLATION_TABLE')
+
+// ─── Build eval system prompt ──────────────────────────────────────────────
+// Uses production rubric + translation table with a static candidate profile.
+// Dynamic sections (employer lookup, feedback penalties, positive patterns)
+// are omitted — the golden set tests scoring logic, not personalization.
+
+const EVAL_SYSTEM_PROMPT = `You are an immigration-aware job scoring system for an international PhD scientist.
+
+## Candidate Profile
+
+Field: Environmental science / Ocean color remote sensing
+Skills: Ocean color remote sensing, satellite imagery processing (SeaDAS), Google Earth Engine, MODIS/VIIRS data analysis, coastal biogeochemistry, Python, R, MATLAB, NetCDF/HDF5, radiative transfer modeling
+Research areas: Ocean color remote sensing, coastal biogeochemistry, phytoplankton dynamics, satellite validation
+
+## Immigration Context
+
+Visa: F-1 STEM OPT
+Priority: Cap-exempt employers (universities, nonprofits, government labs) are highest priority because they can sponsor H1-B without annual cap limits. This candidate missed the FY2027 H1-B lottery.
+
+## Academic ↔ Industry Translation Table
+${TRANSLATION_TABLE}
+
+${SCORING_RUBRIC}`
 
 // Dynamic import to avoid Anthropic SDK dependency in normal test runs.
 // The SDK is only available when explicitly installed for golden set runs.
@@ -44,57 +93,11 @@ async function scoreJob(entry: GoldenSetEntry) {
 
   const client = new Anthropic({ dangerouslyAllowBrowser: true })
 
-  // Simplified system prompt for golden set (same rubric, generic profile)
-  const systemPrompt = `You are an immigration-aware job scoring system for an international PhD environmental scientist.
-
-## Candidate Profile
-Field: Environmental science / Ocean color remote sensing
-Skills: Ocean color remote sensing, SeaDAS, Google Earth Engine, MODIS/VIIRS/PACE, coastal biogeochemistry, Python, R, MATLAB, NetCDF/HDF5, radiative transfer modeling, phytoplankton dynamics
-Visa: F-1 STEM OPT. Cap-exempt employers are highest priority (H1-B without annual cap).
-
-## Scoring Instructions
-
-### visa_path
-- cap_exempt: Universities, 501(c)(3) nonprofits, government research labs, cooperative institutes.
-- cap_subject: Private sector subject to H1-B annual cap.
-- opt_compatible: Can work under OPT without H1-B.
-- canada: Canadian employers.
-- unknown: Cannot determine.
-
-### cap_exempt_confidence
-- confirmed: Explicitly university/nonprofit/government. - likely: Strong indicators (.edu, NIH/NSF/NOAA). - unverified: Ambiguous hints. - none: No indicators.
-
-### employer_type
-university, nonprofit_research, cooperative_institute, government_contractor, government_direct, private_sector, unknown.
-
-### Government Contractor Disambiguation (CRITICAL for visa_path)
-When a posting mentions work at a government agency (NASA, NOAA, DOE) but the EMPLOYER is a private company:
-- "Inc.", "LLC", "Corporation" → cap_subject (private sector).
-- KNOWN cap_subject: SSAI, GST Inc., SAIC, Booz Allen Hamilton, Leidos.
-- KNOWN cap_exempt: Battelle (501(c)(3)), UCAR (501(c)(3)), ORAU (501(c)(3)).
-- "SSAI at NASA Goddard" → employer is SSAI (cap_subject), NOT NASA.
-- When in doubt: classify as cap_subject.
-
-### match_score (0.0-1.0)
-0.85-1.0: STRONG (core domain). 0.65-0.85: GOOD (related, skills transfer). 0.40-0.65: MODERATE (adjacent, retraining). 0.15-0.40: STRETCH (method overlap only). 0.0-0.15: NO MATCH.
-
-### why_fits
-Reference specific candidate skills.
-
-### hiring_timeline_estimate
-immediate, weeks, months, academic_cycle.
-
-### requires_security_clearance / requires_citizenship
-true if posting mentions clearance, US citizen only, ITAR. "work authorization required" is NOT citizenship.
-
-### skills_academic_equiv
-Map required skills to academic equivalents.`
-
   const message = await client.messages.parse({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 0,
-    system: [{ type: 'text' as const, text: systemPrompt }],
+    system: [{ type: 'text' as const, text: EVAL_SYSTEM_PROMPT }],
     messages: [{
       role: 'user' as const,
       content: `<job_description source_type="${entry.source_type}" title="${entry.title}" company="${entry.company}">\n${entry.raw_description}\n</job_description>`,
