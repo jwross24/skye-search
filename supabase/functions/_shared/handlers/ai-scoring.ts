@@ -183,11 +183,34 @@ Cap-exempt employers are the primary viable path to long-term US employment.
 Canada is a serious Plan C — PGWP for PhD holders is reliable.
 
 ### match_score (0.0 to 1.0)
-Calibration based on the candidate's profile:
-- 0.8-1.0: Strong domain match — core skills directly relevant (remote sensing, oceanography, satellite data)
-- 0.5-0.8: Adjacent domain — transferable skills apply (environmental science, geospatial, data science)
-- 0.2-0.5: Stretch — some overlap but significant gap (general software engineering, unrelated science)
-- 0.0-0.2: Poor match — different field entirely
+Score based on domain relevance to THIS candidate: PhD in ocean color remote sensing,
+skills in SeaDAS, MODIS/VIIRS/PACE, Python, coastal biogeochemistry, radiative transfer.
+
+0.85–1.0 STRONG: Core domain, direct skill overlap
+  0.95 "Remote Sensing Research Scientist at NOAA" — exact match
+  0.92 "Postdoc in Ocean Color at WHOI" — core research area
+  0.88 "SeaDAS Developer at NASA GSFC" — direct tool expertise
+
+0.65–0.85 GOOD: Related domain, most skills transfer
+  0.78 "Environmental Data Scientist at NREL" — data skills transfer, different domain
+  0.72 "GIS Analyst at USGS" — geospatial overlap, less research-focused
+  0.68 "Satellite Data Engineer at Planet Labs" — remote sensing adjacent, more engineering
+
+0.40–0.65 MODERATE: Adjacent field, significant retraining needed
+  0.58 "Climate Modeling Researcher at university" — science overlap, different methods
+  0.50 "Water Quality Analyst at EPA" — domain adjacent, less technical
+  0.45 "Geospatial Developer at Development Seed" — tools overlap, no science
+
+0.15–0.40 STRETCH: Different field, only method overlap
+  0.30 "ML Engineer at tech startup" — Python/data skills only, no domain
+  0.22 "Environmental Consultant at McKinsey" — domain-adjacent but consulting, not research
+
+0.0–0.15 NO MATCH: Completely unrelated
+  0.05 "Pharmaceutical Drug Discovery"
+  0.02 "Financial Analyst"
+
+Use these examples as ANCHORS. A job similar to the 0.72 example should score near 0.72,
+not 0.55 or 0.85. When uncertain, err toward the LOWER boundary of the range.
 
 ### why_fits
 MUST be actionable. Reference the candidate's specific skills, publications, or experience that map to this role's requirements. Example:

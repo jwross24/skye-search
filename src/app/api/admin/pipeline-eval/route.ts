@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { authenticateAdmin } from '../auth'
 
+/** Minimum match_score to consider a job "high match" for engagement metrics. */
+const HIGH_MATCH_THRESHOLD = 0.65
+
 /**
  * GET /api/admin/pipeline-eval
  *
@@ -69,14 +72,14 @@ export async function GET(req: Request) {
     .from('applications')
     .select('*, jobs!inner(match_score)', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .gt('jobs.match_score', 0.5)
+    .gt('jobs.match_score', HIGH_MATCH_THRESHOLD)
 
   const { count: voteCount } = await supabase
     .from('votes')
     .select('*, jobs!inner(match_score)', { count: 'exact', head: true })
     .eq('user_id', userId)
     .eq('decision', 'not_for_me')
-    .gt('jobs.match_score', 0.5)
+    .gt('jobs.match_score', HIGH_MATCH_THRESHOLD)
 
   const totalActions = (applicationCount ?? 0) + (voteCount ?? 0)
   const interestedRate = totalActions > 0
