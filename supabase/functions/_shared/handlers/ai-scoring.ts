@@ -383,6 +383,63 @@ ${penaltyLines.join('\n')}`
     }
   }
 
+  // Fetch positive signal from applications (last 90 days)
+  const { data: appJobs } = await supabase
+    .from('applications')
+    .select('job_id, jobs(employer_type, visa_path, company)')
+    .eq('user_id', userId)
+    .gte('created_at', ninetyDaysAgo)
+
+  let positiveSection = ''
+  if (appJobs && appJobs.length > 0) {
+    // Aggregate employer_type distribution
+    const employerTypeCounts: Record<string, number> = {}
+    const visaPathCounts: Record<string, number> = {}
+    const companyCounts: Record<string, number> = {}
+
+    for (const app of appJobs) {
+      const job = app.jobs as { employer_type?: string; visa_path?: string; company?: string } | null
+      if (!job) continue
+      if (job.employer_type && job.employer_type !== 'unknown') {
+        employerTypeCounts[job.employer_type] = (employerTypeCounts[job.employer_type] ?? 0) + 1
+      }
+      if (job.visa_path && job.visa_path !== 'unknown') {
+        visaPathCounts[job.visa_path] = (visaPathCounts[job.visa_path] ?? 0) + 1
+      }
+      if (job.company) {
+        companyCounts[job.company] = (companyCounts[job.company] ?? 0) + 1
+      }
+    }
+
+    const lines: string[] = []
+
+    const sortedEmployerTypes = Object.entries(employerTypeCounts).sort((a, b) => b[1] - a[1])
+    if (sortedEmployerTypes.length > 0) {
+      lines.push(`- Employer type: ${sortedEmployerTypes.map(([t, c]) => `${t} (${c})`).join(', ')}`)
+    }
+
+    const sortedVisaPaths = Object.entries(visaPathCounts).sort((a, b) => b[1] - a[1])
+    if (sortedVisaPaths.length > 0) {
+      lines.push(`- Visa path: ${sortedVisaPaths.map(([p, c]) => `${p} (${c})`).join(', ')}`)
+    }
+
+    const sortedCompanies = Object.entries(companyCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    if (sortedCompanies.length > 0) {
+      lines.push(`- Companies applied to: ${sortedCompanies.map(([c, n]) => `${c} (${n})`).join(', ')}`)
+    }
+
+    if (lines.length > 0) {
+      positiveSection = `## Positive Patterns (from ${appJobs.length} applications in last 90 days)
+This user has applied to jobs matching these patterns. Boost match_score by up to +0.05 for strong matches:
+${lines.join('\n')}
+
+Boost logic: if the job matches the user's most-applied employer_type AND visa_path, add +0.05 to match_score.
+If it matches only employer_type OR only visa_path, add +0.03.
+If the company matches one the user has applied to before, add +0.02 (stacks with type/path boost, max total boost: +0.05).
+Clamp final match_score to [0.0, 1.0].`
+    }
+  }
+
   return `You are an immigration-aware job scoring system for an international PhD scientist.
 
 ${profileSection}
@@ -390,7 +447,7 @@ ${profileSection}
 ## Academic ↔ Industry Translation Table
 ${TRANSLATION_TABLE}
 
-${employerSection ? `${employerSection}\n\n` : ''}${voteSection ? `${voteSection}\n\n` : ''}${SCORING_RUBRIC}`
+${employerSection ? `${employerSection}\n\n` : ''}${voteSection ? `${voteSection}\n\n` : ''}${positiveSection ? `${positiveSection}\n\n` : ''}${SCORING_RUBRIC}`
 }
 
 // ─── Build User Message ─────────────────────────────────────────────────────

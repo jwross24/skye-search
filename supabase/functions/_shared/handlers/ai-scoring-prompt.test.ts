@@ -136,6 +136,77 @@ describe('Company+title dedup logic', () => {
   })
 })
 
+describe('Positive feedback signal from applications', () => {
+  it('fetches applications with job join in buildScoringPrompt', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain("from('applications')")
+    expect(content).toContain("select('job_id, jobs(employer_type, visa_path, company)')")
+    expect(content).toContain('ninetyDaysAgo')
+  })
+
+  it('no applications → no positive signal section', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain("let positiveSection = ''")
+    expect(content).toContain('if (appJobs && appJobs.length > 0)')
+  })
+
+  it('applications to universities → includes employer_type in positive section', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('employerTypeCounts')
+    expect(content).toContain("job.employer_type !== 'unknown'")
+    expect(content).toContain('`${t} (${c})`')
+    expect(content).toContain('Employer type:')
+  })
+
+  it('positive boost capped at +0.05', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('up to +0.05')
+    expect(content).toContain('max total boost: +0.05')
+  })
+
+  it('positive and negative signals coexist in prompt template', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain("${voteSection ? `${voteSection}\\n\\n` : ''}${positiveSection ? `${positiveSection}\\n\\n` : ''}")
+  })
+
+  it('excludes unknown employer_type and visa_path from aggregation', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain("job.employer_type !== 'unknown'")
+    expect(content).toContain("job.visa_path !== 'unknown'")
+  })
+
+  it('limits company list to top 5', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('.slice(0, 5)')
+    expect(content).toContain('Companies applied to:')
+  })
+
+  it('includes boost logic instructions for AI', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('Boost logic:')
+    expect(content).toContain('add +0.05 to match_score')
+    expect(content).toContain('add +0.03')
+    expect(content).toContain('add +0.02')
+    expect(content).toContain('Clamp final match_score to [0.0, 1.0]')
+  })
+
+  it('sorts employer types and visa paths by count descending', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('sortedEmployerTypes')
+    expect(content).toContain('sortedVisaPaths')
+    expect(content).toContain('.sort((a, b) => b[1] - a[1])')
+  })
+})
+
 describe('SCORING_RUBRIC content', () => {
   // We can't easily import the rubric from the Deno module in Vitest,
   // so we read the file and check string content
