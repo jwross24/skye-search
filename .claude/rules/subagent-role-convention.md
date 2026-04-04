@@ -21,8 +21,8 @@ The `description` field on Agent tool calls is the role signal. All hooks use it
 ## Rules
 
 1. Always include the role keyword in `description` — it's the primary discriminator
-2. No subagent may `br close` or `git push` — those are main-context-only
-3. Review agents get broader read/verify permissions because they need them to find real bugs
+2. Review agents are fully trusted — description check happens FIRST, before any prompt scanning
+3. Non-review subagents cannot `br close` or `git push` — those are main-context-only
 4. Implementation agents can write code and run verify but can't drive lifecycle steps
 
 ## Why description, not prompt

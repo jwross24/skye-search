@@ -23,7 +23,20 @@ if [ -z "$PROMPT" ]; then
   exit 0
 fi
 
-# ── Hard blocks: no subagent may do these (irreversible lifecycle ops) ──
+# ── Classify role by description FIRST (before prompt scanning) ──────────
+# Review agents are trusted — their prompts are written by the main context
+# and may contain negations ("do NOT git push") that trip literal string matching.
+
+is_review=false
+if echo "$DESCRIPTION" | grep -qiE 'cross.?review|self.?review|code.?review|audit|review.*commit'; then
+  is_review=true
+fi
+
+if [ "$is_review" = "true" ]; then
+  exit 0
+fi
+
+# ── Hard blocks: non-review subagents cannot do irreversible ops ─────────
 
 HARD_VIOLATIONS=""
 
@@ -38,19 +51,6 @@ fi
 if [ -n "$HARD_VIOLATIONS" ]; then
   ESCAPED=$(printf '%s' "$HARD_VIOLATIONS" | tr '\n' ' ')
   echo "{\"decision\":\"block\",\"reason\":\"BLOCKED: Subagents cannot perform irreversible lifecycle operations.\n\nDetected:\n${ESCAPED}\nThese must happen in the main context. See .claude/rules/worktree-bead-workflow.md\"}"
-  exit 0
-fi
-
-# ── Classify role by description (consistent with PostToolUse hooks) ──
-
-is_review=false
-if echo "$DESCRIPTION" | grep -qiE 'cross.?review|self.?review|code.?review|audit|review.*commit'; then
-  is_review=true
-fi
-
-# Review agents: allowed to read code, run verify, run diffs, grep, etc.
-# They just can't do lifecycle ops (already blocked above).
-if [ "$is_review" = "true" ]; then
   exit 0
 fi
 

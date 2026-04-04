@@ -131,6 +131,15 @@ describe('Exa adapter', () => {
     )
   })
 
+  it('passes startPublishedDate to searchAndContents calls', async () => {
+    await exaAdapter.discover([academicQuery, industryQuery])
+
+    for (const call of mockSearch.mock.calls) {
+      expect(call[1].startPublishedDate).toBeDefined()
+      expect(call[1].startPublishedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+  })
+
   it('runs findSimilar on all seed URLs', async () => {
     await exaAdapter.discover([academicQuery])
 
