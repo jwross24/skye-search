@@ -36,16 +36,28 @@ const MODEL = 'claude-haiku-4-5-20251001'
 // Regex backup for citizenship/clearance detection — catches phrases Claude may miss.
 // Intentionally does NOT include "work authorization required" — that's standard for
 // all employers and does NOT mean citizenship requirement.
+//
+// ITAR note: bare /\bITAR\b/ is intentionally avoided — academic postings sometimes
+// explicitly state "ITAR-free" or "no ITAR restrictions" to attract international
+// candidates. Those would be false positives. Instead we match specific affirmative
+// ITAR requirement phrases.
+//
+// US national note: /\bmust be a US national\b/ is narrowed with a negative lookahead
+// to avoid matching "must be a US national laboratory" (common in ORISE/DOE fellowship
+// descriptions where 'national' modifies 'laboratory', not citizenship status).
 const INELIGIBILITY_PATTERNS: RegExp[] = [
   /\bU\.?S\.?\s+citizen(?:s|ship)?\s+(?:only|required)\b/i,
   /\bmust\s+be\s+a?\s*U\.?S\.?\s+citizen\b/i,
   /\bU\.?S\.?\s+persons?\s+only\b/i,
-  /\bITAR\b/,
+  // ITAR: require affirmative context — "subject to ITAR" or "ITAR-controlled/restricted/etc"
+  /subject\s+to\s+ITAR\b/i,
+  /\bITAR[\s-](?:controlled|restricted|regulated|classified|compliance|requirement)/i,
   /\bsecurity\s+clearance\s+(?:required|needed|necessary)\b/i,
   /\bTS\/SCI\b/,
   /\bTop\s+Secret\s+(?:(?:clearance|access)\s+)?(?:required|needed|necessary|eligible)\b/i,
   /\bcitizenship\s+(?:is\s+)?required\b/i,
-  /\bmust\s+be\s+a?\s*U\.?S\.?\s+national\b/i,
+  // Negative lookahead: don't match "must be a US national laboratory/lab"
+  /\bmust\s+be\s+a?\s*U\.?S\.?\s+national(?!\s+lab(?:oratory)?)\b/i,
   /\bDOD\s+clearance\b/i,
 ]
 const MAX_TOKENS = 2048

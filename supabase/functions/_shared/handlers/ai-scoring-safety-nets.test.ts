@@ -11,16 +11,20 @@ import { describe, it, expect } from 'vitest'
 
 // Import the patterns directly for unit testing
 // The handler applies them — we test the regex matching here
+// MUST stay in sync with INELIGIBILITY_PATTERNS in ai-scoring.ts
 const INELIGIBILITY_PATTERNS: RegExp[] = [
   /\bU\.?S\.?\s+citizen(?:s|ship)?\s+(?:only|required)\b/i,
   /\bmust\s+be\s+a?\s*U\.?S\.?\s+citizen\b/i,
   /\bU\.?S\.?\s+persons?\s+only\b/i,
-  /\bITAR\b/,
+  // ITAR: require affirmative context — bare /ITAR/ causes false positives on "ITAR-free"
+  /subject\s+to\s+ITAR\b/i,
+  /\bITAR[\s-](?:controlled|restricted|regulated|classified|compliance|requirement)/i,
   /\bsecurity\s+clearance\s+(?:required|needed|necessary)\b/i,
   /\bTS\/SCI\b/,
   /\bTop\s+Secret\s+(?:(?:clearance|access)\s+)?(?:required|needed|necessary|eligible)\b/i,
   /\bcitizenship\s+(?:is\s+)?required\b/i,
-  /\bmust\s+be\s+a?\s*U\.?S\.?\s+national\b/i,
+  // Negative lookahead: don't match "must be a US national laboratory/lab"
+  /\bmust\s+be\s+a?\s*U\.?S\.?\s+national(?!\s+lab(?:oratory)?)\b/i,
   /\bDOD\s+clearance\b/i,
 ]
 
@@ -53,9 +57,14 @@ describe('Citizenship/clearance regex patterns', () => {
       ['Must be Top Secret eligible', 'Top Secret eligible'],
       ['Security clearance required', 'security clearance required'],
       ['Must hold active security clearance needed for this role', 'security clearance needed'],
-      ['This position is subject to ITAR regulations', 'ITAR'],
       ['DOD clearance mandatory', 'DOD clearance'],
       ['Security clearance necessary for access', 'security clearance necessary'],
+      // ITAR affirmative-context patterns (bare /ITAR/ replaced to prevent false positives)
+      ['This position is subject to ITAR regulations', 'subject to ITAR'],
+      ['ITAR-controlled materials must be handled with clearance', 'ITAR-controlled'],
+      ['ITAR-restricted research program — US persons only', 'ITAR-restricted'],
+      ['ITAR compliance is mandatory for this role', 'ITAR compliance'],
+      ['ITAR requirement applies; clearance may be needed', 'ITAR requirement'],
     ])('catches: %s (%s)', (text, _label) => {
       expect(matchesIneligibility(text)).toBe(true)
     })
@@ -75,6 +84,13 @@ describe('Citizenship/clearance regex patterns', () => {
       ['Must be a national laboratory employee', 'ORISE/DOE fellowship — cap-exempt, not citizenship req'],
       ['Keep this information top secret', 'colloquial top secret, no clearance context'],
       ['Top Secret clearance preferred but not required', 'preferred != required'],
+      // ITAR false-positives: academic postings that explicitly state ITAR does NOT apply
+      ['ITAR-free research environment — open to all nationalities', 'ITAR-free (explicit exemption)'],
+      ['No ITAR or EAR restrictions apply to this position', 'no ITAR restrictions'],
+      ['Researchers from all countries welcome; no ITAR restrictions', 'no ITAR international welcome'],
+      // US national false-positive: 'national' modifying 'laboratory', not citizenship
+      ['Must be a U.S. national laboratory or university employee', 'US national laboratory — not citizenship req'],
+      ['Appointment must be at a US national lab facility', 'US national lab facility'],
     ])('does NOT match: %s (%s)', (text, _label) => {
       expect(matchesIneligibility(text)).toBe(false)
     })
