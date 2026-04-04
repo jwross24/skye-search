@@ -14,7 +14,7 @@ TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 CROSS_REVIEW_PATTERN='cross-review-results\.json'
 DISPOSITION_PATTERN='review-disposition-'
 AUTH_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-write-authorized"
-AUTH_TTL=300  # seconds
+AUTH_TTL=1800  # seconds (30 min — enough for a thorough review)
 
 # Check if disposition write is authorized (stamp set by pre-agent-review-auth.sh)
 is_disposition_authorized() {

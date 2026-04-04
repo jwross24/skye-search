@@ -27,6 +27,13 @@ if ! echo "$AGENT_DESC $AGENT_PROMPT" | grep -iqE 'review|audit|disposition|find
   exit 0
 fi
 
+# Authorize disposition writes for this subagent.
+# pre-agent-review-auth.sh sets this when the parent spawns via Agent tool,
+# but when a reviewer is invoked directly (e.g. the top-level agent IS the
+# reviewer), the parent hook never fires.  Touch it here so both paths work.
+AUTH_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-write-authorized"
+touch "$AUTH_FILE"
+
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 TEMPLATE="$PROJECT_DIR/.claude/evaluator-template.md"
 

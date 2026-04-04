@@ -5,7 +5,7 @@
  * match_score range, and ineligibility flags.
  *
  * Categories (by section):
- *   5 cap-exempt, 5 cap-subject, 5 ineligible (3 original + 2 citizenship),
+ *   9 cap-exempt, 11 cap-subject, 5 ineligible, 3 canadian, 1 citizenship edge case,
  *   3 academic vernacular, 3 industry vernacular, 3 edge cases,
  *   3 contractor disambiguation,
  *   3 part-time/bridge roles, 3 Canadian research, 2 cap-subject H1-B history,
@@ -539,15 +539,15 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
   },
   {
     id: 'GS-PT-02',
-    category: 'cap_subject',
+    category: 'cap_exempt',
     title: 'Adjunct Instructor - Environmental Science',
     company: 'Bunker Hill Community College',
     source_type: 'academic',
     raw_description: `Bunker Hill Community College, a Massachusetts state community college, invites applications for a part-time Adjunct Instructor to teach Introduction to Environmental Science (ENV 101) for the Fall 2026 semester. This is a 10 hours/week position covering one section of the introductory course. Responsibilities include preparing lectures, grading assignments, and holding office hours. The course covers ecosystems, pollution, climate change, and sustainability. Minimum qualifications: Master's degree in environmental science, ecology, or closely related field from a regionally accredited institution. Teaching experience at the college level preferred. Note: Bunker Hill Community College is a state-funded institution, not a 501(c)(3) nonprofit. Charlestown, MA. Compensation per the MCCC adjunct pay scale.`,
     expected: {
-      visa_path: ['opt_compatible', 'cap_subject'],
-      cap_exempt_confidence: 'none',
-      employer_type: ['university', 'unknown'],
+      visa_path: ['cap_exempt', 'opt_compatible'],
+      cap_exempt_confidence: ['confirmed', 'likely'],
+      employer_type: 'university',
       match_score_min: 0.20,
       match_score_max: 0.40,
       requires_security_clearance: false,
@@ -719,8 +719,8 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
     source_type: 'government',
     raw_description: `The National Geospatial-Intelligence Agency (NGA) is seeking a Geospatial Intelligence (GEOINT) Analyst for our Analysis Directorate in Springfield, VA. You will analyze multi-source satellite imagery (electro-optical, synthetic aperture radar, multispectral, hyperspectral) and geospatial data to produce intelligence assessments in support of national security decision-making. Responsibilities include image interpretation, terrain analysis, change detection, and preparation of geospatial intelligence reports for senior policymakers and military commanders. You will use NGA's classified GEOINT tools and databases, including commercial and national technical means imagery. Requirements: MS or PhD in geography, remote sensing, GIS, or related field. Experience with imagery analysis, GEOINT tradecraft, and geospatial tools (ArcGIS, ENVI, SOCET GXP). Understanding of collection platforms and sensor phenomenology. This position requires U.S. citizenship — no exceptions. TS/SCI security clearance with polygraph required. Applicants must be eligible for access to Sensitive Compartmented Information. NGA is a Department of Defense combat support agency and a member of the Intelligence Community.`,
     expected: {
-      visa_path: 'cap_subject',
-      cap_exempt_confidence: 'none',
+      visa_path: 'cap_exempt',
+      cap_exempt_confidence: 'confirmed',
       employer_type: 'government_direct',
       match_score_min: 0.30,
       match_score_max: 0.55,
@@ -755,8 +755,8 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
     source_type: 'government',
     raw_description: `The U.S. Army Corps of Engineers, Portland District, seeks an Environmental Scientist (GS-0401-11/12) for the Environmental Resources Branch. Work authorization required. Open to all US persons. Note: Under federal hiring authorities, "US persons" includes US citizens AND lawful permanent residents — this position does NOT require US citizenship specifically, but does require permanent work authorization. The scientist will conduct wetland delineation, water quality monitoring, and environmental impact assessments for USACE civil works projects in the Pacific Northwest. Responsibilities include monitoring water quality parameters at dam sites using field instrumentation and satellite remote sensing data (Landsat, Sentinel-2), preparing biological assessments under ESA Section 7, and supporting NEPA documentation. GIS analysis of project impacts using ArcGIS Pro is a core responsibility. Requirements: MS or PhD in environmental science, biology, ecology, or related field. 2+ years experience in wetland delineation (Corps 1987 Manual). Knowledge of Clean Water Act Section 404 regulations. Experience with water quality monitoring equipment. Familiarity with GIS and remote sensing applications for environmental assessment. Portland, OR. Federal benefits package. No security clearance required.`,
     expected: {
-      visa_path: ['cap_exempt', 'cap_subject'],
-      cap_exempt_confidence: ['confirmed', 'likely'],
+      visa_path: 'cap_exempt',
+      cap_exempt_confidence: 'confirmed',
       employer_type: 'government_direct',
       match_score_min: 0.42,
       match_score_max: 0.62,
