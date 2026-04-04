@@ -48,6 +48,7 @@ vi.mock('@/lib/adapters/ajo-rss', () => ({
 
 import { POST } from './route'
 import { ACADEMIC_QUERIES, INDUSTRY_QUERIES, FIND_SIMILAR_SEEDS } from '@/lib/adapters/exa'
+import { CANADA_QUERIES, CANADA_FIND_SIMILAR_SEEDS } from '@/lib/adapters/jobsgcca'
 // USAJobs disabled — federal positions require US citizenship
 
 const CRON_SECRET = 'test-discover-secret'
@@ -85,10 +86,14 @@ describe('POST /api/cron/discover', () => {
     expect(body.ok).toBe(true)
 
     const expectedTotal = ACADEMIC_QUERIES.length + INDUSTRY_QUERIES.length + FIND_SIMILAR_SEEDS.length
+      + CANADA_QUERIES.length * 2 + CANADA_FIND_SIMILAR_SEEDS.length
     expect(body.tasks_created).toBe(expectedTotal)
     expect(body.breakdown.academic_search).toBe(ACADEMIC_QUERIES.length)
     expect(body.breakdown.industry_search).toBe(INDUSTRY_QUERIES.length)
     expect(body.breakdown.find_similar).toBe(FIND_SIMILAR_SEEDS.length)
+    expect(body.breakdown.canada_gov_search).toBe(CANADA_QUERIES.length)
+    expect(body.breakdown.canada_academic_search).toBe(CANADA_QUERIES.length)
+    expect(body.breakdown.canada_find_similar).toBe(CANADA_FIND_SIMILAR_SEEDS.length)
     expect(body.breakdown.usajobs_search).toBe(0)
   })
 
@@ -104,13 +109,17 @@ describe('POST /api/cron/discover', () => {
     expect(tasks[0].user_id).toBe('user-1')
     expect(tasks[0].max_retries).toBe(3)
 
-    // Last tasks should be findSimilar (USAJobs disabled)
+    // Last tasks should be Canadian findSimilar (USAJobs disabled)
     const lastTask = tasks[tasks.length - 1]
     expect(lastTask.task_type).toBe('exa_find_similar')
+    expect(lastTask.payload_json.source).toBe('jobsgcca')
 
     const findSimilarTasks = tasks.filter((t: { task_type: string }) => t.task_type === 'exa_find_similar')
-    expect(findSimilarTasks.length).toBe(FIND_SIMILAR_SEEDS.length)
-    expect(findSimilarTasks[0].payload_json.seed_url).toBeTruthy()
+    expect(findSimilarTasks.length).toBe(FIND_SIMILAR_SEEDS.length + CANADA_FIND_SIMILAR_SEEDS.length)
+
+    // Verify Canadian search tasks have source=jobsgcca
+    const canadaTasks = tasks.filter((t: { payload_json: { source?: string } }) => t.payload_json.source === 'jobsgcca')
+    expect(canadaTasks.length).toBe(CANADA_QUERIES.length * 2 + CANADA_FIND_SIMILAR_SEEDS.length)
 
     // Verify no USAJobs tasks created
     const usajobsTasks = tasks.filter((t: { task_type: string }) => t.task_type === 'usajobs_search')

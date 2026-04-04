@@ -7,6 +7,12 @@ import {
   FIND_SIMILAR_SEEDS,
   ACADEMIC_JOB_DOMAINS,
 } from '@/lib/adapters/exa'
+import {
+  CANADA_QUERIES,
+  CANADA_FIND_SIMILAR_SEEDS,
+  CANADA_GOV_DOMAINS,
+  CANADA_ACADEMIC_DOMAINS,
+} from '@/lib/adapters/jobsgcca'
 // USAJobs disabled: all federal positions require US citizenship (5 USC § 3301,
 // Executive Order 11935). Skye is on OPT — none are eligible. The Exa government
 // source already finds contractor/university positions at federal labs (SSAI, CIRA,
@@ -129,6 +135,53 @@ async function handler(req: NextRequest) {
       })
     }
 
+    // Canadian government queries (with government domain filtering)
+    for (const query of CANADA_QUERIES) {
+      tasks.push({
+        user_id: userId,
+        task_type: 'exa_search_query',
+        payload_json: {
+          query,
+          domains: CANADA_GOV_DOMAINS,
+          source_type: 'government',
+          source: 'jobsgcca',
+          user_location: 'CA',
+        },
+        max_retries: 3,
+      })
+    }
+
+    // Canadian academic queries (university job boards)
+    for (const query of CANADA_QUERIES) {
+      tasks.push({
+        user_id: userId,
+        task_type: 'exa_search_query',
+        payload_json: {
+          query,
+          domains: CANADA_ACADEMIC_DOMAINS,
+          source_type: 'academic',
+          source: 'jobsgcca',
+          user_location: 'CA',
+        },
+        max_retries: 3,
+      })
+    }
+
+    // Canadian findSimilar seeds
+    for (const seed of CANADA_FIND_SIMILAR_SEEDS) {
+      tasks.push({
+        user_id: userId,
+        task_type: 'exa_find_similar',
+        payload_json: {
+          seed_url: seed.url,
+          source_type: seed.source_type,
+          source: 'jobsgcca',
+          user_location: 'CA',
+        },
+        max_retries: 3,
+      })
+    }
+
     // USAJobs disabled — see import comment above
 
     // Bulk insert
@@ -177,6 +230,9 @@ async function handler(req: NextRequest) {
         academic_search: ACADEMIC_QUERIES.length,
         industry_search: INDUSTRY_QUERIES.length,
         find_similar: FIND_SIMILAR_SEEDS.length,
+        canada_gov_search: CANADA_QUERIES.length,
+        canada_academic_search: CANADA_QUERIES.length,
+        canada_find_similar: CANADA_FIND_SIMILAR_SEEDS.length,
         usajobs_search: 0, // disabled — re-enable per-user when multi-user launches
         ajo_rss: ajoCount,
       },

@@ -76,6 +76,14 @@ function extractCompany(url: string): string {
       'cira.colostate.edu': 'CIRA, Colorado State University',
       'ioccg.org': 'IOCCG',
       'science.gsfc.nasa.gov': 'NASA Goddard Space Flight Center',
+      // Canadian employers
+      'emploisfp-psjobs.cfp-psc.gc.ca': 'Government of Canada (PSC)',
+      'jobbank.gc.ca': 'Job Bank Canada',
+      'nrc-cnrc.gc.ca': 'National Research Council Canada',
+      'dfo-mpo.gc.ca': 'Fisheries and Oceans Canada',
+      'nrc.canada.ca': 'National Research Council Canada',
+      'ocean.dal.ca': 'Dalhousie University',
+      'hakai.org': 'Hakai Institute',
     }
     return knownDomains[hostname] ?? hostname
   } catch {
@@ -90,12 +98,12 @@ interface ExaResult {
   publishedDate?: string | null
 }
 
-function mapToRow(result: ExaResult, userId: string, sourceType: string, sourceDetail: string | null = null): DiscoveredJobRow {
+function mapToRow(result: ExaResult, userId: string, sourceType: string, sourceDetail: string | null = null, source: string = 'exa'): DiscoveredJobRow {
   const url = result.url ?? ''
   const company = extractCompany(url)
   return {
     user_id: userId,
-    source: 'exa',
+    source,
     url,
     title: result.title ?? 'Untitled',
     company,
@@ -113,7 +121,7 @@ function mapToRow(result: ExaResult, userId: string, sourceType: string, sourceD
 registerHandler({
   taskType: 'exa_search_query',
   async execute(task: TaskRow): Promise<TaskResult> {
-    const payload = task.payload_json as { query?: string; domains?: string[]; source_type?: string } | null
+    const payload = task.payload_json as { query?: string; domains?: string[]; source_type?: string; source?: string; user_location?: string } | null
     if (!payload?.query) {
       return { success: false, error: 'Missing query in payload', permanent: true }
     }
@@ -136,6 +144,8 @@ registerHandler({
       text: { maxCharacters: 3000 },
       numResults,
       type: 'neural',
+      userLocation: payload.user_location ?? 'US',
+      filterEmptyResults: true,
       includeDomains: payload.domains?.length ? payload.domains : undefined,
       startPublishedDate: thirtyDaysAgo(),
     })
@@ -143,7 +153,7 @@ registerHandler({
     await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
-      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `query:${payload.query}`),
+      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `query:${payload.query}`, payload.source ?? 'exa'),
     )
 
     const inserted = await upsertJobs(rows)
@@ -160,7 +170,7 @@ registerHandler({
 registerHandler({
   taskType: 'exa_find_similar',
   async execute(task: TaskRow): Promise<TaskResult> {
-    const payload = task.payload_json as { seed_url?: string; source_type?: string } | null
+    const payload = task.payload_json as { seed_url?: string; source_type?: string; source?: string; user_location?: string } | null
     if (!payload?.seed_url) {
       return { success: false, error: 'Missing seed_url in payload', permanent: true }
     }
@@ -182,12 +192,14 @@ registerHandler({
     const response = await exa.findSimilarAndContents(payload.seed_url, {
       text: { maxCharacters: 3000 },
       numResults,
+      filterEmptyResults: true,
+      startPublishedDate: payload.source_type === 'academic' ? ninetyDaysAgo() : thirtyDaysAgo(),
     })
 
     await logExaCost(task.user_id, task.task_type, response.results.length)
 
     const rows = response.results.map((r: ExaResult) =>
-      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `seed:${payload.seed_url}`),
+      mapToRow(r, task.user_id, payload.source_type ?? 'academic', `seed:${payload.seed_url}`, payload.source ?? 'exa'),
     )
 
     const inserted = await upsertJobs(rows)
@@ -219,5 +231,11 @@ async function upsertJobs(rows: DiscoveredJobRow[]): Promise<number> {
 function thirtyDaysAgo(): string {
   const d = new Date()
   d.setDate(d.getDate() - 30)
+  return d.toISOString().split('T')[0]
+}
+
+function ninetyDaysAgo(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 90)
   return d.toISOString().split('T')[0]
 }
