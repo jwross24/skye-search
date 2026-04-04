@@ -71,8 +71,16 @@ case "$TOOL" in
       echo "BLOCKED: Cross-review results are written by the harness hook, not directly." >&2
       exit 2
     fi
-    # Disposition files: Edit always allowed (main context fixing validation issues)
-    # The bias guard is about CREATING reviews, not fixing formatting.
+    # Disposition files: Edit blocked unless authorized (same rule as Write)
+    # The implementing agent must not be able to weaken findings from the review subagent.
+    if echo "$FILE" | grep -qE "$DISPOSITION_PATTERN"; then
+      if is_disposition_authorized; then
+        exit 0  # Authorized subagent window
+      fi
+      echo "BLOCKED: Review disposition files are written by subagents, not directly." >&2
+      echo "  → Spawn a self-review subagent via the Agent tool." >&2
+      exit 2
+    fi
     ;;
 esac
 

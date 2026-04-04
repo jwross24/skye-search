@@ -66,8 +66,8 @@ if [ ! -f "$DISP_FILE" ]; then
 fi
 
 # ── Self-heal disposition before validation ────────────────────────────
-# Fix mechanical issues automatically instead of blocking.
-# Only touches LOW/INFO findings. MEDIUM+ require real judgment.
+# Fix purely mechanical issues automatically (field names, ID format).
+# Does NOT touch finding content — that would game the length/quality checks.
 if [ -f "$DISP_FILE" ]; then
   BEAD_ID_SHORT=$(echo "$BEAD_ID" | sed 's/^skye-search-//')
 
@@ -76,16 +76,7 @@ if [ -f "$DISP_FILE" ]; then
     .bead_id = $bid |
 
     # 2. Ensure reviewer field exists
-    (if (.reviewer // "") == "" then .reviewer = "subagent" else . end) |
-
-    # 3. Extend short not-a-bug actions for LOW/INFO by appending finding text
-    .findings = [.findings[] |
-      if .disposition == "not-a-bug" and
-         (.severity == "INFO" or .severity == "LOW" or .severity == null) and
-         ((.action // "") | length) < 20 then
-        .action = (.action // "") + " — " + (.finding // .description // "verified correct, no risk")
-      else . end
-    ]
+    (if (.reviewer // "") == "" then .reviewer = "subagent" else . end)
   ' "$DISP_FILE" > "${DISP_FILE}.tmp" && mv "${DISP_FILE}.tmp" "$DISP_FILE"
 fi
 
