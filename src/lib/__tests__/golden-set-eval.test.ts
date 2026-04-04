@@ -67,6 +67,14 @@ Visa: F-1 STEM OPT. Cap-exempt employers are highest priority (H1-B without annu
 ### employer_type
 university, nonprofit_research, cooperative_institute, government_contractor, government_direct, private_sector, unknown.
 
+### Government Contractor Disambiguation (CRITICAL for visa_path)
+When a posting mentions work at a government agency (NASA, NOAA, DOE) but the EMPLOYER is a private company:
+- "Inc.", "LLC", "Corporation" → cap_subject (private sector).
+- KNOWN cap_subject: SSAI, GST Inc., SAIC, Booz Allen Hamilton, Leidos.
+- KNOWN cap_exempt: Battelle (501(c)(3)), UCAR (501(c)(3)), ORAU (501(c)(3)).
+- "SSAI at NASA Goddard" → employer is SSAI (cap_subject), NOT NASA.
+- When in doubt: classify as cap_subject.
+
 ### match_score (0.0-1.0)
 0.8-1.0: Core domain match. 0.5-0.8: Adjacent. 0.2-0.5: Stretch. 0.0-0.2: Poor match.
 
@@ -106,11 +114,14 @@ describe.skipIf(SKIP)('Golden set evaluation', { timeout: 300_000 }, () => {
       expect(result).toBeDefined()
       if (!result) return
 
-      // visa_path: exact match (critical for immigration guidance)
-      if (result.visa_path !== entry.expected.visa_path) {
-        visaPathMismatches.push(`${entry.id}: expected ${entry.expected.visa_path}, got ${result.visa_path}`)
+      // visa_path: exact match or one of accepted values (critical for immigration guidance)
+      const validVisaPaths = Array.isArray(entry.expected.visa_path)
+        ? entry.expected.visa_path
+        : [entry.expected.visa_path]
+      if (!validVisaPaths.includes(result.visa_path)) {
+        visaPathMismatches.push(`${entry.id}: expected ${validVisaPaths.join('|')}, got ${result.visa_path}`)
       }
-      expect(result.visa_path).toBe(entry.expected.visa_path)
+      expect(validVisaPaths).toContain(result.visa_path)
 
       // cap_exempt_confidence: exact match (or one of accepted values)
       const validConfidences = Array.isArray(entry.expected.cap_exempt_confidence)

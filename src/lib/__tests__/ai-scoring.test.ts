@@ -53,7 +53,13 @@ describe('Golden set data integrity', () => {
     const validTimelines = ['immediate', 'weeks', 'months', 'academic_cycle']
 
     for (const entry of GOLDEN_SET) {
-      expect(validVisaPaths).toContain(entry.expected.visa_path)
+      // visa_path can be string or string[]
+      const visaPaths = Array.isArray(entry.expected.visa_path)
+        ? entry.expected.visa_path
+        : [entry.expected.visa_path]
+      for (const vp of visaPaths) {
+        expect(validVisaPaths).toContain(vp)
+      }
 
       // cap_exempt_confidence can be string or string[]
       const confidences = Array.isArray(entry.expected.cap_exempt_confidence)
@@ -63,7 +69,13 @@ describe('Golden set data integrity', () => {
         expect(validConfidences).toContain(c)
       }
 
-      expect(validEmployerTypes).toContain(entry.expected.employer_type)
+      // employer_type can be string or string[]
+      const employerTypes = Array.isArray(entry.expected.employer_type)
+        ? entry.expected.employer_type
+        : [entry.expected.employer_type]
+      for (const et of employerTypes) {
+        expect(validEmployerTypes).toContain(et)
+      }
       expect(entry.expected.match_score_min).toBeGreaterThanOrEqual(0)
       expect(entry.expected.match_score_max).toBeLessThanOrEqual(1)
       expect(entry.expected.match_score_min).toBeLessThanOrEqual(entry.expected.match_score_max)
@@ -95,17 +107,19 @@ describe('Golden set data integrity', () => {
     }
   })
 
-  it('cap-exempt entries have cap_exempt visa_path', () => {
+  it('cap-exempt entries accept cap_exempt visa_path', () => {
     const capExempt = GOLDEN_SET.filter(e => e.category === 'cap_exempt')
     for (const entry of capExempt) {
-      expect(entry.expected.visa_path).toBe('cap_exempt')
+      const paths = Array.isArray(entry.expected.visa_path) ? entry.expected.visa_path : [entry.expected.visa_path]
+      expect(paths).toContain('cap_exempt')
     }
   })
 
-  it('cap-subject entries have cap_subject visa_path', () => {
+  it('cap-subject entries accept cap_subject visa_path', () => {
     const capSubject = GOLDEN_SET.filter(e => e.category === 'cap_subject')
     for (const entry of capSubject) {
-      expect(entry.expected.visa_path).toBe('cap_subject')
+      const paths = Array.isArray(entry.expected.visa_path) ? entry.expected.visa_path : [entry.expected.visa_path]
+      expect(paths).toContain('cap_subject')
     }
   })
 })
