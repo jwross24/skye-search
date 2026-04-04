@@ -25,6 +25,28 @@ if ! echo "$FIRST_LINE" | grep -Eq 'bv\s+--robot-next|br\s+update.*in_progress';
   exit 0
 fi
 
+# ── Single-bead-at-a-time check ─────────────────────────────────────────
+# Block claiming a new bead if one is already in_progress for this session.
+# Enforces the one-bead-at-a-time workflow from marching orders.
+if echo "$FIRST_LINE" | grep -qE 'br\s+update.*in_progress'; then
+  source "$(dirname "$0")/_stamp-helpers.sh"
+  init_session_id "$INPUT"
+  ACTIVE_BEAD=$(current_bead)
+  if [ -n "$ACTIVE_BEAD" ]; then
+    # Check if the active bead is being re-claimed (idempotent) vs a new bead
+    NEW_BEAD=$(echo "$FIRST_LINE" | grep -oE 'br update ([a-z0-9-]+)' | awk '{print $3}' || true)
+    NEW_BEAD_SHORT=$(echo "$NEW_BEAD" | sed 's/^skye-search-//')
+    ACTIVE_SHORT=$(echo "$ACTIVE_BEAD" | sed 's/^skye-search-//')
+    if [ "$NEW_BEAD_SHORT" != "$ACTIVE_SHORT" ] && [ -n "$NEW_BEAD_SHORT" ]; then
+      echo "BLOCKED: Bead '$ACTIVE_BEAD' is still in_progress." >&2
+      echo "" >&2
+      echo "  Close it first: br close $ACTIVE_BEAD --reason \"...\"" >&2
+      echo "  Or release it:  br update $ACTIVE_BEAD --status open" >&2
+      exit 2
+    fi
+  fi
+fi
+
 COUNTER_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.bead-close-count-global"
 RESULTS_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.cross-review-results.json"
 
