@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Write(.claude/.review-disposition-*)"
+      "Write(.claude/.review-disposition-*)",
+      "Edit(.claude/.review-disposition-*)"
     ]
   },
   "hooks": {
