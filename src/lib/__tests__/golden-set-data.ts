@@ -199,7 +199,7 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
       cap_exempt_confidence: 'none',
       employer_type: 'private_sector',
       match_score_min: 0.45,
-      match_score_max: 0.70,
+      match_score_max: 0.65,
       requires_security_clearance: false,
       requires_citizenship: false,
       hiring_timeline_estimate: ['weeks', 'months'],

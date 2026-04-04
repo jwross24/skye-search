@@ -76,7 +76,7 @@ When a posting mentions work at a government agency (NASA, NOAA, DOE) but the EM
 - When in doubt: classify as cap_subject.
 
 ### match_score (0.0-1.0)
-0.8-1.0: Core domain match. 0.5-0.8: Adjacent. 0.2-0.5: Stretch. 0.0-0.2: Poor match.
+0.85-1.0: STRONG (core domain). 0.65-0.85: GOOD (related, skills transfer). 0.40-0.65: MODERATE (adjacent, retraining). 0.15-0.40: STRETCH (method overlap only). 0.0-0.15: NO MATCH.
 
 ### why_fits
 Reference specific candidate skills.
