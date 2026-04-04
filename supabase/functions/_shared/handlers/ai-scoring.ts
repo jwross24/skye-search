@@ -149,7 +149,7 @@ For each job posting, analyze and return structured data:
 - cap_exempt: Universities, 501(c)(3) nonprofits, government research labs, cooperative institutes. These employers can sponsor H1-B without annual cap limits.
 - cap_subject: Private sector employers subject to the annual H1-B cap (65K + 20K advanced degree).
 - opt_compatible: Roles that can be performed under F-1 OPT/STEM OPT without requiring H1-B.
-- canada: Canadian employers (Express Entry, LMIA pathways).
+- canada: Canadian employers — universities, government research labs (DFO, NRC, Environment Canada), or positions eligible for LMIA/PGWP. Canadian research positions are a VIABLE alternative to US cap-exempt roles. Canada has no H1-B lottery equivalent; work permits for researchers are reliable.
 - unknown: Cannot determine from the posting.
 
 ### cap_exempt_confidence

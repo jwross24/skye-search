@@ -117,10 +117,10 @@ export function computeUrgencyScore(
   if (user.in_grace_period) {
     if (job.visa_path === 'canada') {
       return {
-        urgency_score: 0.95,
-        base_score: 0.95,
-        modifiers: [{ name: 'grace_period_canada', value: 0.95 }],
-        final_before_clamp: 0.95,
+        urgency_score: 0.975,
+        base_score: 0.78,
+        modifiers: [{ name: 'grace_period_canada', value: 0.195 }],
+        final_before_clamp: 0.975,
       }
     }
     return {
@@ -161,7 +161,7 @@ export function computeUrgencyScore(
     }
     // 'confirmed' = no discount
   } else if (job.visa_path === 'canada') {
-    base_score = 0.60
+    base_score = 0.78
   } else if (job.visa_path === 'opt_compatible') {
     base_score = 0.50
   } else if (job.visa_path === 'cap_subject') {
@@ -202,6 +202,15 @@ export function computeUrgencyScore(
     clock_pressure > 0.6
   ) {
     modifiers.push({ name: 'quick_apply_high_pressure', value: 0.03 })
+  }
+
+  // Progressive Canada urgency — rises as clock pressure increases
+  if (job.visa_path === 'canada') {
+    if (user.days_remaining < 60) {
+      modifiers.push({ name: 'canada_urgency_60d', value: 0.12 })
+    } else if (user.days_remaining < 90) {
+      modifiers.push({ name: 'canada_urgency_90d', value: 0.08 })
+    }
   }
 
   // Conversion urgency: if employed with known end_date, and projected

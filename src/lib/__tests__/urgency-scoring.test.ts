@@ -100,13 +100,13 @@ describe('Base score assignment', () => {
     expect(result.base_score).toBeCloseTo(0.875, 3)
   })
 
-  it('Canada role -> 0.60', () => {
+  it('Canada role -> 0.78', () => {
     const result = computeUrgencyScore(
       makeJob({ visa_path: 'canada', employer_type: 'university' }),
       makeUser(),
     )
     logScore('Canada', result)
-    expect(result.base_score).toBe(0.60)
+    expect(result.base_score).toBe(0.78)
   })
 
   it('OPT-compatible E-Verify -> 0.50', () => {
@@ -233,13 +233,42 @@ describe('Grace period override', () => {
     expect(capSubject.urgency_score).toBe(0.0)
   })
 
-  it('in grace period: Canada -> 0.95', () => {
+  it('in grace period: Canada -> 0.975', () => {
     const result = computeUrgencyScore(
       makeJob({ visa_path: 'canada' }),
       makeUser({ in_grace_period: true }),
     )
     logScore('grace period Canada', result)
-    expect(result.urgency_score).toBe(0.95)
+    expect(result.urgency_score).toBe(0.975)
+  })
+})
+
+// ─── Canada Progressive Urgency ───────────────────────────────────────────
+
+describe('Canada progressive urgency', () => {
+  it('Canada with 120 days remaining -> no urgency modifier', () => {
+    const result = computeUrgencyScore(
+      makeJob({ visa_path: 'canada', employer_type: 'university' }),
+      makeUser({ days_remaining: 120 }),
+    )
+    expect(result.base_score).toBe(0.78)
+    expect(result.modifiers.find(m => m.name.startsWith('canada_urgency'))).toBeUndefined()
+  })
+
+  it('Canada with 80 days remaining -> +0.08 (90d modifier)', () => {
+    const result = computeUrgencyScore(
+      makeJob({ visa_path: 'canada', employer_type: 'university' }),
+      makeUser({ days_remaining: 80 }),
+    )
+    expect(result.modifiers.find(m => m.name === 'canada_urgency_90d')?.value).toBe(0.08)
+  })
+
+  it('Canada with 50 days remaining -> +0.12 (60d modifier)', () => {
+    const result = computeUrgencyScore(
+      makeJob({ visa_path: 'canada', employer_type: 'university' }),
+      makeUser({ days_remaining: 50 }),
+    )
+    expect(result.modifiers.find(m => m.name === 'canada_urgency_60d')?.value).toBe(0.12)
   })
 })
 
@@ -562,10 +591,10 @@ describe('Ranking correctness', () => {
 
     console.log('[Deadline sprint ranking]', scored.map((s) => `${s.label}: ${s.score.toFixed(4)}`).join('\n  '))
 
-    // OPT with deadline sprint: 0.50 + 0.10 = 0.60 — should be in top 3
-    // (ahead of Canada 0.60, cap-subject 0.40)
+    // OPT with deadline sprint: 0.50 + 0.10 = 0.60 — should be in top 4
+    // (behind Canada 0.78, ahead of cap-subject 0.40)
     const optIdx = scored.findIndex((s) => s.label === 'OPT with deadline sprint')
-    expect(optIdx).toBeLessThanOrEqual(3)
+    expect(optIdx).toBeLessThanOrEqual(4)
   })
 })
 
