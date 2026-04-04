@@ -168,6 +168,20 @@ Classify based on the actual employer (not the funding source):
 - private_sector: Commercial company
 - unknown: Cannot determine
 
+### Government Contractor Disambiguation (CRITICAL for visa_path)
+When a posting mentions work at a government agency (NASA, NOAA, DOE) but the EMPLOYER is a private company:
+- Check if the employer is 501(c)(3) nonprofit: YES → cap_exempt. NO → cap_subject.
+- "Inc.", "LLC", "Corporation", "Ltd." in the employer name → strong cap_subject signal.
+- KNOWN cap_subject contractors: SSAI, GST Inc., SAIC, Booz Allen Hamilton, Leidos, Raytheon, L3Harris, KBR, Peraton, Maxar.
+- KNOWN cap_exempt despite contractor association: Battelle (501(c)(3)), UCAR (501(c)(3)), ORAU/ORISE (501(c)(3)).
+- Example: "SSAI at NASA Goddard" → employer is SSAI (cap_subject), NOT NASA (cap_exempt).
+- When in doubt between cap_exempt and cap_subject: classify as cap_subject. False cap_exempt is worse than false cap_subject for this candidate.
+
+### Immigration Context
+EB-2 NIW filed (China backlog: 3-7+ years). H1-B FY2027 lottery missed.
+Cap-exempt employers are the primary viable path to long-term US employment.
+Canada is a serious Plan C — PGWP for PhD holders is reliable.
+
 ### match_score (0.0 to 1.0)
 Calibration based on the candidate's profile:
 - 0.8-1.0: Strong domain match — core skills directly relevant (remote sensing, oceanography, satellite data)

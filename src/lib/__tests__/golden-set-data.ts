@@ -1,12 +1,13 @@
 /**
- * Golden set: 22 manually-graded job descriptions for AI scoring regression testing.
+ * Golden set: 25 manually-graded job descriptions for AI scoring regression testing.
  *
  * Each entry has expected values for visa_path, cap_exempt_confidence, employer_type,
  * match_score range, and ineligibility flags.
  *
  * Categories:
  *   5 cap-exempt, 5 cap-subject, 3 ineligible,
- *   3 academic vernacular, 3 industry vernacular, 3 edge cases
+ *   3 academic vernacular, 3 industry vernacular, 3 edge cases,
+ *   3 contractor disambiguation
  */
 
 export type GoldenSetCategory =
@@ -77,17 +78,17 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
   },
   {
     id: 'GS-CE-03',
-    category: 'cap_exempt',
+    category: 'cap_subject',
     title: 'Research Associate - NASA Ocean Biology',
     company: 'NASA Goddard Space Flight Center / SSAI',
     source_type: 'government',
     raw_description: `Science Systems and Applications, Inc. (SSAI) is seeking a Research Associate to support NASA's Ocean Biology Processing Group (OBPG) at Goddard Space Flight Center. The position involves processing and distributing satellite ocean color data products from MODIS-Aqua, VIIRS-SNPP/JPSS, and the upcoming PACE mission. Key responsibilities include algorithm development for chlorophyll-a and water quality retrievals, quality assurance of global ocean color datasets, and scientific publication. Requirements: PhD in ocean science, physics, or computational environmental science. Strong programming skills in Python or C. Experience with satellite data processing pipelines.`,
     expected: {
-      visa_path: 'cap_exempt',
-      cap_exempt_confidence: 'confirmed',
+      visa_path: 'cap_subject',
+      cap_exempt_confidence: 'none',
       employer_type: 'government_contractor',
-      match_score_min: 0.85,
-      match_score_max: 1.0,
+      match_score_min: 0.70,
+      match_score_max: 0.95,
       requires_security_clearance: false,
       requires_citizenship: false,
       hiring_timeline_estimate: ['weeks', 'months'],
@@ -452,6 +453,63 @@ export const GOLDEN_SET: GoldenSetEntry[] = [
       requires_security_clearance: false,
       requires_citizenship: false,
       hiring_timeline_estimate: 'weeks',
+    },
+  },
+
+  // ─── Contractor Disambiguation (3) ────────────────────────────────────────
+
+  {
+    id: 'GS-CONT-01',
+    category: 'cap_exempt',
+    title: 'Research Scientist - Earth System Modeling',
+    company: 'Battelle / Pacific Northwest National Laboratory',
+    source_type: 'government',
+    raw_description: `Battelle Memorial Institute, operator of Pacific Northwest National Laboratory (PNNL) under contract with the U.S. Department of Energy, seeks a Research Scientist in Earth System Modeling. You will develop and validate regional climate models with emphasis on land-atmosphere interactions. PNNL is located in Richland, WA. Requirements: PhD in atmospheric science, climate modeling, or related field. Experience with CESM, WRF, or E3SM. Battelle is a 501(c)(3) not-for-profit organization.`,
+    expected: {
+      visa_path: 'cap_exempt',
+      cap_exempt_confidence: 'confirmed',
+      employer_type: 'nonprofit_research',
+      match_score_min: 0.72,
+      match_score_max: 0.92,
+      requires_security_clearance: false,
+      requires_citizenship: false,
+      hiring_timeline_estimate: 'months',
+    },
+  },
+  {
+    id: 'GS-CONT-02',
+    category: 'cap_subject',
+    title: 'Senior Data Scientist - NOAA Climate Programs',
+    company: 'Booz Allen Hamilton',
+    source_type: 'industry',
+    raw_description: `Booz Allen Hamilton is seeking a Senior Data Scientist to support NOAA's climate data programs in Silver Spring, MD. You will develop data pipelines for climate observation datasets, build ML models for quality assurance, and support NOAA's Climate Data Online system. Requirements: MS/PhD in data science, atmospheric science, or related field. 3+ years experience with cloud computing (AWS). Secret clearance preferred. Booz Allen Hamilton, Inc. is a publicly traded management consulting firm.`,
+    expected: {
+      visa_path: 'cap_subject',
+      cap_exempt_confidence: 'none',
+      employer_type: 'government_contractor',
+      match_score_min: 0.45,
+      match_score_max: 0.70,
+      requires_security_clearance: false,
+      requires_citizenship: false,
+      hiring_timeline_estimate: 'months',
+    },
+  },
+  {
+    id: 'GS-CONT-03',
+    category: 'cap_exempt',
+    title: 'Postdoctoral Researcher - Atmospheric Chemistry',
+    company: 'UCAR / NCAR',
+    source_type: 'academic',
+    raw_description: `The University Corporation for Atmospheric Research (UCAR), a 501(c)(3) nonprofit, invites applications for a Postdoctoral Researcher at the National Center for Atmospheric Research (NCAR) in Boulder, CO. Research will focus on remote sensing of atmospheric aerosols and their effects on air quality. The position is funded by NSF. Requirements: PhD in atmospheric science, environmental engineering, or related field. Experience with MODIS AOD retrievals and air quality modeling. UCAR is an equal opportunity employer and welcomes international applicants.`,
+    expected: {
+      visa_path: 'cap_exempt',
+      cap_exempt_confidence: 'confirmed',
+      employer_type: 'nonprofit_research',
+      match_score_min: 0.82,
+      match_score_max: 0.98,
+      requires_security_clearance: false,
+      requires_citizenship: false,
+      hiring_timeline_estimate: 'months',
     },
   },
 ]
