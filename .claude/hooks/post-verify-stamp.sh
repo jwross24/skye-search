@@ -11,7 +11,7 @@ CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || e
 init_session_id "$INPUT"
 
 if echo "$CMD" | grep -Eq 'bun\s+run\s+verify'; then
-  touch_stamp "verify"
+  touch_bead_stamp "verify"
 fi
 
 exit 0

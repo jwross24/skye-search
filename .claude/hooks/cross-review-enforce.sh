@@ -81,11 +81,12 @@ echo "" >&2
 echo "  Spawn a cross-review subagent (the harness hook captures the results):" >&2
 echo "" >&2
 echo '  Agent tool call:' >&2
-echo '    description: "Cross-review last N commits"' >&2
+echo '    description: "Cross-review last N commits"  (description MUST contain "cross-review")' >&2
 echo '    model: "sonnet"' >&2
 echo '    prompt: "Review last 3-5 commits for CRITICAL/HIGH issues.' >&2
 echo '      Run git diff HEAD~N..HEAD, read files for context. Check for bugs,' >&2
-echo '      security issues, data loss, API misuse. Run bun run verify."' >&2
+echo '      security issues, data loss, API misuse. Run bun run verify.' >&2
+echo '      Return findings as JSON with severity + disposition."' >&2
 echo "" >&2
 echo "  The PostToolUse[Agent] hook writes .cross-review-results.json automatically." >&2
 echo "  Direct writes to the results file are blocked by the harness." >&2

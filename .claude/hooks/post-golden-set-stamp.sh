@@ -13,12 +13,11 @@ init_session_id "$INPUT"
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 EXIT_CODE=$(printf '%s' "$INPUT" | jq -r '.tool_response.exitCode // .tool_response.exit_code // ""' 2>/dev/null) || EXIT_CODE=""
 
-# Only stamp on golden set runs
-if echo "$CMD" | grep -q 'golden-set-eval'; then
-  # Only stamp on success (exit 0)
-  if [ "$EXIT_CODE" = "0" ] || echo "$CMD" | grep -q "RUN_GOLDEN_SET"; then
-    touch_stamp "golden-set"
-  fi
+# Only stamp on golden set runs that PASS (exit 0)
+# Both conditions required: correct command AND success exit code.
+# Previous bug: || instead of && let failing golden-set runs stamp the gate.
+if echo "$CMD" | grep -q 'golden-set-eval' && [ "$EXIT_CODE" = "0" ]; then
+  touch_bead_stamp "golden-set"
 fi
 
 exit 0

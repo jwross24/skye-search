@@ -49,8 +49,8 @@ fi
 
 # ── Check 2: Verify stamp (bun run verify, includes ntm scan) ──────────
 
-if ! stamp_is_fresh "verify" 600; then
-  echo "BLOCKED: No fresh verify stamp for this session." >&2
+if ! has_stamp "verify"; then
+  echo "BLOCKED: No verify stamp for this bead." >&2
   echo "" >&2
   echo "  → bun run verify" >&2
   exit 2
@@ -90,7 +90,7 @@ fi
 # ── Check 3: Agent-browser stamp (UI beads with .tsx) ───────────────────
 
 if [ "$HAS_TSX" = "true" ]; then
-  if ! stamp_is_fresh "agent-browser" 600; then
+  if ! has_stamp "agent-browser"; then
     echo "BLOCKED: UI bead detected but agent-browser verification was not run." >&2
     echo "" >&2
     echo "  → agent-browser --session-name skye open http://localhost:3000/<route>" >&2
@@ -104,7 +104,7 @@ fi
 # ── Check 4: Impeccable stamp (UI beads with .tsx) ──────────────────────
 
 if [ "$HAS_TSX" = "true" ]; then
-  if ! stamp_is_fresh "impeccable" 300; then
+  if ! has_stamp "impeccable"; then
     echo "BLOCKED: .tsx files staged but /impeccable skill was not invoked." >&2
     echo "" >&2
     echo "  → /impeccable" >&2
@@ -115,7 +115,7 @@ fi
 # ── Check 5: Resend stamp (email beads) ─────────────────────────────────
 
 if [ "$HAS_EMAIL" = "true" ]; then
-  if ! stamp_is_fresh "resend" 300; then
+  if ! has_stamp "resend"; then
     echo "BLOCKED: Email files staged but /resend skill was not invoked." >&2
     echo "" >&2
     echo "  → /resend" >&2

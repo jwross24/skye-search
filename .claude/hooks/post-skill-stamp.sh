@@ -15,16 +15,16 @@ SKILL=$(printf '%s' "$INPUT" | jq -r '.tool_input.skill // ""' 2>/dev/null) || e
 
 case "$SKILL" in
   impeccable)
-    touch_stamp "impeccable"
+    touch_bead_stamp "impeccable"
     ;;
   resend)
-    touch_stamp "resend"
+    touch_bead_stamp "resend"
     ;;
   humanizer)
-    touch_stamp "humanizer"
+    touch_bead_stamp "humanizer"
     ;;
   context7-mcp)
-    touch_stamp "context7"
+    touch_bead_stamp "context7"
     ;;
 esac
 

@@ -16,7 +16,7 @@ CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null) || e
 
 # Stamp when agent-browser is invoked
 if echo "$CMD" | grep -Eq 'agent-browser'; then
-  touch_stamp "agent-browser"
+  touch_bead_stamp "agent-browser"
 fi
 
 exit 0

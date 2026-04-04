@@ -56,6 +56,49 @@ touch_stamp() {
   touch "$(stamp_path "$1")"
 }
 
+# ── Bead-scoped stamps (preferred for marching order compliance) ─────────
+# These tie stamps to a specific bead, not a time window.
+# track-bead-claim.sh writes .current-bead-${_SESSION} on claim.
+
+# Get the current bead ID for this session (empty string if none claimed)
+current_bead() {
+  cat "${_STAMP_DIR}/.current-bead-${_SESSION}" 2>/dev/null || echo ""
+}
+
+# Touch a bead-scoped stamp. No time limit — it either exists or doesn't.
+# Falls back to session stamp when no bead is active (rare: non-bead commits).
+touch_bead_stamp() {
+  local name="$1"
+  local bead
+  bead=$(current_bead)
+  if [ -n "$bead" ]; then
+    touch "${_STAMP_DIR}/.${name}-bead-${bead}"
+  else
+    touch_stamp "$name"
+  fi
+}
+
+# Check if a bead-scoped stamp exists (no time limit)
+bead_stamp_exists() {
+  local name="$1"
+  local bead="$2"
+  [ -f "${_STAMP_DIR}/.${name}-bead-${bead}" ]
+}
+
+# Unified stamp check: bead-scoped first (no TTL), session-scoped fallback (with TTL).
+# Usage: has_stamp "verify" [bead_id]
+# If bead_id is omitted, reads from current-bead file.
+has_stamp() {
+  local name="$1"
+  local bead="${2:-$(current_bead)}"
+  # Prefer bead stamp (no time limit — work is scoped to this bead)
+  if [ -n "$bead" ] && bead_stamp_exists "$name" "$bead"; then
+    return 0
+  fi
+  # Fallback: session stamp with 10-min TTL (for non-bead commits)
+  stamp_is_fresh "$name" 600
+}
+
 # Read a counter value
 read_counter() {
   local path

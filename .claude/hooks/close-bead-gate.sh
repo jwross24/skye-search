@@ -201,7 +201,7 @@ fi
 # - Scoring files changed → golden set regression required
 # - Server/DB code changed → integration tests required
 
-MARCH_RESULT=$(bash "$SCRIPTS_DIR/check-marching-compliance.sh" "$_SESSION" 2>/dev/null) || true
+MARCH_RESULT=$(bash "$SCRIPTS_DIR/check-marching-compliance.sh" "$_SESSION" "$BEAD_ID" 2>/dev/null) || true
 MARCH_PASS=$(printf '%s' "$MARCH_RESULT" | jq -r '.pass // true' 2>/dev/null) || MARCH_PASS="true"
 
 if [ "$MARCH_PASS" != "true" ]; then
