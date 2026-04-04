@@ -11,6 +11,13 @@ import type { Job } from '@/types/job'
 import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
 import { getBatchFramingMessage } from '@/lib/batch-sizing'
 
+/** Bridge jobs stop the unemployment clock immediately. Cap-exempt + part-time/contract. */
+function isBridgeJob(job: Job): boolean {
+  const bridgeVisaPaths: string[] = ['cap_exempt', 'opt_compatible']
+  const bridgeEmploymentTypes: string[] = ['part_time', 'contract']
+  return bridgeVisaPaths.includes(job.visa_path) && bridgeEmploymentTypes.includes(job.employment_type)
+}
+
 const DEFAULT_BATCH_SIZE = 8
 
 interface DailyBatchProps {
@@ -57,6 +64,22 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
       .sort((a, b) => b.score - a.score)
       .slice(0, batchSize)
   }, [jobs, userState, batchSize])
+
+  // Clock-pressure sectioning: split into "Stop the Clock" and "Build Your Future"
+  // when days_remaining < 60 AND 2+ bridge jobs exist in the batch
+  const { bridgeJobs, futureJobs, showSections } = useMemo(() => {
+    if (userState.days_remaining >= 60) {
+      return { bridgeJobs: [], futureJobs: [], showSections: false }
+    }
+
+    const bridge = batch.filter(({ job }) => isBridgeJob(job))
+    if (bridge.length < 2) {
+      return { bridgeJobs: [], futureJobs: [], showSections: false }
+    }
+
+    const future = batch.filter(({ job }) => !isBridgeJob(job))
+    return { bridgeJobs: bridge, futureJobs: future, showSections: true }
+  }, [batch, userState.days_remaining])
 
   const commitVote = useCallback((jobId: string, decision: VoteDecision, tags: DismissTag[]) => {
     voteOnJob(jobId, decision, tags)
@@ -116,6 +139,39 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
     // Timer already fired via setTimeout — just clear the toast
     setPendingUndo(null)
   }, [])
+
+  const voteMessages: Record<VoteDecision, string> = {
+    interested: 'Added to your tracker',
+    not_for_me: 'Got it — noted',
+    save_for_later: 'Saved for later',
+  }
+
+  const renderJobCard = (job: Job, score: number, staggerIndex: number) => {
+    if (votes.has(job.id)) {
+      const vote = votes.get(job.id)!
+      return (
+        <div
+          key={job.id}
+          className="py-2 text-sm text-muted-foreground/60 animate-in fade-in duration-200"
+          data-testid={`pick-card-voted-${job.id}`}
+        >
+          <span className="text-xs">{voteMessages[vote.decision]}</span>
+          <div className="h-px bg-border/30 mt-2" />
+        </div>
+      )
+    }
+
+    return (
+      <PickCard
+        key={job.id}
+        job={job}
+        urgencyScore={score}
+        onVote={handleVote}
+        staggerIndex={staggerIndex}
+        today={userState.today}
+      />
+    )
+  }
 
   // Empty batch — check before allReviewed (0 >= 0 is true)
   if (batch.length === 0) {
@@ -197,41 +253,53 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
         </Button>
       </div>
 
-      {/* Card stack */}
-      <AnimatePresence mode="popLayout">
-        {batch.map(({ job, score }, i) => {
-          if (votes.has(job.id)) {
-            // Show voted confirmation inline
-            const vote = votes.get(job.id)!
-            const messages: Record<VoteDecision, string> = {
-              interested: 'Added to your tracker',
-              not_for_me: 'Got it — noted',
-              save_for_later: 'Saved for later',
-            }
-            return (
-              <div
-                key={job.id}
-                className="py-2 text-sm text-muted-foreground/60 animate-in fade-in duration-200"
-                data-testid={`pick-card-voted-${job.id}`}
-              >
-                <span className="text-xs">{messages[vote.decision]}</span>
-                <div className="h-px bg-border/30 mt-2" />
-              </div>
-            )
-          }
+      {/* Card stack — sectioned when clock pressure is high */}
+      {showSections ? (
+        <>
+          {/* Stop the Clock section */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-teal-400/30" />
+              <h3 className="text-sm font-medium text-teal-600 dark:text-teal-400 whitespace-nowrap">
+                Stop the Clock
+              </h3>
+              <div className="h-px flex-1 bg-teal-400/30" />
+            </div>
+            <p className="text-xs text-teal-600/70 dark:text-teal-400/70 mb-4">
+              These roles stop your unemployment clock on day one.
+            </p>
+            <AnimatePresence mode="popLayout">
+              {bridgeJobs.map(({ job, score }, i) => (
+                renderJobCard(job, score, i)
+              ))}
+            </AnimatePresence>
+          </div>
 
-          return (
-            <PickCard
-              key={job.id}
-              job={job}
-              urgencyScore={score}
-              onVote={handleVote}
-              staggerIndex={i}
-              today={userState.today}
-            />
-          )
-        })}
-      </AnimatePresence>
+          {/* Build Your Future section */}
+          {futureJobs.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-px flex-1 bg-border/50" />
+                <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                  Build Your Future
+                </h3>
+                <div className="h-px flex-1 bg-border/50" />
+              </div>
+              <AnimatePresence mode="popLayout">
+                {futureJobs.map(({ job, score }, i) => (
+                  renderJobCard(job, score, bridgeJobs.length + i)
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      ) : (
+        <AnimatePresence mode="popLayout">
+          {batch.map(({ job, score }, i) => (
+            renderJobCard(job, score, i)
+          ))}
+        </AnimatePresence>
+      )}
 
       {/* Undo toast — anchored to bottom of picks area */}
       <div className="sticky bottom-4 flex justify-center pointer-events-none mt-4">

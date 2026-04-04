@@ -203,6 +203,264 @@ describe('DailyBatch', () => {
   })
 })
 
+// ─── Clock-Pressure Sectioning ──────────────────────────────────────────────
+
+describe('Clock-pressure sectioning', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.mocked(voteOnJob).mockClear()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** Create a minimal Job with specific visa_path + employment_type for sectioning tests */
+  function makeJob(overrides: Partial<Job> & { id: string }): Job {
+    return {
+      title: `Test Job ${overrides.id}`,
+      company: 'Test Corp',
+      company_domain: null,
+      location: 'Boston, MA',
+      url: null,
+      visa_path: 'cap_exempt',
+      employer_type: 'university',
+      cap_exempt_confidence: 'confirmed',
+      employment_type: 'full_time',
+      source_type: 'academic',
+      application_deadline: null,
+      deadline_source: null,
+      application_complexity: null,
+      h1b_sponsor_count: null,
+      salary: null,
+      remote_status: null,
+      skills_required: ['Python'],
+      why_fits: 'Test job',
+      indexed_date: null,
+      requires_citizenship: false,
+      requires_security_clearance: false,
+      ...overrides,
+    }
+  }
+
+  function makeBridgeJob(id: string, visa_path: 'cap_exempt' | 'opt_compatible' = 'cap_exempt'): Job {
+    return makeJob({
+      id,
+      title: `Bridge Job ${id}`,
+      visa_path,
+      employment_type: 'part_time',
+    })
+  }
+
+  function makeFullTimeJob(id: string): Job {
+    return makeJob({
+      id,
+      title: `Full-Time Job ${id}`,
+      visa_path: 'cap_exempt',
+      employment_type: 'full_time',
+    })
+  }
+
+  const highPressureState: UserState = {
+    days_remaining: 55,
+    is_employed: false,
+    offer_accepted_not_started: false,
+    employment_end_date: null,
+    in_grace_period: false,
+    today: '2026-03-24',
+  }
+
+  it('shows two sections when days_remaining < 60 and 2+ bridge jobs', () => {
+    // Step 1: Create batch with 3 bridge + 2 full-time jobs
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeBridgeJob('b3', 'opt_compatible'),
+      makeFullTimeJob('f1'),
+      makeFullTimeJob('f2'),
+    ]
+
+    // Step 2: Render with high clock pressure (55 days < 60)
+    render(
+      <DailyBatch jobs={jobs} userState={highPressureState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify "Stop the Clock" section header appears
+    expect(screen.getByText('Stop the Clock')).toBeDefined()
+
+    // Step 4: Verify "Build Your Future" section header appears
+    expect(screen.getByText('Build Your Future')).toBeDefined()
+
+    // Step 5: Verify descriptive text for bridge section
+    expect(screen.getByText('These roles stop your unemployment clock on day one.')).toBeDefined()
+  })
+
+  it('shows unified list when days_remaining < 60 but only 1 bridge job (threshold not met)', () => {
+    // Step 1: Create batch with only 1 bridge job
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeFullTimeJob('f1'),
+      makeFullTimeJob('f2'),
+      makeFullTimeJob('f3'),
+    ]
+
+    // Step 2: Render with high pressure
+    render(
+      <DailyBatch jobs={jobs} userState={highPressureState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify sections do NOT appear
+    expect(screen.queryByText('Stop the Clock')).toBeNull()
+    expect(screen.queryByText('Build Your Future')).toBeNull()
+
+    // Step 4: Verify cards still render in unified list
+    const cards = screen.getAllByTestId(/^pick-card-/)
+    expect(cards.length).toBeGreaterThan(0)
+  })
+
+  it('shows unified list when days_remaining = 95 (no sectioning)', () => {
+    // Step 1: Create batch with plenty of bridge jobs
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeBridgeJob('b3'),
+      makeFullTimeJob('f1'),
+    ]
+    const lowPressureState: UserState = {
+      ...highPressureState,
+      days_remaining: 95,
+    }
+
+    // Step 2: Render with low clock pressure
+    render(
+      <DailyBatch jobs={jobs} userState={lowPressureState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify no section headers
+    expect(screen.queryByText('Stop the Clock')).toBeNull()
+    expect(screen.queryByText('Build Your Future')).toBeNull()
+  })
+
+  it('shows unified list at boundary: days_remaining = 60 (60 is NOT < 60)', () => {
+    // Step 1: Create batch with bridge jobs
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeFullTimeJob('f1'),
+    ]
+    const boundaryState: UserState = {
+      ...highPressureState,
+      days_remaining: 60,
+    }
+
+    // Step 2: Render at exact boundary
+    render(
+      <DailyBatch jobs={jobs} userState={boundaryState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify sections do NOT appear (60 >= 60 is true)
+    expect(screen.queryByText('Stop the Clock')).toBeNull()
+    expect(screen.queryByText('Build Your Future')).toBeNull()
+  })
+
+  it('shows sections at boundary: days_remaining = 59 (59 IS < 60)', () => {
+    // Step 1: Create batch with bridge jobs
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeFullTimeJob('f1'),
+    ]
+    const justUnderState: UserState = {
+      ...highPressureState,
+      days_remaining: 59,
+    }
+
+    // Step 2: Render just under boundary
+    render(
+      <DailyBatch jobs={jobs} userState={justUnderState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify sections appear
+    expect(screen.getByText('Stop the Clock')).toBeDefined()
+    expect(screen.getByText('Build Your Future')).toBeDefined()
+  })
+
+  it('bridge job filter: cap_exempt + part_time = bridge, cap_exempt + full_time = NOT bridge', () => {
+    // Step 1: Create mixed batch with cap_exempt part_time (bridge) and cap_exempt full_time (not bridge)
+    const jobs = [
+      makeBridgeJob('b1'),                         // cap_exempt + part_time = bridge
+      makeBridgeJob('b2', 'opt_compatible'),        // opt_compatible + part_time = bridge
+      makeJob({ id: 'not-bridge-ft', visa_path: 'cap_exempt', employment_type: 'full_time' }),   // NOT bridge
+      makeJob({ id: 'not-bridge-cs', visa_path: 'cap_subject', employment_type: 'part_time' }),  // NOT bridge (cap_subject)
+      makeJob({ id: 'not-bridge-ca', visa_path: 'canada', employment_type: 'contract' }),        // NOT bridge (canada)
+    ]
+    const state: UserState = {
+      ...highPressureState,
+      days_remaining: 50,
+    }
+
+    // Step 2: Render
+    render(
+      <DailyBatch jobs={jobs} userState={state} undoDelayMs={0} />,
+    )
+
+    // Step 3: Sections should appear (2 bridge: b1 + b2)
+    expect(screen.getByText('Stop the Clock')).toBeDefined()
+    expect(screen.getByText('Build Your Future')).toBeDefined()
+
+    // Step 4: Bridge section should contain b1 and b2 cards
+    expect(screen.getByTestId('pick-card-b1')).toBeDefined()
+    expect(screen.getByTestId('pick-card-b2')).toBeDefined()
+  })
+
+  it('contract employment_type also counts as bridge (with cap_exempt)', () => {
+    // Step 1: Create batch with contract bridge jobs
+    const jobs = [
+      makeJob({ id: 'c1', visa_path: 'cap_exempt', employment_type: 'contract' }),
+      makeJob({ id: 'c2', visa_path: 'opt_compatible', employment_type: 'contract' }),
+      makeFullTimeJob('f1'),
+    ]
+    const state: UserState = {
+      ...highPressureState,
+      days_remaining: 45,
+    }
+
+    // Step 2: Render
+    render(
+      <DailyBatch jobs={jobs} userState={state} undoDelayMs={0} />,
+    )
+
+    // Step 3: Verify sections appear (contract counts as bridge)
+    expect(screen.getByText('Stop the Clock')).toBeDefined()
+  })
+
+  it('progress counter counts across both sections', async () => {
+    // Step 1: Create batch with mixed jobs
+    const user = userEvent.setup()
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeFullTimeJob('f1'),
+      makeFullTimeJob('f2'),
+    ]
+
+    // Step 2: Render with sections
+    render(
+      <DailyBatch jobs={jobs} userState={highPressureState} undoDelayMs={0} />,
+    )
+
+    // Step 3: Check initial progress shows total count
+    expect(screen.getByText(/0 of 4 reviewed/i)).toBeDefined()
+
+    // Step 4: Vote on a bridge job
+    const interestedButtons = screen.getAllByRole('button', { name: /Interested/i })
+    await user.click(interestedButtons[0])
+
+    // Step 5: Progress should update across both sections
+    expect(screen.getByText(/1 of 4 reviewed/i)).toBeDefined()
+  })
+})
+
 describe('Daily batch scoring integration', () => {
   it('batch uses top 8 jobs by urgency score', () => {
     render(<DailyBatch jobs={testJobs} userState={userState} undoDelayMs={0} />)
