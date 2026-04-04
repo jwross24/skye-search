@@ -256,41 +256,40 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
       {/* Card stack — sectioned when clock pressure is high */}
       {showSections ? (
         <>
-          {/* Stop the Clock section */}
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-teal-400/30" />
-              <h3 className="text-sm font-medium text-teal-600 dark:text-teal-400 whitespace-nowrap">
-                Stop the Clock
+          {/* Bridge roles section — ready to start immediately */}
+          <section className="mb-10">
+            <div className="mb-4">
+              <h3 className="text-base font-medium text-jade">
+                Ready today
               </h3>
-              <div className="h-px flex-1 bg-teal-400/30" />
+              <p className="text-sm text-muted-foreground mt-1">
+                Part-time and contract roles you could start this week.
+              </p>
             </div>
-            <p className="text-xs text-teal-600/70 dark:text-teal-400/70 mb-4">
-              These roles stop your unemployment clock on day one.
-            </p>
             <AnimatePresence mode="popLayout">
               {bridgeJobs.map(({ job, score }, i) => (
                 renderJobCard(job, score, i)
               ))}
             </AnimatePresence>
-          </div>
+          </section>
 
-          {/* Build Your Future section */}
+          {/* Longer-horizon full-time roles */}
           {futureJobs.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-px flex-1 bg-border/50" />
-                <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                  Build Your Future
+            <section>
+              <div className="mb-4">
+                <h3 className="text-base font-medium text-foreground">
+                  Worth a longer look
                 </h3>
-                <div className="h-px flex-1 bg-border/50" />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Full-time positions ranked by fit.
+                </p>
               </div>
               <AnimatePresence mode="popLayout">
                 {futureJobs.map(({ job, score }, i) => (
                   renderJobCard(job, score, bridgeJobs.length + i)
                 ))}
               </AnimatePresence>
-            </div>
+            </section>
           )}
         </>
       ) : (

@@ -286,13 +286,13 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify "Stop the Clock" section header appears
-    expect(screen.getByText('Stop the Clock')).toBeDefined()
+    expect(screen.getByText('Ready today')).toBeDefined()
 
     // Step 4: Verify "Build Your Future" section header appears
-    expect(screen.getByText('Build Your Future')).toBeDefined()
+    expect(screen.getByText('Worth a longer look')).toBeDefined()
 
     // Step 5: Verify descriptive text for bridge section
-    expect(screen.getByText('These roles stop your unemployment clock on day one.')).toBeDefined()
+    expect(screen.getByText('Part-time and contract roles you could start this week.')).toBeDefined()
   })
 
   it('shows unified list when days_remaining < 60 but only 1 bridge job (threshold not met)', () => {
@@ -310,8 +310,8 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify sections do NOT appear
-    expect(screen.queryByText('Stop the Clock')).toBeNull()
-    expect(screen.queryByText('Build Your Future')).toBeNull()
+    expect(screen.queryByText('Ready today')).toBeNull()
+    expect(screen.queryByText('Worth a longer look')).toBeNull()
 
     // Step 4: Verify cards still render in unified list
     const cards = screen.getAllByTestId(/^pick-card-/)
@@ -337,8 +337,8 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify no section headers
-    expect(screen.queryByText('Stop the Clock')).toBeNull()
-    expect(screen.queryByText('Build Your Future')).toBeNull()
+    expect(screen.queryByText('Ready today')).toBeNull()
+    expect(screen.queryByText('Worth a longer look')).toBeNull()
   })
 
   it('shows unified list at boundary: days_remaining = 60 (60 is NOT < 60)', () => {
@@ -359,8 +359,8 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify sections do NOT appear (60 >= 60 is true)
-    expect(screen.queryByText('Stop the Clock')).toBeNull()
-    expect(screen.queryByText('Build Your Future')).toBeNull()
+    expect(screen.queryByText('Ready today')).toBeNull()
+    expect(screen.queryByText('Worth a longer look')).toBeNull()
   })
 
   it('shows sections at boundary: days_remaining = 59 (59 IS < 60)', () => {
@@ -381,8 +381,8 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify sections appear
-    expect(screen.getByText('Stop the Clock')).toBeDefined()
-    expect(screen.getByText('Build Your Future')).toBeDefined()
+    expect(screen.getByText('Ready today')).toBeDefined()
+    expect(screen.getByText('Worth a longer look')).toBeDefined()
   })
 
   it('bridge job filter: cap_exempt + part_time = bridge, cap_exempt + full_time = NOT bridge', () => {
@@ -405,8 +405,8 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Sections should appear (2 bridge: b1 + b2)
-    expect(screen.getByText('Stop the Clock')).toBeDefined()
-    expect(screen.getByText('Build Your Future')).toBeDefined()
+    expect(screen.getByText('Ready today')).toBeDefined()
+    expect(screen.getByText('Worth a longer look')).toBeDefined()
 
     // Step 4: Bridge section should contain b1 and b2 cards
     expect(screen.getByTestId('pick-card-b1')).toBeDefined()
@@ -431,7 +431,7 @@ describe('Clock-pressure sectioning', () => {
     )
 
     // Step 3: Verify sections appear (contract counts as bridge)
-    expect(screen.getByText('Stop the Clock')).toBeDefined()
+    expect(screen.getByText('Ready today')).toBeDefined()
   })
 
   it('progress counter counts across both sections', async () => {
