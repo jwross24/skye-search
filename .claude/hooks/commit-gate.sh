@@ -46,8 +46,12 @@ if [ -n "$CURRENT_TOPLEVEL" ] && [ "$CURRENT_TOPLEVEL" != "$MAIN_REPO_DIR" ]; th
 fi
 
 # ── Check 1: --no-verify ────────────────────────────────────────────────
+# Only check git flags (before -m), not the commit message body.
+# Otherwise commit messages DOCUMENTING "--no-verify" (e.g., hook fix
+# changelogs) trigger false positives that waste cycles.
 
-if echo "$CMD" | grep -Eq '\-\-no-verify'; then
+GIT_FLAGS=$(printf '%s' "$CMD" | tr '\n' ' ' | sed 's/ -m .*//')
+if echo "$GIT_FLAGS" | grep -Eq '\-\-no-verify'; then
   echo "BLOCKED: --no-verify is not allowed." >&2
   echo "" >&2
   echo "  → Fix the hook issue instead of bypassing it" >&2
