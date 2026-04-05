@@ -11,7 +11,7 @@ import type { Job } from '@/types/job'
 import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
 import { getBatchFramingMessage } from '@/lib/batch-sizing'
 
-/** Bridge jobs stop the unemployment clock immediately. Cap-exempt + part-time/contract. */
+/** Bridge jobs stop the unemployment clock. Cap-exempt OR opt-compatible + part-time/contract. */
 function isBridgeJob(job: Job): boolean {
   const bridgeVisaPaths: string[] = ['cap_exempt', 'opt_compatible']
   const bridgeEmploymentTypes: string[] = ['part_time', 'contract']
@@ -257,9 +257,9 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
       {showSections ? (
         <>
           {/* Bridge roles section — ready to start immediately */}
-          <section className="mb-10">
+          <section className="mb-10" aria-labelledby="section-ready-today">
             <div className="mb-4">
-              <h3 className="text-base font-medium text-jade">
+              <h3 id="section-ready-today" className="text-base font-medium text-jade">
                 Ready today
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
@@ -275,9 +275,9 @@ export function DailyBatch({ jobs, userState, batchSize = DEFAULT_BATCH_SIZE, un
 
           {/* Longer-horizon full-time roles */}
           {futureJobs.length > 0 && (
-            <section>
+            <section aria-labelledby="section-longer-look">
               <div className="mb-4">
-                <h3 className="text-base font-medium text-foreground">
+                <h3 id="section-longer-look" className="text-base font-medium text-foreground">
                   Worth a longer look
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
