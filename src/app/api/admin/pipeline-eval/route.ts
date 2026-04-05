@@ -4,6 +4,17 @@ import { authenticateAdmin } from '../auth'
 /** Minimum match_score to consider a job "high match" for engagement metrics. */
 const HIGH_MATCH_THRESHOLD = 0.65
 
+/** Per-source precision metrics keyed by discovery_source_detail. */
+export interface SourceMetric {
+  discovered: number
+  scored: number
+  matched: number
+  relevant: number
+  us_canada: number
+  precision: number | null
+  us_canada_rate: number | null
+}
+
 /**
  * GET /api/admin/pipeline-eval
  *
@@ -47,9 +58,10 @@ export async function GET(req: Request) {
     : null
 
   // ─── 2. US/Canada Rate ───────────────────────────────────────────────
+  // Also fetch url + match_score for per-source metrics (no second query needed).
   const { data: allJobs } = await supabase
     .from('jobs')
-    .select('location, visa_path, company, title')
+    .select('location, visa_path, company, title, url, match_score')
     .eq('user_id', userId)
     .gte('created_at', thirtyDaysAgo)
     .limit(5000)
@@ -99,19 +111,62 @@ export async function GET(req: Request) {
     ? duplicateCount / jobs.length
     : null
 
-  // ─── Per-source breakdown (uses discovery_source_detail) ─────────────
-  const { data: sourceDetails } = await supabase
+  // ─── Per-source breakdown + per-query precision (single query) ──────────
+  // One query fetches all fields needed for both sourceBreakdown and sourceMetrics.
+  // The earlier separate sourceDetails query is eliminated to avoid a redundant round-trip.
+  const { data: discoveredWithDetail } = await supabase
     .from('discovered_jobs')
-    .select('discovery_source_detail')
+    .select('canonical_url, url, scored, discovery_source_detail')
     .eq('user_id', userId)
     .not('discovery_source_detail', 'is', null)
     .gte('created_at', thirtyDaysAgo)
+    .limit(5000)
 
+  // sourceBreakdown: prefix (e.g. "query", "seed", "rss") → count
   const sourceBreakdown: Record<string, number> = {}
-  for (const row of sourceDetails ?? []) {
+  for (const row of discoveredWithDetail ?? []) {
     const detail = row.discovery_source_detail ?? 'unknown'
     const prefix = detail.split(':')[0] ?? 'unknown'
     sourceBreakdown[prefix] = (sourceBreakdown[prefix] ?? 0) + 1
+  }
+
+  // Build URL → job lookup from already-fetched allJobs (no second query).
+  const jobsByUrl = new Map<string, { match_score: number | null; location: string | null }>()
+  for (const j of jobs) {
+    if (j.url) {
+      jobsByUrl.set(j.url, { match_score: j.match_score ?? null, location: j.location ?? null })
+    }
+  }
+
+  const sourceMetrics: Record<string, SourceMetric> = {}
+  for (const row of discoveredWithDetail ?? []) {
+    const detail = row.discovery_source_detail as string
+    if (!sourceMetrics[detail]) {
+      sourceMetrics[detail] = { discovered: 0, scored: 0, matched: 0, relevant: 0, us_canada: 0, precision: null, us_canada_rate: null }
+    }
+    const m = sourceMetrics[detail]
+    m.discovered++
+    if (row.scored) m.scored++
+
+    // Match: look up canonical_url first, then fall back to url
+    const matchedJob = (row.canonical_url && jobsByUrl.get(row.canonical_url))
+      || (row.url && jobsByUrl.get(row.url))
+      || null
+    if (matchedJob) {
+      m.matched++
+      if ((matchedJob.match_score ?? 0) > 0) {
+        m.relevant++
+        if (matchedJob.location && isUSOrCanada(matchedJob.location)) {
+          m.us_canada++
+        }
+      }
+    }
+  }
+
+  // Compute rates now that all rows are aggregated
+  for (const m of Object.values(sourceMetrics)) {
+    m.precision = m.scored > 0 ? m.relevant / m.scored : null
+    m.us_canada_rate = m.relevant > 0 ? m.us_canada / m.relevant : null
   }
 
   // ─── Build response ──────────────────────────────────────────────────
@@ -151,6 +206,7 @@ export async function GET(req: Request) {
       },
     },
     source_breakdown: sourceBreakdown,
+    source_metrics: sourceMetrics,
   })
 }
 

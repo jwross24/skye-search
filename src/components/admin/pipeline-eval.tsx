@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,6 +11,17 @@ interface MetricValue {
   target: number
   met: boolean
   detail: Record<string, number>
+}
+
+/** Mirrors SourceMetric from route.ts — defined locally to avoid fragile cross-dir API imports. */
+interface SourceMetric {
+  discovered: number
+  scored: number
+  matched: number
+  relevant: number
+  us_canada: number
+  precision: number | null
+  us_canada_rate: number | null
 }
 
 interface EvalData {
@@ -23,6 +35,7 @@ interface EvalData {
     duplicate_rate: MetricValue
   }
   source_breakdown: Record<string, number>
+  source_metrics: Record<string, SourceMetric>
 }
 
 const METRIC_LABELS: Record<string, { label: string; description: string; invertTarget?: boolean }> = {
@@ -36,6 +49,13 @@ const METRIC_LABELS: Record<string, { label: string; description: string; invert
 function formatPercent(value: number | null): string {
   if (value === null) return '—'
   return `${(value * 100).toFixed(1)}%`
+}
+
+function precisionColor(precision: number | null): string {
+  if (precision === null) return 'text-zinc-500'
+  if (precision < 0.3) return 'text-red-400'
+  if (precision < 0.6) return 'text-amber-400'
+  return 'text-emerald-400'
 }
 
 export function PipelineEval() {
@@ -73,6 +93,15 @@ export function PipelineEval() {
 
   const metrics = Object.entries(data.metrics) as [keyof typeof METRIC_LABELS, MetricValue][]
   const metCount = metrics.filter(([, m]) => m.met).length
+
+  const sourceMetricEntries = Object.entries(data.source_metrics ?? {})
+  const sortedSourceMetrics = [...sourceMetricEntries].sort(([, a], [, b]) => {
+    // nulls last
+    if (a.precision === null && b.precision === null) return 0
+    if (a.precision === null) return 1
+    if (b.precision === null) return -1
+    return a.precision - b.precision
+  })
 
   return (
     <Card className="bg-zinc-900 border-zinc-800">
@@ -137,6 +166,60 @@ export function PipelineEval() {
                   </Badge>
                 ))}
             </div>
+          </div>
+        )}
+
+        {/* Source Performance panel — omitted when empty, open by default so worst performers are visible on landing */}
+        {sortedSourceMetrics.length > 0 && (
+          <div className="pt-2 mt-2 border-t border-zinc-800">
+            <details open className="group">
+              <summary className="text-xs text-zinc-500 cursor-pointer select-none hover:text-zinc-400 list-none flex items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-600 focus-visible:ring-offset-0">
+                <ChevronRight
+                  aria-hidden="true"
+                  className="h-3 w-3 transition-transform duration-150 [details[open]_&]:rotate-90"
+                />
+                <span>Source Performance</span>
+                <span className="text-zinc-600 font-mono">· {sortedSourceMetrics.length} {sortedSourceMetrics.length === 1 ? 'query' : 'queries'}</span>
+              </summary>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-xs font-mono" aria-label="Per-source precision metrics">
+                  <thead>
+                    <tr className="text-zinc-500 border-b border-zinc-800">
+                      <th scope="col" className="text-left pb-1.5 pr-3 font-normal">Source</th>
+                      <th scope="col" className="text-right pb-1.5 pr-3 font-normal">Discovered</th>
+                      <th scope="col" className="text-right pb-1.5 pr-3 font-normal">Scored</th>
+                      <th scope="col" className="text-right pb-1.5 pr-3 font-normal">Precision</th>
+                      <th scope="col" className="text-right pb-1.5 font-normal">US/CA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedSourceMetrics.map(([detail, m]) => (
+                      <tr
+                        key={detail}
+                        className="border-b border-zinc-800/40 last:border-0 transition-colors hover:bg-zinc-800/40"
+                      >
+                        <td className="py-1.5 pr-3 text-zinc-400">
+                          <span
+                            className="inline-block max-w-[240px] truncate align-bottom"
+                            title={detail}
+                          >
+                            {detail}
+                          </span>
+                        </td>
+                        <td className="py-1.5 pr-3 text-right text-zinc-500 tabular-nums">{m.discovered}</td>
+                        <td className="py-1.5 pr-3 text-right text-zinc-500 tabular-nums">{m.scored}</td>
+                        <td className={`py-1.5 pr-3 text-right tabular-nums ${precisionColor(m.precision)}`}>
+                          {formatPercent(m.precision)}
+                        </td>
+                        <td className="py-1.5 text-right text-zinc-500 tabular-nums">
+                          {formatPercent(m.us_canada_rate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </div>
         )}
       </CardContent>
