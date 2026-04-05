@@ -19,54 +19,74 @@ import { GOLDEN_SET, type GoldenSetEntry } from './golden-set-data'
 
 const SKIP = !process.env.RUN_GOLDEN_SET
 
-// ─── Extract production rubric and translation table from ai-scoring.ts ────
-// This ensures the golden set always tests against the actual production prompt.
-// Pattern matches the template literal between backticks, same approach as
-// ai-scoring-prompt.test.ts uses for source-level assertions.
+// ─── Pure regex extractor — exported for unit tests ─────────────────────────
+// Extracts a template literal assigned as: const VARNAME = `...`.trim()
+// Exported so helpers.test.ts can test it with synthetic source strings.
 
-const AI_SCORING_SOURCE = readFileSync(
-  'supabase/functions/_shared/handlers/ai-scoring.ts',
-  'utf8',
-)
-
-function extractTemplateLiteral(source: string, varName: string): string {
+export function extractTemplateLiteral(source: string, varName: string): string {
   const pattern = new RegExp(`const ${varName} = \`([\\s\\S]*?)\`\\.trim\\(\\)`)
   const match = source.match(pattern)
   if (!match?.[1]) {
-    throw new Error(`Failed to extract ${varName} from ai-scoring.ts`)
+    throw new Error(`Failed to extract ${varName} from source`)
   }
   return match[1].trim()
 }
 
-const SCORING_RUBRIC = extractTemplateLiteral(AI_SCORING_SOURCE, 'SCORING_RUBRIC')
-const TRANSLATION_TABLE = extractTemplateLiteral(AI_SCORING_SOURCE, 'TRANSLATION_TABLE')
+// ─── Content guards — exported for unit tests ────────────────────────────────
+// Pure functions that throw on guard failure. Tested with synthetic inputs
+// in golden-set-eval.helpers.test.ts so they don't depend on the real file.
 
-// ─── Build eval system prompt ──────────────────────────────────────────────
-// Uses production rubric + translation table with a static candidate profile.
-// Dynamic sections (employer lookup, feedback penalties, positive patterns)
-// are omitted — the golden set tests scoring logic, not personalization.
+export function validateRubric(rubric: string): void {
+  if (rubric.length < 5000) {
+    throw new Error(
+      `SCORING_RUBRIC too short (${rubric.length} chars) — regex likely truncated at an embedded backtick`,
+    )
+  }
+  if (!rubric.includes('Is this an actual job posting?')) {
+    throw new Error(
+      'SCORING_RUBRIC missing posting-gate sentinel — source may have been refactored',
+    )
+  }
+  if (!rubric.includes('Government Contractor Disambiguation')) {
+    throw new Error(
+      'SCORING_RUBRIC missing contractor-disambiguation sentinel — source may have been refactored',
+    )
+  }
+}
 
-const EVAL_SYSTEM_PROMPT = `You are an immigration-aware job scoring system for an international PhD scientist.
+export function validateTable(table: string): void {
+  if (table.length < 1000) {
+    throw new Error(
+      `TRANSLATION_TABLE too short (${table.length} chars) — regex likely truncated`,
+    )
+  }
+  if (!table.includes('SeaDAS')) {
+    throw new Error(
+      'TRANSLATION_TABLE missing SeaDAS sentinel — source may have been refactored',
+    )
+  }
+}
 
-## Candidate Profile
+// ─── Lazy reader — only runs inside describe.skipIf block ───────────────────
+// readFileSync is deferred here so that when RUN_GOLDEN_SET is unset the
+// describe callback never executes and this function is never called.
+// A broken ai-scoring.ts cannot crash the full test suite.
 
-Field: Environmental science / Ocean color remote sensing
-Skills: Ocean color remote sensing, satellite imagery processing (SeaDAS), Google Earth Engine, MODIS/VIIRS data analysis, coastal biogeochemistry, Python, R, MATLAB, NetCDF/HDF5, radiative transfer modeling
-Research areas: Ocean color remote sensing, coastal biogeochemistry, phytoplankton dynamics, satellite validation
-
-## Immigration Context
-
-Visa: F-1 STEM OPT
-Priority: Cap-exempt employers (universities, nonprofits, government labs) are highest priority because they can sponsor H1-B without annual cap limits. This candidate missed the FY2027 H1-B lottery.
-
-## Academic ↔ Industry Translation Table
-${TRANSLATION_TABLE}
-
-${SCORING_RUBRIC}`
+function getProductionRubric(): { rubric: string; table: string } {
+  const source = readFileSync(
+    'supabase/functions/_shared/handlers/ai-scoring.ts',
+    'utf8',
+  )
+  const rubric = extractTemplateLiteral(source, 'SCORING_RUBRIC')
+  const table = extractTemplateLiteral(source, 'TRANSLATION_TABLE')
+  validateRubric(rubric)
+  validateTable(table)
+  return { rubric, table }
+}
 
 // Dynamic import to avoid Anthropic SDK dependency in normal test runs.
 // The SDK is only available when explicitly installed for golden set runs.
-async function scoreJob(entry: GoldenSetEntry) {
+async function scoreJob(entry: GoldenSetEntry, evalSystemPrompt: string) {
   const Anthropic = (await import('@anthropic-ai/sdk')).default
   const { zodOutputFormat } = await import('@anthropic-ai/sdk/helpers/zod')
   const { z } = await import('zod')
@@ -97,7 +117,7 @@ async function scoreJob(entry: GoldenSetEntry) {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 0,
-    system: [{ type: 'text' as const, text: EVAL_SYSTEM_PROMPT }],
+    system: [{ type: 'text' as const, text: evalSystemPrompt }],
     messages: [{
       role: 'user' as const,
       content: `<job_description source_type="${entry.source_type}" title="${entry.title}" company="${entry.company}">\n${entry.raw_description}\n</job_description>`,
@@ -109,11 +129,39 @@ async function scoreJob(entry: GoldenSetEntry) {
 }
 
 describe.skipIf(SKIP)('Golden set evaluation', { timeout: 300_000 }, () => {
+  // getProductionRubric() runs here — inside the describe callback, which
+  // Vitest only evaluates when skipIf is false (RUN_GOLDEN_SET is set).
+  // If the file is missing or guards fail, only golden-set tests fail.
+  const { rubric: SCORING_RUBRIC, table: TRANSLATION_TABLE } = getProductionRubric()
+
+  // ─── Build eval system prompt ────────────────────────────────────────────
+  // Uses production rubric + translation table with a static candidate profile.
+  // Dynamic sections (employer lookup, feedback penalties, positive patterns)
+  // are omitted — the golden set tests scoring logic, not personalization.
+
+  const EVAL_SYSTEM_PROMPT = `You are an immigration-aware job scoring system for an international PhD scientist.
+
+## Candidate Profile
+
+Field: Environmental science / Ocean color remote sensing
+Skills: Ocean color remote sensing, satellite imagery processing (SeaDAS), Google Earth Engine, MODIS/VIIRS data analysis, coastal biogeochemistry, Python, R, MATLAB, NetCDF/HDF5, radiative transfer modeling
+Research areas: Ocean color remote sensing, coastal biogeochemistry, phytoplankton dynamics, satellite validation
+
+## Immigration Context
+
+Visa: F-1 STEM OPT
+Priority: Cap-exempt employers (universities, nonprofits, government labs) are highest priority because they can sponsor H1-B without annual cap limits. This candidate missed the FY2027 H1-B lottery.
+
+## Academic ↔ Industry Translation Table
+${TRANSLATION_TABLE}
+
+${SCORING_RUBRIC}`
+
   const visaPathMismatches: string[] = []
 
   for (const entry of GOLDEN_SET) {
     it(`${entry.id}: ${entry.title} (${entry.category})`, { timeout: 30_000 }, async () => {
-      const result = await scoreJob(entry)
+      const result = await scoreJob(entry, EVAL_SYSTEM_PROMPT)
       expect(result).toBeDefined()
       if (!result) return
 
