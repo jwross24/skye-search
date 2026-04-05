@@ -110,12 +110,22 @@ KNOWN_CAP_EXEMPT_5417 = {
 def normalize_name(name: str) -> str:
     """Normalize employer name for dedup and matching."""
     n = name.upper().strip()
-    # Remove common suffixes
-    for suffix in [', INC.', ', INC', ', LLC', ', LTD.', ', LTD',
-                   ' INC.', ' INC', ' LLC', ' LTD.', ' LTD',
-                   ', L.L.C.', ', L.P.', ' L.P.', ' LP',
-                   ', CORPORATION', ' CORPORATION', ', CORP.', ' CORP.']:
-        n = n.replace(suffix, '')
+    # Remove common suffixes — iterate repeatedly until stable so multi-suffix
+    # names like "ACME, INC., LLC" are fully stripped. Use endswith() to avoid
+    # substring replacement (e.g. str.replace(' INC', '') would corrupt
+    # ' INCUBATOR' → 'UBATOR').
+    suffixes = [', INC.', ', INC', ', LLC', ', LTD.', ', LTD',
+                ' INC.', ' INC', ' LLC', ' LTD.', ' LTD',
+                ', L.L.C.', ', L.P.', ' L.P.', ' LP',
+                ', CORPORATION', ' CORPORATION', ', CORP.', ' CORP.']
+    changed = True
+    while changed:
+        changed = False
+        for suffix in suffixes:
+            if n.endswith(suffix):
+                n = n[: -len(suffix)].rstrip()
+                changed = True
+                break
     # Remove "THE " prefix
     if n.startswith('THE '):
         n = n[4:]
