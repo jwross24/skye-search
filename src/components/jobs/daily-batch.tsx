@@ -11,7 +11,7 @@ import type { Job } from '@/types/job'
 import { voteOnJob, type VoteDecision, type DismissTag } from '@/app/jobs/actions'
 import { getBatchFramingMessage } from '@/lib/batch-sizing'
 
-/** Bridge jobs stop the unemployment clock. Cap-exempt OR opt-compatible + part-time/contract. */
+/** Bridge jobs stop the unemployment clock: (cap_exempt OR opt_compatible) AND (part_time OR contract). */
 function isBridgeJob(job: Job): boolean {
   const bridgeVisaPaths: string[] = ['cap_exempt', 'opt_compatible']
   const bridgeEmploymentTypes: string[] = ['part_time', 'contract']

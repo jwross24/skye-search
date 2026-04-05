@@ -434,6 +434,33 @@ describe('Clock-pressure sectioning', () => {
     expect(screen.getByText('Ready today')).toBeDefined()
   })
 
+  it('shows only "Ready today" when all batch jobs are bridge (no futureJobs)', () => {
+    // Step 1: Create batch with ONLY bridge jobs — futureJobs will be empty
+    const jobs = [
+      makeBridgeJob('b1'),
+      makeBridgeJob('b2'),
+      makeBridgeJob('b3'),
+    ]
+    const state: UserState = {
+      ...highPressureState,
+      days_remaining: 45,
+    }
+
+    // Step 2: Render with high pressure
+    render(
+      <DailyBatch jobs={jobs} userState={state} undoDelayMs={0} />,
+    )
+
+    // Step 3: "Ready today" section appears
+    expect(screen.getByText('Ready today')).toBeDefined()
+
+    // Step 4: "Worth a longer look" is NOT rendered (futureJobs.length = 0)
+    expect(screen.queryByText('Worth a longer look')).toBeNull()
+
+    // Step 5: Cards still render in the bridge section
+    expect(screen.getByTestId('pick-card-b1')).toBeDefined()
+  })
+
   it('progress counter counts across both sections', async () => {
     // Step 1: Create batch with mixed jobs
     const user = userEvent.setup()
