@@ -38,6 +38,28 @@ NAICS_CAP_EXEMPT = {
 
 # Known private-sector entities that appear in cap-exempt NAICS codes
 # (e.g., for-profit hospitals, for-profit schools)
+
+# Fix common acronyms that title() breaks.
+# Bead 8pf3 found that the previous string.replace list used trailing-space
+# patterns ('Ut ', 'Uc ') which missed hyphenated forms ("Ut-Battelle") and
+# punctuation-adjacent forms ("Ny, Pc"). Regex with \b word boundaries handles
+# all cases cleanly: hyphens, commas, end-of-string.
+#
+# Sorted by length descending inside the regex so longer matches (e.g., "Ucsf")
+# take precedence over shorter overlapping ones (e.g., "Uc").
+ACRONYM_FIXES = {
+    'Llc', 'Llp', 'Lp',
+    'Suny', 'Cuny',
+    'Ucsf', 'Ucla', 'Ucsd', 'Ucsb', 'Uci', 'Ucr', 'Ucd',
+    'Usc', 'Nyu', 'Mit', 'Nih', 'Hhs', 'Nrel', 'Jhu',
+    'Uc', 'Ut', 'Uab', 'Ucf',
+    'Cgh', 'Mgh', 'Bwh',
+    'Ny', 'Pc', 'Pa', 'Md',
+}
+_ACRONYM_RE = re.compile(
+    r'\b(' + '|'.join(sorted(ACRONYM_FIXES, key=len, reverse=True)) + r')\b'
+)
+
 PRIVATE_SECTOR_KEYWORDS = [
     'LLC', 'Inc.', 'Corporation', 'Corp.', 'Ltd.',
     'Partners', 'LP', 'L.P.', 'Group, Inc',
@@ -234,10 +256,10 @@ def main(xlsx_path: str):
                 if j > 0 and w.lower() in ('of', 'the', 'at', 'and', 'for', 'in', 'on', 'to', 'by'):
                     words[j] = w.lower()
             display_name = ' '.join(words)
-            # Fix common acronyms that title() breaks
-            for acronym in ['Llc', 'Llp', 'Suny', 'Usc', 'Ucla', 'Uc ', 'Ut ',
-                            'Mit ', 'Nyu', 'Uab', 'Ucf', 'Nih', 'Hhs', 'Nrel']:
-                display_name = display_name.replace(acronym, acronym.upper())
+            # Fix common acronyms mangled by title() — uses regex \b for word
+            # boundaries so hyphenated ("Ut-Battelle") and punctuation-adjacent
+            # ("Ny, Pc") forms are caught. Replaces old trailing-space patterns.
+            display_name = _ACRONYM_RE.sub(lambda m: m.group(1).upper(), display_name)
         # Escape single quotes in employer name
         safe_name = display_name.replace("'", "''")
         print(f"INSERT INTO cap_exempt_employers (employer_name, cap_exempt_basis, confidence_level, source_url, verification_date)")
