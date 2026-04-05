@@ -92,36 +92,43 @@ describe('CalibrationCard', () => {
   it('renders the card title and subtitle', () => {
     render(<CalibrationCard picks={mockPicks} />)
     expect(screen.getByText('Sunday check-in')).toBeInTheDocument()
-    expect(screen.getByText(/Did I get it right/)).toBeInTheDocument()
+    expect(screen.getByText(/Did they feel right/)).toBeInTheDocument()
   })
 
-  it('shows urgency scores as pills', () => {
+  it('shows qualitative priority tiers (not raw scores)', () => {
     render(<CalibrationCard picks={mockPicks} />)
-    expect(screen.getByText('0.88')).toBeInTheDocument()
-    expect(screen.getByText('0.82')).toBeInTheDocument()
+    // Skye sees tier labels, not raw urgency_score numbers — too many picks
+    // resolve to the same tier for us to assert getByText (ambiguous), so
+    // assert tier labels are present without counting.
+    expect(screen.getAllByText(/Top priority|Worth a look|Maybe/).length).toBeGreaterThanOrEqual(5)
+    // And the raw score should NOT appear in the DOM
+    expect(screen.queryByText('0.88')).toBeNull()
+    expect(screen.queryByText('0.82')).toBeNull()
   })
 
-  it('shows primary reasons', () => {
+  it('shows primary reasons with a human lead-in', () => {
     render(<CalibrationCard picks={mockPicks} />)
-    expect(screen.getByText('Confirmed cap-exempt employer')).toBeInTheDocument()
-    expect(screen.getByText('Deadline in 7 days')).toBeInTheDocument()
+    // Primary reasons are lowercased and prefixed with "Why it ranked high:"
+    // to put Skye in the driver's seat instead of showing a raw diagnostic label.
+    expect(screen.getByText(/Why it ranked high: confirmed cap-exempt employer/)).toBeInTheDocument()
+    expect(screen.getByText(/Why it ranked high: deadline in 7 days/)).toBeInTheDocument()
   })
 
-  it('"Right call" fires logCalibrationConfirmed with job id', async () => {
+  it('"Good pick" fires logCalibrationConfirmed with job id', async () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const buttons = screen.getAllByRole('button', { name: /Right call/i })
+    const buttons = screen.getAllByRole('button', { name: /Good pick/i })
     await user.click(buttons[0])
 
     expect(logCalibrationConfirmed).toHaveBeenCalledWith('job-1')
   })
 
-  it('"Not quite" reveals inline tag picker', async () => {
+  it('"Missed the mark" reveals inline tag picker', async () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const buttons = screen.getAllByRole('button', { name: /Not quite/i })
+    const buttons = screen.getAllByRole('button', { name: /Missed the mark/i })
     await user.click(buttons[0])
 
     expect(screen.getByText('Wrong visa path')).toBeInTheDocument()
@@ -134,55 +141,58 @@ describe('CalibrationCard', () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const notQuiteButtons = screen.getAllByRole('button', { name: /Not quite/i })
+    const notQuiteButtons = screen.getAllByRole('button', { name: /Missed the mark/i })
     await user.click(notQuiteButtons[0])
 
     await user.click(screen.getByText('Wrong visa path'))
     expect(logCalibrationTooHigh).toHaveBeenCalledWith('job-1', 'wrong_visa')
   })
 
-  it('marks row as resolved after "Right call" is clicked', async () => {
+  it('marks row as resolved with quiet "Logged" confirmation after "Good pick"', async () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const rightCallButtons = screen.getAllByRole('button', { name: /Right call/i })
+    const rightCallButtons = screen.getAllByRole('button', { name: /Good pick/i })
     await user.click(rightCallButtons[0])
 
-    // Row should show resolved confirmation text
-    expect(screen.getByText('Got it, thanks')).toBeInTheDocument()
+    // Quiet confirmation — avoids AI-voice "thanks" that Skye has flagged as sycophantic
+    expect(screen.getByText('Logged')).toBeInTheDocument()
   })
 
-  it('marks row as resolved after tag is selected', async () => {
+  it('echoes the tag label as the row confirmation after "Missed the mark"', async () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const notQuiteButtons = screen.getAllByRole('button', { name: /Not quite/i })
+    const notQuiteButtons = screen.getAllByRole('button', { name: /Missed the mark/i })
     await user.click(notQuiteButtons[1]) // second pick
 
-    await user.click(screen.getByText('Wrong field'))
-    expect(screen.getByText('Noted — Wrong field')).toBeInTheDocument()
+    // Click the "Wrong field" chip in the tag picker
+    const wrongFieldChip = screen.getByRole('button', { name: 'Wrong field' })
+    await user.click(wrongFieldChip)
+
+    // After resolve, the row shows the tag as the confirmation (no "Noted — " prefix).
+    // The picker is gone, so the only "Wrong field" text is the resolved label.
+    expect(screen.getByText('Wrong field')).toBeInTheDocument()
   })
 
-  it('shows "Done" state when all 5 picks resolved', async () => {
+  it('shows warm "All five. See you next Sunday." done state when all picks resolved', async () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks.slice(0, 2)} />)
 
     // Resolve both
-    const rightCallButtons = screen.getAllByRole('button', { name: /Right call/i })
+    const rightCallButtons = screen.getAllByRole('button', { name: /Good pick/i })
     await user.click(rightCallButtons[0])
     await user.click(rightCallButtons[0]) // now only 1 left, click again
 
-    // After all resolved, the done state should appear
-    // (We need to resolve all 2 picks)
     // Try resolving the second
-    const allRightCallBtns = screen.getAllByRole('button', { name: /Right call/i })
+    const allRightCallBtns = screen.getAllByRole('button', { name: /Good pick/i })
     if (allRightCallBtns.length > 0) {
       await user.click(allRightCallBtns[0])
     }
 
-    // Eventually "Done" appears — accept either done message or all resolved states
-    const doneText = screen.queryByText(/Done — thanks, see you next week/)
-    const resolvedCount = screen.queryAllByText('Got it, thanks')
+    // Accept either the done state or at least one row resolved to "Logged"
+    const doneText = screen.queryByText(/All five\. See you next Sunday\./)
+    const resolvedCount = screen.queryAllByText('Logged')
     expect(doneText || resolvedCount.length > 0).toBeTruthy()
   })
 
@@ -190,7 +200,7 @@ describe('CalibrationCard', () => {
     const user = userEvent.setup()
     render(<CalibrationCard picks={mockPicks} />)
 
-    const notQuiteButtons = screen.getAllByRole('button', { name: /Not quite/i })
+    const notQuiteButtons = screen.getAllByRole('button', { name: /Missed the mark/i })
     await user.click(notQuiteButtons[0])
 
     // No dialog element should exist

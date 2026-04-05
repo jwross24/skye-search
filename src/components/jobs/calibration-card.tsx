@@ -22,20 +22,21 @@ const CALIBRATION_TAGS: { value: CalibrationTag; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-function UrgencyPill({ score }: { score: number }) {
-  // Color tiers: high (≥0.8) ocean, medium (≥0.6) jade, lower muted
-  const colorClass =
+/** Qualitative priority tier — Skye-facing label, not a raw score.
+ *  Raw urgency_score is a diagnostic number; what she needs to feel is the ranking tier. */
+function PriorityPill({ score }: { score: number }) {
+  const tier =
     score >= 0.8
-      ? 'bg-ocean/10 text-ocean border-ocean/20'
+      ? { label: 'Top priority', className: 'bg-ocean/10 text-ocean border-ocean/20' }
       : score >= 0.6
-        ? 'bg-jade/10 text-jade border-jade/20'
-        : 'bg-muted text-muted-foreground border-border'
+        ? { label: 'Worth a look', className: 'bg-jade/10 text-jade border-jade/20' }
+        : { label: 'Maybe', className: 'bg-muted text-muted-foreground border-border' }
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-mono font-medium ${colorClass}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tier.className}`}
     >
-      {score.toFixed(2)}
+      {tier.label}
     </span>
   )
 }
@@ -72,7 +73,7 @@ function CalibrationRow({
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground leading-snug">{pick.title}</span>
-            <UrgencyPill score={pick.urgency_score} />
+            <PriorityPill score={pick.urgency_score} />
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted-foreground">
             <span>{pick.company}</span>
@@ -83,7 +84,7 @@ function CalibrationRow({
               </>
             )}
           </div>
-          <p className="text-xs font-mono text-muted-foreground/70">{pick.primary_reason}</p>
+          <p className="text-xs text-muted-foreground">Why it ranked high: {pick.primary_reason.toLowerCase()}</p>
           {pick.url && (
             <a
               href={pick.url}
@@ -111,20 +112,21 @@ function CalibrationRow({
                 type="button"
                 disabled={isPending}
                 onClick={onConfirmed}
-                aria-label={`Right call for ${pick.title}`}
+                aria-label={`Good pick for ${pick.title}`}
                 className="rounded-full border border-jade/30 bg-jade/10 px-3 py-1 text-xs font-medium text-jade transition-colors hover:bg-jade/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-jade/40 active:scale-95 disabled:opacity-50"
               >
-                Right call
+                Good pick
               </button>
               <button
                 type="button"
                 disabled={isPending}
                 onClick={onTooHighOpen}
-                aria-label={`Not quite right for ${pick.title}`}
+                aria-label={`Missed the mark for ${pick.title}`}
                 aria-expanded={isTagging}
-                className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border active:scale-95 disabled:opacity-50"
+                aria-controls={isTagging ? `tag-picker-${pick.id}` : undefined}
+                className="rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-foreground/5 hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border active:scale-95 disabled:opacity-50"
               >
-                Not quite
+                Missed the mark
               </button>
             </div>
           )}
@@ -134,6 +136,7 @@ function CalibrationRow({
       {/* Inline tag picker — not a modal */}
       {isTagging && (
         <div
+          id={`tag-picker-${pick.id}`}
           className="mt-3 animate-in fade-in slide-in-from-top-1 duration-150"
           role="group"
           aria-label="Why wasn't this a good pick?"
@@ -180,8 +183,8 @@ export function CalibrationCard({ picks }: CalibrationCardProps) {
   }
 
   function handleConfirmed(pick: CalibrationPick) {
-    // Optimistic update
-    setRow(pick.id, { status: 'resolved', label: 'Got it, thanks' })
+    // Optimistic update — quiet confirmation, no AI-voice thanks
+    setRow(pick.id, { status: 'resolved', label: 'Logged' })
     startTransition(async () => {
       const result = await logCalibrationConfirmed(pick.id)
       if (!result.success) {
@@ -196,9 +199,9 @@ export function CalibrationCard({ picks }: CalibrationCardProps) {
   }
 
   function handleTagSelected(pick: CalibrationPick, tag: CalibrationTag) {
-    // Optimistic update
+    // Optimistic update — echo the tag so Skye sees which reason landed
     const tagLabel = CALIBRATION_TAGS.find((t) => t.value === tag)?.label ?? tag
-    setRow(pick.id, { status: 'resolved', label: `Noted — ${tagLabel}` })
+    setRow(pick.id, { status: 'resolved', label: tagLabel })
     startTransition(async () => {
       const result = await logCalibrationTooHigh(pick.id, tag)
       if (!result.success) {
@@ -209,7 +212,7 @@ export function CalibrationCard({ picks }: CalibrationCardProps) {
 
   function handleDismissTag(pick: CalibrationPick) {
     // User skipped the tag — log as 'too_high' with 'other'
-    setRow(pick.id, { status: 'resolved', label: 'Got it, thanks' })
+    setRow(pick.id, { status: 'resolved', label: 'Logged' })
     startTransition(async () => {
       const result = await logCalibrationTooHigh(pick.id, 'other')
       if (!result.success) {
@@ -221,9 +224,9 @@ export function CalibrationCard({ picks }: CalibrationCardProps) {
   if (allResolved && !collapsed) {
     return (
       <div className="mb-6 rounded-xl border border-jade/20 bg-jade/5 px-5 py-4">
-        <p className="text-sm font-medium text-jade">Done — thanks, see you next week.</p>
+        <p className="text-sm font-medium text-jade">All five. See you next Sunday.</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Your feedback helps sharpen next week&apos;s picks.
+          Your picks will be sharper next week.
         </p>
       </div>
     )
@@ -244,8 +247,8 @@ export function CalibrationCard({ picks }: CalibrationCardProps) {
         <div>
           <h2 className="text-base font-semibold text-foreground">Sunday check-in</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Five jobs I thought were your best picks this week. Did I get it right?
-            Two minutes — you&apos;ll make next week&apos;s picks sharper.
+            Here are this week&apos;s five highest-priority picks. Did they feel right?
+            Two minutes — your feedback here becomes next week&apos;s picks.
           </p>
         </div>
         <span className="ml-4 shrink-0 text-muted-foreground" aria-hidden>
