@@ -96,13 +96,15 @@ async function handler(req: NextRequest) {
         )
       }
 
+      // rows.length = attempted upserts; actual new inserts may be fewer
+      // due to ignoreDuplicates. Supabase doesn't return a count on upsert.
       jobsInserted = rows.length
     }
 
     return NextResponse.json({
       ok: true,
       jobs_found: result.jobs.length,
-      jobs_inserted: jobsInserted,
+      jobs_inserted: jobsInserted, // attempted upserts, not net-new inserts
       errors: result.errors,
       latency_ms: result.metadata.latency_ms,
     })

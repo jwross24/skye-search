@@ -20,9 +20,9 @@ describe('parseHtml: woodwell fixture', () => {
 
   beforeAll(() => { html = loadFixture('woodwell') })
 
-  it('extracts at least 1 job listing', () => {
+  it('extracts at least 10 job listings (4 full-time + 6 interns; 1 commented-out in fixture)', () => {
     const jobs = parseHtml(html, config)
-    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.length).toBeGreaterThanOrEqual(10)
   })
 
   it('returns non-empty title for every job', () => {
@@ -56,9 +56,9 @@ describe('parseHtml: mbari fixture', () => {
 
   beforeAll(() => { html = loadFixture('mbari') })
 
-  it('extracts at least 1 job listing', () => {
+  it('extracts at least 15 job listings (15 articles in fixture)', () => {
     const jobs = parseHtml(html, config)
-    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.length).toBeGreaterThanOrEqual(15)
   })
 
   it('returns non-empty title for every job', () => {
@@ -87,9 +87,9 @@ describe('parseHtml: serc fixture', () => {
 
   beforeAll(() => { html = loadFixture('serc') })
 
-  it('extracts at least 1 job listing', () => {
+  it('extracts at least 1 job listing (1 listing in fixture snapshot)', () => {
     const jobs = parseHtml(html, config)
-    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.length).toBeGreaterThanOrEqual(1)
   })
 
   it('returns non-empty title for every job', () => {
@@ -118,9 +118,9 @@ describe('parseHtml: gmri fixture', () => {
 
   beforeAll(() => { html = loadFixture('gmri') })
 
-  it('extracts at least 1 job listing', () => {
+  it('extracts at least 2 job listings (2 li.border-top in fixture)', () => {
     const jobs = parseHtml(html, config)
-    expect(jobs.length).toBeGreaterThan(0)
+    expect(jobs.length).toBeGreaterThanOrEqual(2)
   })
 
   it('returns non-empty title for every job', () => {
@@ -209,6 +209,46 @@ describe('parseHtml: error handling', () => {
     const govConfig = { ...mockConfig, source_type: 'government' as const }
     const jobs = parseHtml(html, govConfig)
     expect(jobs[0].source_type).toBe('government')
+  })
+})
+
+// ─── Adapter discover: per-employer error isolation ──────────────────────
+
+describe('careerPageMonitorAdapter.discover: error isolation', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('collects successful employers even when one employer throws', async () => {
+    // First employer (woodwell) throws; remaining employers succeed.
+    // Verifies the try/catch in the for-loop isolates per-employer failures.
+    let callCount = 0
+    vi.spyOn(global, 'fetch').mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        // Woodwell fails
+        return Promise.reject(new Error('ECONNREFUSED'))
+      }
+      // All others succeed with a minimal job listing
+      const html = `<html><body>
+        <article class="list-item list-item--job-opening">
+          <a class="list-item__link" href="https://www.mbari.org/job-opening/test-job/">
+            <h1 class="list-item__title">Test Job</h1>
+          </a>
+        </article>
+      </body></html>`
+      return Promise.resolve(new Response(html, { status: 200 }))
+    })
+
+    const { careerPageMonitorAdapter } = await import('./career-page-monitor')
+    const result = await careerPageMonitorAdapter.discover([])
+
+    // Should have exactly 1 error (woodwell)
+    expect(result.errors).toHaveLength(1)
+    expect(result.errors[0].adapter).toBe('career_page:woodwell')
+
+    // Should still have jobs from the other 3 employers
+    expect(result.jobs.length).toBeGreaterThan(0)
   })
 })
 
