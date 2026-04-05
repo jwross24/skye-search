@@ -109,7 +109,7 @@
           {
             "type": "prompt",
             "if": "Write|Edit",
-            "prompt": "Check if this file edit adds NEW imports from libraries that may have stale training data: @supabase/, @anthropic-ai/, resend, exa-js, next/, zod. Look at the actual content: $ARGUMENTS. If new library imports are added (not just editing existing code that already uses them), respond {\"ok\": false, \"reason\": \"Fetch Context7 docs for [specific library] before committing — training data may be stale\"}. If no new library imports, respond {\"ok\": true}.",
+            "prompt": "Check if this file edit adds NEW imports from libraries that may have stale training data: @supabase/, @anthropic-ai/, resend, exa-js, next/, zod. Look at the actual content: $ARGUMENTS. If new library imports are added (not just editing existing code that already uses them), respond {\"ok\": false, \"reason\": \"Fetch Context7 docs for [specific library] before committing \u2014 training data may be stale\"}. If no new library imports, respond {\"ok\": true}.",
             "model": "haiku",
             "statusMessage": "Checking library imports..."
           }
@@ -138,9 +138,9 @@
           {
             "type": "prompt",
             "if": "Skill(*impeccable*)",
-            "prompt": "The /impeccable skill was just invoked. Verify it produced a REAL audit — not a rubber stamp. Check $ARGUMENTS for evidence of: (1) specific .tsx files READ and critiqued, (2) at least one concrete finding (change made, or justified 'no changes needed' with specific reasoning), (3) navigation check (can users reach this page?). If the output was just 'Design context loaded. Stamped.' or similar hand-waving without file reads, respond {\"ok\": false, \"reason\": \"Impeccable was rubber-stamped. Read the actual .tsx files, critique against .impeccable.md guidelines, and make or justify changes.\"}. If real audit evidence exists, respond {\"ok\": true}.",
+            "prompt": "The /impeccable skill was just invoked. Verify the output in $ARGUMENTS is a REAL audit, not a rubber stamp.\n\nReal audit evidence (need at least 2 of these):\n  (1) Specific .tsx file paths with line numbers\n  (2) Concrete findings against .impeccable.md principles (tone, typography, color, layout, interaction)\n  (3) Actual fixes applied (Edit tool calls visible in output) OR justified no-op decisions\n\nRubber-stamp signals:\n  - Output is just \"Design context loaded. Stamped.\" or similar\n  - No file paths mentioned\n  - No specific critique, just generic praise\n  - Claims audit was done but no Read/Edit tool calls visible\n\nIf rubber-stamped, respond with:\n  {\"ok\": false, \"reason\": \"ADVISORY: /impeccable appears rubber-stamped \u2014 no file reads or concrete findings visible in output. If this is a UI bead, ask me to actually run the audit on the .tsx file against .impeccable.md and apply fixes before committing. This does NOT block the commit; it is a heads-up for you to decide.\"}\n\nIf real audit evidence exists, respond {\"ok\": true}.",
             "model": "haiku",
-            "statusMessage": "Verifying /impeccable audit quality..."
+            "statusMessage": "Checking /impeccable audit quality (advisory only)..."
           }
         ]
       }

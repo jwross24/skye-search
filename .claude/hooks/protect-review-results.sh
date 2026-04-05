@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
-# PreToolUse[Bash|Write|Edit] — block direct writes to protected review files.
-# These files must be written by subagents (via Agent tool), not the implementing agent.
+# PreToolUse[Bash|Write|Edit] — block direct writes to protected hook files.
+# These files must be written by PostToolUse stamp hooks (shell hooks that
+# bypass PreToolUse entirely) or by Agent-tool subagents, not by direct
+# Write/Edit/Bash tool calls from the LLM.
 #
 # Protected files:
 #   .cross-review-results.json — written by PostToolUse[Agent] hook
-#   .review-disposition-* — written by the self-review subagent
+#   .review-disposition-*      — written by the self-review subagent
+#   .{stamp}-bead-*            — written by post-*-stamp.sh PostToolUse hooks
+#                                 (impeccable, agent-browser, resend, humanizer,
+#                                 context7, golden-set, verify, integration,
+#                                 self-review)
+#
+# Why: A subagent could `touch .claude/.impeccable-bead-XX` to bypass the
+# commit gate that checks stamp existence. This hook makes that touch
+# visible and blocked before it lands.
 #
 # Exit 0 = allow, Exit 2 = block
 
@@ -13,8 +23,23 @@ TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 
 CROSS_REVIEW_PATTERN='cross-review-results\.json'
 DISPOSITION_PATTERN='review-disposition-'
+# Matches .{name}-bead-{bead-id} stamp files under .claude/
+# Non-greedy so it doesn't accidentally match unrelated files.
+STAMP_PATTERN='\.claude/\.[a-z0-9_-]+-bead-[a-z0-9-]+'
 AUTH_FILE="${CLAUDE_PROJECT_DIR:-.}/.claude/.review-write-authorized"
 AUTH_TTL=1800  # seconds (30 min — enough for a thorough review)
+
+# Human-readable block message for stamp bypass attempts
+stamp_block_message() {
+  echo "BLOCKED: Stamp files under .claude/ are written by PostToolUse hooks, not directly." >&2
+  echo "" >&2
+  echo "  Stamps like .impeccable-bead-*, .agent-browser-bead-*, .verify-stamp-* are" >&2
+  echo "  created automatically when the real skill or command runs. Touching them" >&2
+  echo "  directly defeats the check the stamp was designed to enforce." >&2
+  echo "" >&2
+  echo "  → Actually invoke the skill (e.g. use the Skill tool with 'impeccable')" >&2
+  echo "  → Or actually run the command (e.g. agent-browser, bun run verify)" >&2
+}
 
 # Check if disposition write is authorized (stamp set by pre-agent-review-auth.sh)
 is_disposition_authorized() {
@@ -46,6 +71,13 @@ case "$TOOL" in
       echo "  → Spawn a self-review subagent via the Agent tool." >&2
       exit 2
     fi
+    # Stamp files: block any command that touches/writes/copies to a stamp path
+    # Catches: touch .claude/.impeccable-bead-XX, echo > path, cp src dst, mv src dst
+    # Does NOT catch exotic paths (node -e, python -c) — those are a known gap.
+    if echo "$CMD" | grep -qE "(touch|>|tee|cp |mv ).*($STAMP_PATTERN)"; then
+      stamp_block_message
+      exit 2
+    fi
     ;;
   Write)
     FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null) || exit 0
@@ -61,6 +93,11 @@ case "$TOOL" in
       fi
       echo "BLOCKED: Review disposition files are written by subagents, not directly." >&2
       echo "  → Spawn a self-review subagent via the Agent tool." >&2
+      exit 2
+    fi
+    # Stamp files: never writable via Write tool
+    if echo "$FILE" | grep -qE "$STAMP_PATTERN"; then
+      stamp_block_message
       exit 2
     fi
     ;;
@@ -79,6 +116,11 @@ case "$TOOL" in
       fi
       echo "BLOCKED: Review disposition files are written by subagents, not directly." >&2
       echo "  → Spawn a self-review subagent via the Agent tool." >&2
+      exit 2
+    fi
+    # Stamp files: never editable via Edit tool
+    if echo "$FILE" | grep -qE "$STAMP_PATTERN"; then
+      stamp_block_message
       exit 2
     fi
     ;;

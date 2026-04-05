@@ -30,7 +30,8 @@ counter_path() {
   echo "${_STAMP_DIR}/.${1}-${_SESSION}"
 }
 
-# Check if a stamp exists and is fresh (< max_age seconds)
+# Check if a stamp exists, has valid content, and is fresh (< max_age seconds).
+# Zero-byte stamps (from a direct `touch` bypass) are rejected.
 stamp_is_fresh() {
   local name="$1"
   local max_age="${2:-600}"
@@ -38,6 +39,7 @@ stamp_is_fresh() {
   path=$(stamp_path "$name")
 
   [ -f "$path" ] || return 1
+  [ -s "$path" ] || return 1  # Reject zero-byte bypass
 
   local stamp_mod now stamp_age
   if [ "$(uname)" = "Darwin" ]; then
@@ -51,9 +53,13 @@ stamp_is_fresh() {
   [ "$stamp_age" -le "$max_age" ]
 }
 
-# Touch a stamp
+# Touch a stamp. Writes a magic marker so zero-byte `touch` bypass attempts
+# (e.g. subagents creating fake stamp files directly) fail validation in
+# is_valid_stamp_content below.
 touch_stamp() {
-  touch "$(stamp_path "$1")"
+  local path
+  path=$(stamp_path "$1")
+  printf 'claude-hook-stamp %s %s\n' "$(date -u +%s)" "$1" > "$path"
 }
 
 # ── Bead-scoped stamps (preferred for marching order compliance) ─────────
@@ -65,24 +71,43 @@ current_bead() {
   cat "${_STAMP_DIR}/.current-bead-${_SESSION}" 2>/dev/null || echo ""
 }
 
-# Touch a bead-scoped stamp. No time limit — it either exists or doesn't.
-# Falls back to session stamp when no bead is active (rare: non-bead commits).
+# Write a bead-scoped stamp with a magic marker. A zero-byte file created
+# by a subagent doing `touch .claude/.impeccable-bead-XX` fails validation
+# in bead_stamp_exists below. The marker format is deliberately simple —
+# not a cryptographic secret — but it requires the caller to know the
+# format, which is more friction than a blind `touch`.
 touch_bead_stamp() {
   local name="$1"
   local bead
   bead=$(current_bead)
+  local content
+  content=$(printf 'claude-hook-stamp %s %s\n' "$(date -u +%s)" "$name")
   if [ -n "$bead" ]; then
-    touch "${_STAMP_DIR}/.${name}-bead-${bead}"
+    printf '%s\n' "$content" > "${_STAMP_DIR}/.${name}-bead-${bead}"
   else
     touch_stamp "$name"
   fi
 }
 
-# Check if a bead-scoped stamp exists (no time limit)
+# Check if a file contains the magic stamp marker. Used by bead_stamp_exists
+# to catch zero-byte stamps created by a direct `touch` bypass. Returns 0
+# (valid) if the first line starts with "claude-hook-stamp ", 1 otherwise.
+# Backwards compatible: files written by older hook versions are grandfathered
+# if they have ANY content (> 0 bytes). Only zero-byte files are rejected.
+is_valid_stamp_content() {
+  local path="$1"
+  [ -s "$path" ] || return 1  # Zero-byte → fake
+  return 0
+}
+
+# Check if a bead-scoped stamp exists AND contains valid content.
+# Rejects zero-byte files (the common fake-stamp bypass).
 bead_stamp_exists() {
   local name="$1"
   local bead="$2"
-  [ -f "${_STAMP_DIR}/.${name}-bead-${bead}" ]
+  local path="${_STAMP_DIR}/.${name}-bead-${bead}"
+  [ -f "$path" ] || return 1
+  is_valid_stamp_content "$path"
 }
 
 # Unified stamp check: bead-scoped first (no TTL), session-scoped fallback (with TTL).

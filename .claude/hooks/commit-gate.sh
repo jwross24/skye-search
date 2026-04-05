@@ -27,6 +27,24 @@ if ! echo "$CMD" | grep -Eq 'git\s+commit'; then
   exit 0
 fi
 
+# ── Worktree detection ────────────────────────────────────────────────
+# Commits inside a git worktree (used by implementation subagents for
+# isolation) should only enforce a MINIMAL gate set:
+#   - no --no-verify, no git add -A, verify stamp
+# The full gate set (impeccable, agent-browser, resend, self-review) runs
+# when the main context merges the worktree branch and commits on main.
+# Rationale: impeccable + agent-browser + self-review are main-context-only
+# steps per worktree-bead-workflow.md — requiring them in the worktree forces
+# the subagent to either invoke skills it shouldn't, OR fake stamps.
+# Both are failure modes. Scoping the gate to main-branch commits removes
+# the bad incentive entirely.
+MAIN_REPO_DIR="${CLAUDE_PROJECT_DIR:-.}"
+CURRENT_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+IS_WORKTREE=false
+if [ -n "$CURRENT_TOPLEVEL" ] && [ "$CURRENT_TOPLEVEL" != "$MAIN_REPO_DIR" ]; then
+  IS_WORKTREE=true
+fi
+
 # ── Check 1: --no-verify ────────────────────────────────────────────────
 
 if echo "$CMD" | grep -Eq '\-\-no-verify'; then
@@ -88,8 +106,9 @@ fi
 # (e.g., mentioning ".tsx" in a commit message description).
 
 # ── Check 3: Agent-browser stamp (UI beads with .tsx) ───────────────────
+# Skipped inside worktrees — main-context-only gate.
 
-if [ "$HAS_TSX" = "true" ]; then
+if [ "$HAS_TSX" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
   if ! has_stamp "agent-browser"; then
     echo "BLOCKED: UI bead detected but agent-browser verification was not run." >&2
     echo "" >&2
@@ -102,8 +121,9 @@ if [ "$HAS_TSX" = "true" ]; then
 fi
 
 # ── Check 4: Impeccable stamp (UI beads with .tsx) ──────────────────────
+# Skipped inside worktrees — main-context-only gate.
 
-if [ "$HAS_TSX" = "true" ]; then
+if [ "$HAS_TSX" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
   if ! has_stamp "impeccable"; then
     echo "BLOCKED: .tsx files staged but /impeccable skill was not invoked." >&2
     echo "" >&2
@@ -113,8 +133,9 @@ if [ "$HAS_TSX" = "true" ]; then
 fi
 
 # ── Check 5: Resend stamp (email beads) ─────────────────────────────────
+# Skipped inside worktrees — main-context-only gate.
 
-if [ "$HAS_EMAIL" = "true" ]; then
+if [ "$HAS_EMAIL" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
   if ! has_stamp "resend"; then
     echo "BLOCKED: Email files staged but /resend skill was not invoked." >&2
     echo "" >&2
@@ -142,8 +163,13 @@ if [ "$HAS_SERVER_ACTION" = "true" ]; then
 fi
 
 # ── Check 7: Self-review disposition (commits with src/supabase changes) ──
+# Skipped inside worktrees — the self-review subagent is spawned by the
+# main context AFTER merging the worktree branch, so the disposition file
+# is guaranteed to be missing during the worktree commit. Enforcing it
+# here would force subagents to fake it. The main-context merge commit
+# gets the real gate.
 
-if [ "$HAS_CODE_CHANGES" = "true" ]; then
+if [ "$HAS_CODE_CHANGES" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
   # Check for ANY disposition file for this session (not bead-specific,
   # since extracting bead ID from commit msg is fragile)
   # Check for session-prefixed disposition files (canonical)
