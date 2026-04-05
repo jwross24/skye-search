@@ -2,10 +2,13 @@ import { redirect } from 'next/navigation'
 import { DailyBatch } from '@/components/jobs/daily-batch'
 import { BreakCard } from '@/components/jobs/break-card'
 import { JobsHeader } from '@/components/jobs/jobs-header'
+import { CalibrationCard } from '@/components/jobs/calibration-card'
 import { createClient } from '@/db/supabase-server'
 import type { UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
 import { getBatchSize, type EmploymentMode } from '@/lib/batch-sizing'
+import { isCalibrationWindow } from '@/lib/calibration-window'
+import { getCalibrationPicks } from '@/app/jobs/calibration-actions'
 
 export default async function JobsPage() {
   const supabase = await createClient()
@@ -161,9 +164,18 @@ export default async function JobsPage() {
   const breakModeUntilRaw = userResult.data?.break_mode_until as string | null
   const breakModeUntil = breakModeUntilRaw && new Date(breakModeUntilRaw) > new Date() ? breakModeUntilRaw : null
 
+  // ─── Calibration window check ─────────────────────────────────────────
+  const inCalibrationWindow = isCalibrationWindow(new Date())
+  const calibrationResult = inCalibrationWindow ? await getCalibrationPicks() : { picks: [] }
+  const calibrationPicks = calibrationResult.picks
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
       <JobsHeader />
+
+      {calibrationPicks.length > 0 && (
+        <CalibrationCard picks={calibrationPicks} />
+      )}
 
       {breakModeUntil ? (
         <BreakCard breakModeUntil={breakModeUntil} />
