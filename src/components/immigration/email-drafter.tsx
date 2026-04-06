@@ -56,7 +56,7 @@ ${data.fullName}`
 function buildI983Body(data: EmailTemplateData): string {
   return `Hi ${data.dsoName},
 
-I have accepted a cap-exempt role at [New Employer]. Attached is my I-983 training plan for your review. My unemployment clock should pause at ${data.daysUsed} days used once my employment is confirmed.
+I have accepted a cap-exempt role at [New Employer]. Attached is my I-983 training plan for your review. My unemployment clock should reflect ${data.daysUsed} days used, as the clock pauses from my employment start date upon your confirmation.
 
 Please let me know if you need any additional information or if there are any corrections needed to the training plan.
 
@@ -67,7 +67,7 @@ ${data.fullName}`
 function buildPremiumProcessingBody(data: EmailTemplateData): string {
   return `Hi ${data.hrContact},
 
-Given my STEM OPT expires on ${formatDate(data.optExpiry)}, I would like to request that we file my H-1B petition via Premium Processing. The current fee is $2,805 with a 15-business-day adjudication window — this gives us the most reliable timeline given my work authorization deadline.
+Given my STEM OPT expires on ${formatDate(data.optExpiry)}, I would like to request that we file my H-1B petition via Premium Processing. The current fee is $2,805 with a 15-business-day adjudication window. This gives us the most reliable timeline given my work authorization deadline.
 
 I am happy to discuss the timeline or provide any documentation that would help move this forward quickly.
 

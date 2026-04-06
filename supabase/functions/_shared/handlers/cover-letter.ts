@@ -312,7 +312,7 @@ async function execute(task: TaskRow): Promise<TaskResult> {
     return { success: false, error: `Failed to store document: ${docError?.message ?? 'unknown'}`, permanent: false }
   }
 
-  // 7. Link document to application (merge, don't overwrite — preserves existing doc links)
+  // 8. Link document to application (merge, don't overwrite — preserves existing doc links)
   const { data: existingApp } = await supabase
     .from('applications')
     .select('documents_used')

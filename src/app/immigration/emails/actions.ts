@@ -88,9 +88,18 @@ export async function getEmailTemplateData(): Promise<TemplateData | null> {
     (p) => p.id === 'plan_c' && p.status === 'active',
   )
 
-  // Get employer name from environment context
-  // immigration_status doesn't have an employer_name column — use a sensible default
-  const employer = 'Boston University'
+  // Derive employer name from immigration_ledger (the most recent employed entry)
+  // Falls back to immigration_status employment_start context, then a placeholder
+  const { data: ledgerRow } = await supabase
+    .from('immigration_ledger')
+    .select('employer_name')
+    .eq('user_id', user.id)
+    .eq('status_type', 'employed')
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const employer: string = ledgerRow?.employer_name ?? '[Employer]'
 
   return {
     postdocEndDate: immRow?.postdoc_end_date ?? null,

@@ -99,18 +99,24 @@ export async function getCoverLetterStatus(applicationId: string): Promise<Cover
     }
   }
 
-  // Check for in-flight generation task
+  // Check for in-flight generation task — filter by application_id to avoid
+  // returning a stale/wrong status when multiple applications have pending tasks.
+  // payload_json is JSONB so we filter server-side using the ->> operator.
   const { data: tasks } = await supabase
     .from('task_queue')
-    .select('id, status, error_log, result_json')
+    .select('id, status, error_log, result_json, payload_json')
     .eq('user_id', user.id)
     .eq('task_type', 'tailor_cover_letter')
     .order('created_at', { ascending: false })
-    .limit(1)
+    .limit(10) // fetch recent tasks, filter by application_id below
 
   if (!tasks || tasks.length === 0) return { status: 'none' }
 
-  const task = tasks[0]
+  // Find the task matching this specific application
+  const task = tasks.find(
+    (t) => (t.payload_json as Record<string, unknown>)?.application_id === applicationId,
+  )
+  if (!task) return { status: 'none' }
 
   if (task.status === 'pending' || task.status === 'processing') {
     return { status: 'generating', taskId: task.id }

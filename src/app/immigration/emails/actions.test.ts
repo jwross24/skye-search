@@ -20,7 +20,7 @@ const TEST_USER_ID = 'test-user-uuid'
 
 function makeChain(returnData: unknown, error: unknown = null) {
   const chain: Record<string, unknown> = {}
-  const methods = ['select', 'eq', 'in', 'maybeSingle', 'single']
+  const methods = ['select', 'eq', 'in', 'order', 'limit', 'maybeSingle', 'single']
   for (const m of methods) {
     chain[m] = () => chain
   }
@@ -66,6 +66,7 @@ describe('getEmailTemplateData', () => {
       if (table === 'users') return userChain
       if (table === 'plans') return plansChain
       if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return makeChain(null)
       return makeChain(null)
     })
 
@@ -81,6 +82,8 @@ describe('getEmailTemplateData', () => {
     expect(result!.planCActive).toBe(false)
     expect(result!.offerAccepted).toBe(false)
     expect(typeof result!.hrContact).toBe('string')
+    // employer falls back to placeholder when ledger returns null
+    expect(result!.employer).toBe('[Employer]')
   })
 
   it('uses fallback name from email when profile has no full_name', async () => {
@@ -100,6 +103,7 @@ describe('getEmailTemplateData', () => {
       if (table === 'users') return userChain
       if (table === 'plans') return plansChain
       if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return makeChain(null)
       return makeChain(null)
     })
 
@@ -126,6 +130,7 @@ describe('getEmailTemplateData', () => {
       if (table === 'users') return userChain
       if (table === 'plans') return plansChain
       if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return makeChain(null)
       return makeChain(null)
     })
 
@@ -152,6 +157,7 @@ describe('getEmailTemplateData', () => {
       if (table === 'users') return userChain
       if (table === 'plans') return plansChain
       if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return makeChain(null)
       return makeChain(null)
     })
 
@@ -184,6 +190,7 @@ describe('getEmailTemplateData', () => {
       if (table === 'users') return userChain
       if (table === 'plans') return plansChain
       if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return makeChain(null)
       return makeChain(null)
     })
 
@@ -220,5 +227,33 @@ describe('getEmailTemplateData', () => {
 
     expect(result).not.toBeNull()
     expect(result!.offerAccepted).toBe(true)
+  })
+
+  it('uses employer_name from immigration_ledger when available', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: TEST_USER_ID, email: 'test@test.com' } },
+    })
+
+    const immChain = makeChain({ postdoc_end_date: null, opt_expiry: null, employment_active: true, initial_days_used: 0 })
+    const clockChain = makeChain(null)
+    const userChain = makeChain({ profile: {} })
+    const plansChain = makeChain([])
+    const appsChain = makeChain([])
+    const ledgerChain = makeChain({ employer_name: 'Boston University' })
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'immigration_status') return immChain
+      if (table === 'immigration_clock') return clockChain
+      if (table === 'users') return userChain
+      if (table === 'plans') return plansChain
+      if (table === 'applications') return appsChain
+      if (table === 'immigration_ledger') return ledgerChain
+      return makeChain(null)
+    })
+
+    const result = await getEmailTemplateData()
+
+    expect(result).not.toBeNull()
+    expect(result!.employer).toBe('Boston University')
   })
 })
