@@ -152,12 +152,12 @@ export async function logCalibrationConfirmed(
   const weekStart = getCalibrationWeekStart(new Date())
   const weekStartIso = weekStart.toISOString().split('T')[0]
 
-  const { error } = await supabase.from('calibration_log').insert({
+  const { error } = await supabase.from('calibration_log').upsert({
     user_id: user.id,
     job_id: jobId,
     feedback_type: 'confirmed',
     calibration_week: weekStartIso,
-  })
+  }, { onConflict: 'user_id,job_id,calibration_week', ignoreDuplicates: true })
 
   if (error) return { success: false, error: error.message }
 
@@ -178,14 +178,14 @@ export async function logCalibrationTooHigh(
   const weekStart = getCalibrationWeekStart(new Date())
   const weekStartIso = weekStart.toISOString().split('T')[0]
 
-  // 1. Insert calibration log row
-  const { error: logErr } = await supabase.from('calibration_log').insert({
+  // 1. Insert calibration log row (idempotent — ignore if already exists)
+  const { error: logErr } = await supabase.from('calibration_log').upsert({
     user_id: user.id,
     job_id: jobId,
     feedback_type: 'too_high',
     tag,
     calibration_week: weekStartIso,
-  })
+  }, { onConflict: 'user_id,job_id,calibration_week', ignoreDuplicates: true })
 
   if (logErr) return { success: false, error: logErr.message }
 

@@ -68,6 +68,10 @@ vi.mock('@/db/supabase-server', () => ({
             lastInsertData = data
             return { then: (resolve: (v: unknown) => unknown) => resolve({ error: null }) }
           }),
+          upsert: vi.fn((data: Record<string, unknown>) => {
+            lastInsertData = data
+            return { then: (resolve: (v: unknown) => unknown) => resolve({ error: null }) }
+          }),
         }
       }
       if (table === 'immigration_status') {
@@ -204,6 +208,13 @@ describe('logCalibrationConfirmed', () => {
       feedback_type: 'confirmed',
     })
     expect(lastInsertData.calibration_week).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('handles double-call idempotently (upsert with ignoreDuplicates)', async () => {
+    const result1 = await logCalibrationConfirmed('job-double')
+    const result2 = await logCalibrationConfirmed('job-double')
+    expect(result1.success).toBe(true)
+    expect(result2.success).toBe(true)
   })
 })
 
