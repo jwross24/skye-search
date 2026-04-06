@@ -198,6 +198,19 @@ export function ImmigrationHQ({
               </p>
             </div>
 
+            {/* Plan C: Day 1 CPT link */}
+            <div className="mt-4">
+              <Link
+                href="/immigration/plan-c"
+                className="text-sm text-ocean hover:text-ocean-deep transition-colors"
+              >
+                Plan C: Day 1 CPT →
+              </Link>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                School comparison table and safety checklist
+              </p>
+            </div>
+
             {/* Employment toggle */}
             <div className="mt-8 border-t border-border/50 pt-6">
               <EmploymentToggle
