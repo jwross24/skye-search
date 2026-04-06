@@ -24,6 +24,8 @@ export function MomentumBanner({ message, milestone }: MomentumBannerProps) {
     }
   }, [milestone?.key])
 
+  if (!message && !milestone) return null
+
   return (
     <div className="mb-4 space-y-1">
       {message && (
