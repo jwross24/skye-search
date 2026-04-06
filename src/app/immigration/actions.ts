@@ -70,6 +70,46 @@ export async function toggleEmployment(isEmployed: boolean, startDate?: string) 
   return { success: true }
 }
 
+export async function confirmEmployment(
+  stillActive: boolean,
+  endDate?: string,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  if (stillActive) {
+    // User confirms job is still active — reset 30-day timer
+    const { error } = await supabase
+      .from('immigration_status')
+      .update({ last_employment_confirmed_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+
+    if (error) return { success: false, error: error.message }
+    revalidatePath('/immigration')
+    return { success: true }
+  }
+
+  // User says job ended — set employment_active=false, store end date
+  const updateData: Record<string, unknown> = {
+    employment_active: false,
+    employment_active_since: null,
+    last_employment_confirmed_at: null,
+  }
+  if (endDate) {
+    updateData.employment_end_date = endDate
+  }
+
+  const { error } = await supabase
+    .from('immigration_status')
+    .update(updateData)
+    .eq('user_id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/immigration')
+  return { success: true }
+}
+
 export async function updatePostdocEndDate(newEndDate: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

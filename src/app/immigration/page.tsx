@@ -46,6 +46,16 @@ export default async function ImmigrationPage() {
     .eq('id', user.id)
     .single()
 
+  // ─── Query employer name (most recent E-Verify enrollment) ────────────
+
+  const { data: enrollmentRow } = await supabase
+    .from('e_verify_enrollments')
+    .select('employer_name')
+    .eq('user_id', user.id)
+    .order('enrollment_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
   // ─── Map DB rows to component props ────────────────────────────────────
   // Keep existing component interface to minimize changes downstream.
 
@@ -74,6 +84,9 @@ export default async function ImmigrationPage() {
 
   const lastCronRun = lastCron?.completed_at ?? null
   const disclaimerAcked = !!userRow?.disclaimer_acknowledged_at
+  const lastEmploymentConfirmedAt = immRow?.last_employment_confirmed_at ?? null
+  const employmentActiveSince = immRow?.employment_active_since ?? null
+  const employerName = enrollmentRow?.employer_name ?? null
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
@@ -92,6 +105,9 @@ export default async function ImmigrationPage() {
         plans={plans}
         lastCronRun={lastCronRun}
         disclaimerAcked={disclaimerAcked}
+        lastEmploymentConfirmedAt={lastEmploymentConfirmedAt}
+        employmentActiveSince={employmentActiveSince}
+        employerName={employerName}
       />
     </div>
   )

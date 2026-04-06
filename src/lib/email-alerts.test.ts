@@ -34,4 +34,12 @@ describe('shouldSuppressForBreakMode', () => {
   it('does NOT suppress cron_failure during break mode (developer alert)', () => {
     expect(shouldSuppressForBreakMode(futureBreak, 'cron_failure')).toBe(false)
   })
+
+  it('suppresses employment_confirmation during break mode (non-critical)', () => {
+    expect(shouldSuppressForBreakMode(futureBreak, 'employment_confirmation')).toBe(true)
+  })
+
+  it('does NOT suppress employment_confirmation when break mode is null', () => {
+    expect(shouldSuppressForBreakMode(null, 'employment_confirmation')).toBe(false)
+  })
 })

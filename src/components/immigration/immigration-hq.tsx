@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ClockDisplay } from './clock-display'
 import { CalibrationFlow } from './calibration-flow'
 import { DisclaimerBanner } from './disclaimer-banner'
+import { EmploymentConfirmationBanner } from './employment-confirmation-banner'
 import { EmploymentToggle, type EmploymentData } from './employment-toggle'
 import { PostdocExtension } from './postdoc-extension'
 import { StrategyMap } from './strategy-map'
@@ -19,6 +20,9 @@ interface ImmigrationHQProps {
   lastCronRun?: string | null
   gapAlert?: string | null
   disclaimerAcked?: boolean
+  lastEmploymentConfirmedAt?: string | null
+  employmentActiveSince?: string | null
+  employerName?: string | null
 }
 
 export function ImmigrationHQ({
@@ -28,6 +32,9 @@ export function ImmigrationHQ({
   lastCronRun = null,
   gapAlert = null,
   disclaimerAcked: initialDisclaimerAcked = false,
+  lastEmploymentConfirmedAt = null,
+  employmentActiveSince: employmentActiveSinceProp = null,
+  employerName = null,
 }: ImmigrationHQProps) {
   const [disclaimerAcked, setDisclaimerAcked] = useState(initialDisclaimerAcked)
   const [calibrated, setCalibrated] = useState(
@@ -136,6 +143,15 @@ export function ImmigrationHQ({
           <CalibrationFlow
             onComplete={handleCalibration}
             initialDaysUsed={daysUsed > 0 ? daysUsed : undefined}
+          />
+        )}
+
+        {/* Employment confirmation — shown when employed and needs check-in */}
+        {calibrated && employed && (
+          <EmploymentConfirmationBanner
+            employerName={employerName}
+            lastConfirmedAt={lastEmploymentConfirmedAt}
+            employmentActiveSince={employmentActiveSinceProp}
           />
         )}
 

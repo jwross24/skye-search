@@ -741,6 +741,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used: number
+          last_employment_confirmed_at: string | null
           niw_filing_date: string | null
           niw_priority_date: string | null
           niw_status: string | null
@@ -769,6 +770,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used?: number
+          last_employment_confirmed_at?: string | null
           niw_filing_date?: string | null
           niw_priority_date?: string | null
           niw_status?: string | null
@@ -797,6 +799,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used?: number
+          last_employment_confirmed_at?: string | null
           niw_filing_date?: string | null
           niw_priority_date?: string | null
           niw_status?: string | null

@@ -12,6 +12,7 @@ vi.mock('@/app/immigration/actions', () => ({
   saveCalibration: vi.fn().mockResolvedValue({ success: true }),
   acknowledgeDisclaimer: vi.fn().mockResolvedValue({ success: true }),
   toggleEmployment: vi.fn().mockResolvedValue({ success: true }),
+  confirmEmployment: vi.fn().mockResolvedValue({ success: true }),
   updatePostdocEndDate: vi.fn().mockResolvedValue({ success: true, corrections_count: 0, old_end_date: '2026-04-11', new_end_date: '2026-07-01' }),
 }))
 

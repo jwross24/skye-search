@@ -4,11 +4,12 @@ import { UnemploymentDigest } from './email-templates/templates/unemployment-dig
 import { DeadlineAlert } from './email-templates/templates/deadline-alert'
 import { CronFailureAlert } from './email-templates/templates/cron-failure'
 import { BudgetAlert } from './email-templates/templates/budget-alert'
+import { EmploymentConfirmation } from './email-templates/templates/employment-confirmation'
 import { getSpendSummary } from './budget-guard'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type AlertType = 'unemployment_digest' | 'deadline_72h' | 'cron_failure' | 'budget_alert'
+export type AlertType = 'unemployment_digest' | 'deadline_72h' | 'cron_failure' | 'budget_alert' | 'employment_confirmation'
 
 export interface AlertResult {
   userId: string
@@ -120,6 +121,12 @@ export async function checkAndSendAlerts(
   // ─── Check 4: Budget alert (operational — always bypass break mode) ────
   const budgetResult = await checkBudgetAlert(userId, userEmail, today)
   if (budgetResult) results.push(budgetResult)
+
+  // ─── Check 5: Employment confirmation (non-critical — suppressed by break mode) ─
+  const employmentResult = await checkEmploymentConfirmation(
+    supabase, userId, userEmail, today, breakModeUntil,
+  )
+  if (employmentResult) results.push(employmentResult)
 
   return results
 }
@@ -491,6 +498,93 @@ async function checkBudgetAlert(
     return {
       userId,
       alertType: 'budget_alert',
+      sent: false,
+      reason: err instanceof Error ? err.message : String(err),
+    }
+  }
+}
+
+// ─── Check 5: Employment confirmation ──────────────────────────────────────
+
+async function checkEmploymentConfirmation(
+  supabase: ReturnType<typeof createAlertClient>,
+  userId: string,
+  userEmail: string,
+  today: string,
+  breakModeUntil: string | null,
+): Promise<AlertResult | null> {
+  // Non-critical alert — suppressed by break mode
+  if (shouldSuppressForBreakMode(breakModeUntil, 'employment_confirmation')) {
+    return { userId, alertType: 'employment_confirmation', sent: false, reason: 'break_mode' }
+  }
+
+  const { data: immRow } = await supabase
+    .from('immigration_status')
+    .select('employment_active, employment_active_since, last_employment_confirmed_at')
+    .eq('user_id', userId)
+    .single()
+
+  if (!immRow || !immRow.employment_active) return null
+
+  const now = new Date(today + 'T00:00:00Z')
+
+  // Check if confirmation is needed
+  const lastConfirmed = immRow.last_employment_confirmed_at
+    ? new Date(immRow.last_employment_confirmed_at)
+    : null
+  const activeSince = immRow.employment_active_since
+    ? new Date(immRow.employment_active_since)
+    : null
+
+  if (lastConfirmed) {
+    // Has been confirmed before — only alert if >30 days ago
+    const daysSinceConfirmed = Math.floor(
+      (now.getTime() - lastConfirmed.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    if (daysSinceConfirmed < 30) return null
+  } else if (activeSince) {
+    // Never confirmed — only alert if active >7 days
+    const daysSinceActive = Math.floor(
+      (now.getTime() - activeSince.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    if (daysSinceActive < 7) return null
+  } else {
+    // No active_since and no confirmed_at — skip
+    return null
+  }
+
+  // Get employer name for the email
+  const { data: enrollmentRow } = await supabase
+    .from('e_verify_enrollments')
+    .select('employer_name')
+    .eq('user_id', userId)
+    .order('enrollment_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const employerName = enrollmentRow?.employer_name ?? null
+  const daysSinceConfirmed = lastConfirmed
+    ? Math.floor((now.getTime() - lastConfirmed.getTime()) / (1000 * 60 * 60 * 24))
+    : null
+
+  const idempotencyKey = `employment-confirmation/${userId}/${today}`
+
+  try {
+    const { id } = await sendEmail({
+      to: userEmail,
+      subject: 'Quick check: Is your bridge role still active?',
+      react: EmploymentConfirmation({
+        employerName,
+        daysSinceConfirmed,
+      }),
+      idempotencyKey,
+    })
+
+    return { userId, alertType: 'employment_confirmation', sent: true, messageId: id }
+  } catch (err) {
+    return {
+      userId,
+      alertType: 'employment_confirmation',
       sent: false,
       reason: err instanceof Error ? err.message : String(err),
     }
