@@ -14,6 +14,7 @@ const mockAuthenticateAdmin = vi.mocked(authenticateAdmin)
 function chainable(terminal: Record<string, unknown> = {}): Record<string, unknown> {
   const handler: ProxyHandler<Record<string, unknown>> = {
     get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined
       if (prop === 'then') return undefined // not a thenable
       if (prop in terminal) return terminal[prop]
       // Terminal values for count queries

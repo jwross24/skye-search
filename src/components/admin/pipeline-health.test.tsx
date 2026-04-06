@@ -40,8 +40,9 @@ describe('PipelineHealth', () => {
   })
 
   it('handles missing linkValidation gracefully', () => {
-    const dataWithout = { ...mockData, linkValidation: undefined }
-    render(<PipelineHealth data={dataWithout as typeof mockData} loading={false} />)
+    const { linkValidation, ...dataWithout } = mockData
+    void linkValidation // suppress unused warning
+    render(<PipelineHealth data={dataWithout as unknown as typeof mockData} loading={false} />)
 
     expect(screen.getByText('Discovery')).toBeInTheDocument()
     expect(screen.queryByText('Link Freshness')).not.toBeInTheDocument()
