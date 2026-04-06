@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'crypto'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
 import { CronFailureAlert } from '@/lib/email-templates/templates/cron-failure'
 
@@ -33,6 +34,32 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // ─── Reaper: clear zombie tasks stuck in 'processing' >30 min ────────
+  // Edge Functions can crash/timeout without updating task status.
+  // This watchdog auto-clears them so the queue stays healthy.
+  let reaped = 0
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SECRET_KEY!,
+    )
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    const { data: zombies } = await supabase
+      .from('task_queue')
+      .update({
+        status: 'failed_validation' as const,
+        error_log: 'Reaped by healthcheck: stuck in processing >30min',
+        dead_lettered_at: new Date().toISOString(),
+      })
+      .eq('status', 'processing')
+      .lt('created_at', thirtyMinAgo)
+      .select('id')
+
+    reaped = zombies?.length ?? 0
+  } catch {
+    // Reaper failure is non-fatal — health check proceeds
+  }
+
   // ─── Health check ─────────────────────────────────────────────────────
   try {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -47,7 +74,7 @@ async function handler(req: NextRequest) {
     const body = await res.json()
 
     if (body.status === 'ready') {
-      return NextResponse.json({ status: 'ok', health: 'ready' })
+      return NextResponse.json({ status: 'ok', health: 'ready', reaped })
     }
 
     // ─── Degraded — build alert details ───────────────────────────────
@@ -65,6 +92,7 @@ async function handler(req: NextRequest) {
       status: sent ? 'alerted' : 'degraded_no_recipient',
       health: body.status,
       failedChecks,
+      reaped,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
@@ -74,6 +102,7 @@ async function handler(req: NextRequest) {
       status: sent ? 'alerted' : 'degraded_no_recipient',
       health: 'unreachable',
       error: message,
+      reaped,
     })
   }
 }
