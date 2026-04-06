@@ -15,7 +15,9 @@ vi.mock('@/lib/link-validator', () => ({
 
 const { mockUpdate, mockIdempotencyCheck, mockJobsQuery } = vi.hoisted(() => ({
   mockUpdate: vi.fn().mockReturnValue({
-    eq: vi.fn().mockResolvedValue({ error: null }),
+    eq: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    }),
   }),
   mockIdempotencyCheck: vi.fn(),
   mockJobsQuery: vi.fn(),

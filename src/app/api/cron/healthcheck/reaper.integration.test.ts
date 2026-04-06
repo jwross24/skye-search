@@ -32,7 +32,7 @@ async function getTestUserId(): Promise<string> {
 async function insertTask(overrides: {
   userId: string
   status: string
-  createdAt: string
+  updatedAt: string
   taskType?: string
 }): Promise<string> {
   const { data, error } = await supabase
@@ -41,7 +41,7 @@ async function insertTask(overrides: {
       user_id: overrides.userId,
       task_type: overrides.taskType ?? 'ai_score_batch',
       status: overrides.status,
-      created_at: overrides.createdAt,
+      updated_at: overrides.updatedAt,
       payload_json: {},
     })
     .select('id')
@@ -67,12 +67,12 @@ describe('Zombie task reaper (healthcheck cron)', () => {
   })
 
   it('reaps tasks stuck in processing for >30 minutes', async () => {
-    // Insert a task stuck in 'processing' from 2 hours ago
+    // Insert a task stuck in 'processing' — updated_at (when dequeued) was 2 hours ago
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
     const taskId = await insertTask({
       userId,
       status: 'processing',
-      createdAt: twoHoursAgo,
+      updatedAt: twoHoursAgo,
     })
 
     // Simulate what the reaper does (same logic as healthcheck route)
@@ -85,7 +85,7 @@ describe('Zombie task reaper (healthcheck cron)', () => {
         dead_lettered_at: new Date().toISOString(),
       })
       .eq('status', 'processing')
-      .lt('created_at', thirtyMinAgo)
+      .lt('updated_at', thirtyMinAgo)
       .select('id')
 
     const reapedIds = (reaped ?? []).map(r => r.id)
@@ -104,12 +104,12 @@ describe('Zombie task reaper (healthcheck cron)', () => {
   })
 
   it('does NOT reap tasks processing for <30 minutes (normal operation)', async () => {
-    // Insert a task that just started processing 5 minutes ago
+    // Insert a task that just started processing 5 minutes ago (updated_at is recent)
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     const taskId = await insertTask({
       userId,
       status: 'processing',
-      createdAt: fiveMinAgo,
+      updatedAt: fiveMinAgo,
     })
 
     // Run reaper
@@ -122,7 +122,7 @@ describe('Zombie task reaper (healthcheck cron)', () => {
         dead_lettered_at: new Date().toISOString(),
       })
       .eq('status', 'processing')
-      .lt('created_at', thirtyMinAgo)
+      .lt('updated_at', thirtyMinAgo)
       .select('id')
 
     const reapedIds = (reaped ?? []).map(r => r.id)
@@ -147,7 +147,7 @@ describe('Zombie task reaper (healthcheck cron)', () => {
     const pendingId = await insertTask({
       userId,
       status: 'pending',
-      createdAt: twoHoursAgo,
+      updatedAt: twoHoursAgo,
     })
 
     // Run reaper
@@ -160,7 +160,7 @@ describe('Zombie task reaper (healthcheck cron)', () => {
         dead_lettered_at: new Date().toISOString(),
       })
       .eq('status', 'processing')
-      .lt('created_at', thirtyMinAgo)
+      .lt('updated_at', thirtyMinAgo)
       .select('id')
 
     const reapedIds = (reaped ?? []).map(r => r.id)

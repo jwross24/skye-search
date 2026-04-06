@@ -30,9 +30,9 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
   }
 
-  const a = Buffer.from(secret ?? '')
   const b = Buffer.from(process.env.CRON_SECRET)
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  const a = Buffer.from(secret ?? '')
+  if (!secret || a.length !== b.length || !timingSafeEqual(a, b)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -102,7 +102,7 @@ async function handler(req: NextRequest) {
         (j): j is { id: string; url: string; content_hash: string | null } => j.url !== null,
       )
 
-      const results = await validateJobBatch(batch)
+      const results = await validateJobBatch(batch, BATCH_SIZE)
 
       // Update each result in the database
       for (const result of results) {
@@ -120,6 +120,7 @@ async function handler(req: NextRequest) {
           .from('discovered_jobs')
           .update(updateData)
           .eq('id', result.discoveredJobId)
+          .eq('user_id', userId)
       }
     }
 

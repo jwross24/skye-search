@@ -52,7 +52,7 @@ async function handler(req: NextRequest) {
         dead_lettered_at: new Date().toISOString(),
       })
       .eq('status', 'processing')
-      .lt('created_at', thirtyMinAgo)
+      .lt('updated_at', thirtyMinAgo)
       .select('id')
 
     reaped = zombies?.length ?? 0

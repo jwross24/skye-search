@@ -97,6 +97,7 @@ export async function selectTopPicks(
     supabase
       .from('discovered_jobs')
       .select('id')
+      .eq('user_id', userId)
       .in('validation_status', ['dead_link', 'closed']),
   ])
 
