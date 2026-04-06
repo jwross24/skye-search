@@ -20,7 +20,7 @@ function chainable(terminal: Record<string, unknown> = {}): Record<string, unkno
       if (prop === 'count') return 0
       if (prop === 'data') return []
       // Return chainable for any method call
-      return (..._args: unknown[]) => new Proxy({}, handler)
+      return () => new Proxy({}, handler)
     },
   }
   return new Proxy({}, handler)
