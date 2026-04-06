@@ -211,17 +211,17 @@ export async function logCalibrationTooHigh(
       const newConfidence = downgradeMap[confidence]
 
       if (newConfidence && newConfidence !== confidence) {
-        // Find employer in cap_exempt_employers (case-insensitive match by employer_name or aliases)
+        // Find employer in cap_exempt_employers by name (case-insensitive, DB-side).
+        // Use ilike instead of fetching the full table (~600 rows) and filtering in JS.
+        // Alias matching still requires client-side filtering — only fetch candidate rows first.
         const { data: employers } = await supabase
           .from('cap_exempt_employers')
           .select('id, employer_name, aliases, confidence_level')
+          .ilike('employer_name', job.company)
+          .limit(1)
 
-        const companyLower = job.company.toLowerCase()
-        const match = (employers ?? []).find((emp) => {
-          if (emp.employer_name?.toLowerCase() === companyLower) return true
-          const aliases = emp.aliases as string[] | null
-          return aliases?.some((a: string) => a.toLowerCase() === companyLower)
-        })
+        // If ilike found a match, use it. Otherwise fall through (no match, no update).
+        const match = employers?.[0] ?? null
 
         if (match && match.id) {
           await supabase

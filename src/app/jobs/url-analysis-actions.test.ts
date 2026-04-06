@@ -128,6 +128,20 @@ describe('analyzeJobUrl', () => {
     expect(result.error).toBe('Invalid URL')
   })
 
+  it.each([
+    'http://127.0.0.1/admin',
+    'http://localhost/admin',
+    'http://10.0.0.1/metadata',
+    'http://169.254.169.254/latest/meta-data/',
+    'http://192.168.1.1/',
+    'http://172.16.0.1/',
+  ])('blocks private/loopback IP in SSRF guard: %s', async (privateUrl) => {
+    const result = await analyzeJobUrl(privateUrl)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Invalid URL')
+  })
+
   it('returns error when ANTHROPIC_API_KEY is missing', async () => {
     delete process.env.ANTHROPIC_API_KEY
 

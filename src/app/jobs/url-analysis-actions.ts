@@ -53,6 +53,15 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
   if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
     return { success: false, error: 'Invalid URL' }
   }
+  // Block private/loopback IPs — SSRF guard.
+  // On Vercel, a request to 169.254.169.254 (AWS metadata API) or 127.x.x.x
+  // could exfiltrate instance credentials. URL.hostname is already lowercased.
+  const hostname = parsedUrl.hostname
+  const BLOCKED_HOSTNAME_RE =
+    /^(localhost|127\.\d+\.\d+\.\d+|0\.0\.0\.0|::1|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|169\.254\.\d+\.\d+)$/
+  if (BLOCKED_HOSTNAME_RE.test(hostname)) {
+    return { success: false, error: 'Invalid URL' }
+  }
 
   // 3. Check API key availability
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -157,7 +166,9 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
             { type: 'text', text: 'Extract the job posting details from this page:' },
             {
               type: 'text',
-              text: `<page_content url="${url}">\n${text}\n</page_content>`,
+              // Use parsedUrl.href (browser-normalized, no raw user string) to avoid
+              // XML attribute injection from crafted URL strings like https://evil.com/">...
+              text: `<page_content url="${parsedUrl.href}">\n${text}\n</page_content>`,
             },
           ],
         },

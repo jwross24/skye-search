@@ -163,8 +163,8 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
     }`
 
   // "Look it up" button appears when URL is entered and we haven't already
-  // succeeded. Stays visible after analysis fills fields — user might paste
-  // a different URL and want to re-analyze.
+  // succeeded. Hidden after a successful analysis (the success message takes over).
+  // Changing the URL resets state to 'idle' so the button reappears for re-analysis.
   const showAnalyzeButton = urlValue.trim().length > 0 && analysisState !== 'done'
 
   return (

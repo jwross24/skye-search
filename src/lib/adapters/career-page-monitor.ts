@@ -68,7 +68,7 @@ export const CAREER_PAGES: CareerPageConfig[] = [
   {
     // MBARI WordPress site with article.list-item--job-opening blocks.
     // Each article has an a.list-item__link wrapping the full card.
-    // Title is in h3.list-item__title (or falls back to h2 inside the article).
+    // Title is in h1.list-item__title (or falls back to h2 inside the article).
     key: 'mbari',
     employer_name: 'Monterey Bay Aquarium Research Institute (MBARI)',
     url: 'https://www.mbari.org/about/careers/job-openings/',
