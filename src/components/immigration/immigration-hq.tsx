@@ -169,6 +169,19 @@ export function ImmigrationHQ({
               </p>
             </div>
 
+            {/* Email drafts link */}
+            <div className="mt-4">
+              <Link
+                href="/immigration/emails"
+                className="text-sm text-ocean hover:text-ocean-deep transition-colors"
+              >
+                Email drafts →
+              </Link>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                Pre-filled templates for your DSO and HR contacts
+              </p>
+            </div>
+
             {/* Employment toggle */}
             <div className="mt-8 border-t border-border/50 pt-6">
               <EmploymentToggle
