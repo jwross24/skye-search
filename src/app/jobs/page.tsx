@@ -3,12 +3,15 @@ import { DailyBatch } from '@/components/jobs/daily-batch'
 import { BreakCard } from '@/components/jobs/break-card'
 import { JobsHeader } from '@/components/jobs/jobs-header'
 import { CalibrationCard } from '@/components/jobs/calibration-card'
+import { MomentumBanner } from '@/components/jobs/momentum-banner'
 import { createClient } from '@/db/supabase-server'
 import type { UserState } from '@/lib/urgency-scoring'
 import type { Job } from '@/types/job'
 import { getBatchSize, type EmploymentMode } from '@/lib/batch-sizing'
 import { isCalibrationWindow } from '@/lib/calibration-window'
 import { getCalibrationPicks } from '@/app/jobs/calibration-actions'
+import { getCalibrationWeekStart } from '@/lib/calibration-week'
+import { getMomentumMessage, getMilestone } from '@/lib/momentum'
 
 export default async function JobsPage() {
   const supabase = await createClient()
@@ -18,9 +21,12 @@ export default async function JobsPage() {
 
   const today = new Date().toISOString().split('T')[0]
 
+  // Monday of this week (for momentum weekly counts)
+  const mondayOfWeek = getCalibrationWeekStart(new Date()).toISOString()
+
   // ─── Parallel queries ────────────────────────────────────────────────
 
-  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult, activeOfferResult] = await Promise.all([
+  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult, activeOfferResult, weekVotesResult, weekAppsResult, totalAppsResult, activeInterviewsResult] = await Promise.all([
     supabase.from('jobs').select('*').eq('user_id', user.id)
       .or('requires_citizenship.is.null,requires_citizenship.neq.true')
       .or('requires_security_clearance.is.null,requires_security_clearance.neq.true'),
@@ -49,7 +55,7 @@ export default async function JobsPage() {
       .maybeSingle(),
     supabase
       .from('users')
-      .select('break_mode_until')
+      .select('break_mode_until, milestones_seen')
       .eq('id', user.id)
       .single(),
     // Check for active cap-exempt offer (determines employment mode for batch sizing)
@@ -61,6 +67,21 @@ export default async function JobsPage() {
       .not('job_id', 'is', null)
       .limit(1)
       .maybeSingle(),
+    // Momentum: votes cast this week (jobs reviewed)
+    supabase.from('votes').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', mondayOfWeek),
+    // Momentum: applications submitted this week
+    supabase.from('applications').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', mondayOfWeek),
+    // Momentum: total applications (lifetime)
+    supabase.from('applications').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id),
+    // Momentum: active interviews
+    supabase.from('applications').select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .in('kanban_status', ['phone_screen', 'interview', 'final_round']),
   ])
 
   // ─── Filter out already-voted / already-applied jobs ─────────────────
@@ -164,6 +185,19 @@ export default async function JobsPage() {
   const breakModeUntilRaw = userResult.data?.break_mode_until as string | null
   const breakModeUntil = breakModeUntilRaw && new Date(breakModeUntilRaw) > new Date() ? breakModeUntilRaw : null
 
+  // ─── Momentum context ─────────────────────────────────────────────────
+  const momentumCtx = {
+    jobs_reviewed_this_week: weekVotesResult.count ?? 0,
+    apps_submitted_this_week: weekAppsResult.count ?? 0,
+    total_applications: totalAppsResult.count ?? 0,
+    interviews_active: activeInterviewsResult.count ?? 0,
+    days_remaining: daysRemaining,
+    is_employed: immRow?.employment_active ?? false,
+  }
+  const seenMilestones: string[] = (userResult.data?.milestones_seen as string[] | null) ?? []
+  const momentumMessage = getMomentumMessage(momentumCtx)
+  const milestone = getMilestone(momentumCtx, seenMilestones)
+
   // ─── Calibration window check ─────────────────────────────────────────
   const inCalibrationWindow = isCalibrationWindow(new Date())
   const calibrationResult = inCalibrationWindow ? await getCalibrationPicks() : { picks: [] }
@@ -175,6 +209,13 @@ export default async function JobsPage() {
 
       {calibrationPicks.length > 0 && (
         <CalibrationCard picks={calibrationPicks} />
+      )}
+
+      {(momentumMessage || milestone) && (
+        <MomentumBanner
+          message={momentumMessage}
+          milestone={milestone}
+        />
       )}
 
       {breakModeUntil ? (
