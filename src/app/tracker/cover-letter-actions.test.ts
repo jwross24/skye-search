@@ -194,17 +194,19 @@ describe('approveCoverLetter', () => {
 describe('quickApply', () => {
   it('moves application to applied status', async () => {
     log('Step 1', 'Quick applying')
-    // Master CV lookup
+    // 1. Fetch existing documents_used
+    const existingAppChain = buildChain({ data: { documents_used: null }, error: null })
+    // 2. Master CV lookup
     const cvChain = buildChain({ data: { id: 'cv-1' }, error: null })
-
-    // Application update
+    // 3. Application update
     const appChain = buildChain()
 
     let callCount = 0
     mockSupabase.from = vi.fn(() => {
       callCount++
-      if (callCount === 1) return cvChain
-      return appChain
+      if (callCount === 1) return cvChain           // documents table (master CV)
+      if (callCount === 2) return existingAppChain   // applications (fetch existing docs)
+      return appChain                                // applications (update)
     })
 
     const { quickApply } = await import('./cover-letter-actions')
@@ -212,5 +214,37 @@ describe('quickApply', () => {
 
     expect(result.success).toBe(true)
     log('Step 2', 'Application moved to applied with master CV')
+  })
+
+  it('merges new document into existing documents_used instead of overwriting (ngi fix)', async () => {
+    log('Step 1', 'Quick applying with existing document links')
+    // 1. Fetch existing documents_used — already has doc-old
+    const existingAppChain = buildChain({ data: { documents_used: ['doc-old'] }, error: null })
+    // 2. Master CV lookup — returns cv-new
+    const cvChain = buildChain({ data: { id: 'cv-new' }, error: null })
+    // 3. Application update — capture the update payload
+    const appChain = buildChain()
+    let updatePayload: Record<string, unknown> = {}
+    ;(appChain.update as ReturnType<typeof vi.fn>).mockImplementation((data: Record<string, unknown>) => {
+      updatePayload = data
+      return appChain
+    })
+
+    let callCount = 0
+    mockSupabase.from = vi.fn(() => {
+      callCount++
+      if (callCount === 1) return cvChain
+      if (callCount === 2) return existingAppChain
+      return appChain
+    })
+
+    const { quickApply } = await import('./cover-letter-actions')
+    const result = await quickApply('app-1')
+
+    expect(result.success).toBe(true)
+    // documents_used should contain BOTH the old doc AND the new CV
+    expect(updatePayload.documents_used).toEqual(expect.arrayContaining(['doc-old', 'cv-new']))
+    expect((updatePayload.documents_used as string[]).length).toBe(2)
+    log('Step 2', 'Existing doc-old preserved alongside new cv-new')
   })
 })

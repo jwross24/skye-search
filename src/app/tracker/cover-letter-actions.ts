@@ -203,13 +203,26 @@ export async function quickApply(applicationId: string) {
     .limit(1)
     .maybeSingle()
 
-  // Move to applied status, attach master CV if available
+  // Fetch existing documents_used so we merge, not overwrite (ngi bug fix)
+  const { data: existingApp } = await supabase
+    .from('applications')
+    .select('documents_used')
+    .eq('id', applicationId)
+    .eq('user_id', user.id)
+    .single()
+
+  const existingDocs: string[] = existingApp?.documents_used ?? []
+  const mergedDocs = masterCv
+    ? [...new Set([...existingDocs, masterCv.id])]
+    : existingDocs
+
+  // Move to applied status, attach merged document list
   const { error } = await supabase
     .from('applications')
     .update({
       kanban_status: 'applied',
       applied_date: new Date().toISOString().split('T')[0],
-      ...(masterCv ? { documents_used: [masterCv.id] } : {}),
+      documents_used: mergedDocs,
     })
     .eq('id', applicationId)
     .eq('user_id', user.id)

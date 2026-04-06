@@ -312,10 +312,19 @@ async function execute(task: TaskRow): Promise<TaskResult> {
     return { success: false, error: `Failed to store document: ${docError?.message ?? 'unknown'}`, permanent: false }
   }
 
-  // 7. Link document to application
+  // 7. Link document to application (merge, don't overwrite — preserves existing doc links)
+  const { data: existingApp } = await supabase
+    .from('applications')
+    .select('documents_used')
+    .eq('id', payload.application_id)
+    .single()
+
+  const existingDocs: string[] = existingApp?.documents_used ?? []
+  const mergedDocs = [...new Set([...existingDocs, docRow.id])]
+
   const { error: linkError } = await supabase
     .from('applications')
-    .update({ documents_used: [docRow.id] })
+    .update({ documents_used: mergedDocs })
     .eq('id', payload.application_id)
 
   if (linkError) {
