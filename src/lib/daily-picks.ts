@@ -81,18 +81,23 @@ export async function selectTopPicks(
   userId: string,
 ): Promise<DailyPickJob[]> {
   // Get exclusion sets in parallel
-  const [votesResult, appsResult, jobsResult] = await Promise.all([
+  const [votesResult, appsResult, jobsResult, staleResult] = await Promise.all([
     supabase.from('votes').select('job_id').eq('user_id', userId),
     supabase.from('applications').select('job_id').eq('user_id', userId),
     supabase
       .from('jobs')
-      .select('id, title, company, visa_path, location, url, match_score, why_fits, application_deadline, source_type')
+      .select('id, title, company, visa_path, location, url, match_score, why_fits, application_deadline, source_type, discovered_job_id')
       .eq('user_id', userId)
       .not('match_score', 'is', null)
       .or('requires_citizenship.is.null,requires_citizenship.neq.true')
       .or('requires_security_clearance.is.null,requires_security_clearance.neq.true')
       .order('match_score', { ascending: false })
       .limit(50), // Over-fetch then filter
+    // Get discovered_jobs with dead/closed validation status
+    supabase
+      .from('discovered_jobs')
+      .select('id')
+      .in('validation_status', ['dead_link', 'closed']),
   ])
 
   const excludedIds = new Set([
@@ -100,9 +105,20 @@ export async function selectTopPicks(
     ...(appsResult.data ?? []).map((a) => a.job_id).filter(Boolean),
   ])
 
+  const staleDiscoveredIds = new Set(
+    (staleResult.data ?? []).map((d) => d.id),
+  )
+
   const today = new Date().toISOString().split('T')[0]
   const picks: DailyPickJob[] = (jobsResult.data ?? [])
     .filter((j) => !excludedIds.has(j.id))
+    .filter((j) => {
+      // Exclude jobs linked to dead/closed discovered_jobs
+      if (j.discovered_job_id && staleDiscoveredIds.has(j.discovered_job_id)) {
+        return false
+      }
+      return true
+    })
     .filter((j) => {
       // Exclude expired deadlines (except until_filled)
       if (j.application_deadline && j.source_type !== 'until_filled') {

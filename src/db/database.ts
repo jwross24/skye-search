@@ -537,9 +537,11 @@ export type Database = {
         Row: {
           canonical_url: string | null
           company: string | null
+          content_hash: string | null
           created_at: string
           id: string
           indexed_date: string | null
+          last_validated_at: string | null
           normalized_company: string | null
           raw_description: string | null
           scored: boolean | null
@@ -558,9 +560,11 @@ export type Database = {
         Insert: {
           canonical_url?: string | null
           company?: string | null
+          content_hash?: string | null
           created_at?: string
           id?: string
           indexed_date?: string | null
+          last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
           scored?: boolean | null
@@ -579,9 +583,11 @@ export type Database = {
         Update: {
           canonical_url?: string | null
           company?: string | null
+          content_hash?: string | null
           created_at?: string
           id?: string
           indexed_date?: string | null
+          last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
           scored?: boolean | null

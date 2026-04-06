@@ -55,6 +55,7 @@ interface PipelineHealthProps {
     queue: { status: string; pending: number; deadLettered: number; oldestPendingMinutes: number | null }
     unemployment: { status: string; lastCheckpoint: { checkpoint_date: string; unemployment_days_used_cumulative: number } | null; lastCronRun: { execution_date: string; status: string } | null }
     alerts: { status: string; recentCount: number; lastSent: string | null }
+    linkValidation?: { status: string; active: number; unvalidated: number; deadLink: number; closed: number; timeout: number; lastRun: string | null }
   } | null
   loading: boolean
 }
@@ -62,8 +63,8 @@ interface PipelineHealthProps {
 export function PipelineHealth({ data, loading }: PipelineHealthProps) {
   if (loading || !data) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="bg-zinc-900 border-zinc-800">
             <CardHeader className="pb-2"><Skeleton className="h-4 w-24 bg-zinc-800" /></CardHeader>
             <CardContent><Skeleton className="h-8 w-16 bg-zinc-800" /><Skeleton className="h-3 w-32 mt-2 bg-zinc-800" /></CardContent>
@@ -74,7 +75,7 @@ export function PipelineHealth({ data, loading }: PipelineHealthProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <HealthCard
         title="Discovery"
         status={data.discovery.status}
@@ -105,6 +106,14 @@ export function PipelineHealth({ data, loading }: PipelineHealthProps) {
         metric={`${data.alerts.recentCount} sent`}
         detail={`Last ${timeAgo(data.alerts.lastSent)}`}
       />
+      {data.linkValidation && (
+        <HealthCard
+          title="Link Freshness"
+          status={data.linkValidation.status}
+          metric={`${data.linkValidation.active} active · ${data.linkValidation.deadLink + data.linkValidation.closed} stale`}
+          detail={data.linkValidation.lastRun ? `Last run ${timeAgo(data.linkValidation.lastRun)} · ${data.linkValidation.unvalidated} unchecked` : `${data.linkValidation.unvalidated} unchecked · never run`}
+        />
+      )}
     </div>
   )
 }

@@ -94,6 +94,21 @@ jobs:
           echo ""
           [ "$HTTP_CODE" = "200" ] || exit 1
 
+      - name: Link validation
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        continue-on-error: true
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 300 \
+            -X POST "$BASE_URL/api/cron/link-validation" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Link validation: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
       - name: Healthcheck
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

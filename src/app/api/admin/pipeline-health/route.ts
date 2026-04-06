@@ -103,6 +103,33 @@ export async function GET(req: Request) {
     : lastCronLog[0].status === 'completed' ? 'green'
     : 'red'
 
+  // ─── Link Validation ──────────────────────────────────────────────────
+  const [
+    { count: validatedActive },
+    { count: validatedUnvalidated },
+    { count: validatedDeadLink },
+    { count: validatedClosed },
+    { count: validatedTimeout },
+  ] = await Promise.all([
+    supabase.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('validation_status', 'active'),
+    supabase.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('validation_status', 'unvalidated'),
+    supabase.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('validation_status', 'dead_link'),
+    supabase.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('validation_status', 'closed'),
+    supabase.from('discovered_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('validation_status', 'timeout'),
+  ])
+
+  const { data: lastValidation } = await supabase
+    .from('discovered_jobs')
+    .select('last_validated_at')
+    .eq('user_id', user.id)
+    .not('last_validated_at', 'is', null)
+    .order('last_validated_at', { ascending: false })
+    .limit(1)
+
+  const linkValidationStatus = (validatedUnvalidated ?? 0) > 50 ? 'red'
+    : (validatedDeadLink ?? 0) + (validatedClosed ?? 0) > 20 ? 'yellow'
+    : 'green'
+
   // ─── Email Alerts ────────────────────────────────────────────────────
   // Check task_queue for alert-related tasks (the alerts endpoint doesn't use api_usage_log)
   const { data: recentAlertTasks } = await supabase
@@ -148,6 +175,15 @@ export async function GET(req: Request) {
       status: alertStatus,
       recentCount: recentAlertTasks?.length ?? 0,
       lastSent: recentAlertTasks?.[0]?.created_at ?? null,
+    },
+    linkValidation: {
+      status: linkValidationStatus,
+      active: validatedActive ?? 0,
+      unvalidated: validatedUnvalidated ?? 0,
+      deadLink: validatedDeadLink ?? 0,
+      closed: validatedClosed ?? 0,
+      timeout: validatedTimeout ?? 0,
+      lastRun: lastValidation?.[0]?.last_validated_at ?? null,
     },
   })
 }

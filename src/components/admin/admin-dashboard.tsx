@@ -15,6 +15,7 @@ interface PipelineHealthData {
   queue: { status: string; pending: number; deadLettered: number; oldestPendingMinutes: number | null }
   unemployment: { status: string; lastCheckpoint: { checkpoint_date: string; status_snapshot: string; unemployment_days_used_cumulative: number } | null; lastCronRun: { execution_date: string; status: string; error_message: string | null } | null }
   alerts: { status: string; recentCount: number; lastSent: string | null }
+  linkValidation: { status: string; active: number; unvalidated: number; deadLink: number; closed: number; timeout: number; lastRun: string | null }
 }
 
 export function AdminDashboard() {

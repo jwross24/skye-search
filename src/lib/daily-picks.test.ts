@@ -82,11 +82,12 @@ function setupHandlers(overrides: Partial<Record<string, ReturnType<typeof creat
     applications: createChain({ data: [] }),
     jobs: createChain({
       data: [
-        { id: 'j1', title: 'Research Scientist', company: 'MIT', visa_path: 'cap_exempt', location: 'Boston, MA', url: 'https://example.com/j1', match_score: 0.92, why_fits: 'Strong fit for ocean color research' },
-        { id: 'j2', title: 'Data Analyst', company: 'NOAA', visa_path: 'cap_exempt', location: 'Silver Spring, MD', url: 'https://example.com/j2', match_score: 0.85, why_fits: 'Government research lab' },
-        { id: 'j3', title: 'Software Engineer', company: 'Acme Corp', visa_path: 'cap_subject', location: 'NYC', url: 'https://example.com/j3', match_score: 0.70, why_fits: null },
+        { id: 'j1', title: 'Research Scientist', company: 'MIT', visa_path: 'cap_exempt', location: 'Boston, MA', url: 'https://example.com/j1', match_score: 0.92, why_fits: 'Strong fit for ocean color research', discovered_job_id: null },
+        { id: 'j2', title: 'Data Analyst', company: 'NOAA', visa_path: 'cap_exempt', location: 'Silver Spring, MD', url: 'https://example.com/j2', match_score: 0.85, why_fits: 'Government research lab', discovered_job_id: null },
+        { id: 'j3', title: 'Software Engineer', company: 'Acme Corp', visa_path: 'cap_subject', location: 'NYC', url: 'https://example.com/j3', match_score: 0.70, why_fits: null, discovered_job_id: null },
       ],
     }),
+    discovered_jobs: createChain({ data: [] }),
     ...overrides,
   }
 }
@@ -290,6 +291,38 @@ describe('selectTopPicks', () => {
     log('Step 2', `Got ${picks.length} picks (expected 1, until_filled kept)`)
     expect(picks).toHaveLength(1)
     expect(picks[0].title).toBe('Until Filled')
+  })
+
+  it('excludes jobs linked to dead_link or closed discovered_jobs', async () => {
+    log('Step 1', 'Setting up jobs with stale discovered_job links')
+    setupHandlers({
+      jobs: createChain({
+        data: [
+          { id: 'j1', title: 'Active Job', company: 'MIT', visa_path: 'cap_exempt', location: 'Boston', url: 'https://example.com/j1', match_score: 0.92, why_fits: 'Great', discovered_job_id: 'dj-active' },
+          { id: 'j2', title: 'Dead Link Job', company: 'NOAA', visa_path: 'cap_exempt', location: 'DC', url: 'https://example.com/j2', match_score: 0.85, why_fits: 'Good', discovered_job_id: 'dj-dead' },
+          { id: 'j3', title: 'Closed Job', company: 'NASA', visa_path: 'cap_exempt', location: 'Houston', url: 'https://example.com/j3', match_score: 0.80, why_fits: 'Ok', discovered_job_id: 'dj-closed' },
+          { id: 'j4', title: 'No Link Job', company: 'Acme', visa_path: 'cap_subject', location: 'NYC', url: 'https://example.com/j4', match_score: 0.70, why_fits: null, discovered_job_id: null },
+        ],
+      }),
+      discovered_jobs: createChain({
+        data: [
+          { id: 'dj-dead' },
+          { id: 'dj-closed' },
+        ],
+      }),
+    })
+    const { selectTopPicks } = await import('./daily-picks')
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient('', '')
+
+    const picks = await selectTopPicks(supabase as ReturnType<typeof createClient>, 'user-1')
+    log('Step 2', `Got ${picks.length} picks (expected 2, dead/closed excluded)`)
+
+    expect(picks).toHaveLength(2)
+    expect(picks.map(p => p.title)).toContain('Active Job')
+    expect(picks.map(p => p.title)).toContain('No Link Job')
+    expect(picks.map(p => p.title)).not.toContain('Dead Link Job')
+    expect(picks.map(p => p.title)).not.toContain('Closed Job')
   })
 
   it('or filter handles null-safe citizenship and security clearance exclusion', async () => {
