@@ -23,6 +23,22 @@ vi.mock('@/lib/email-templates/templates/cron-failure', () => ({
   CronFailureAlert: vi.fn(() => '<div>alert</div>'),
 }))
 
+// ─── Mock Supabase (used by reaper) ────────────────────────────────────────
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    from: () => ({
+      update: () => ({
+        eq: () => ({
+          lt: () => ({
+            select: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    }),
+  })),
+}))
+
 // ─── Env ────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {

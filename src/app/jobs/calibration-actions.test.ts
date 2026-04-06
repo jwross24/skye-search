@@ -10,6 +10,8 @@ const mockUser = { id: 'user-test-123' }
 let lastInsertData: Record<string, unknown> = {}
 let mockJobsData: unknown[] = []
 let mockCalibratedData: unknown[] = []
+let mockCapExemptEmployers: unknown[] = []
+let mockJobSingleData: unknown = null  // for wrong_visa single-row job lookup
 
 // Flexible chain builder for select queries
 function makeSelectChain(data: unknown[], error: null | { message: string } = null) {
@@ -43,19 +45,22 @@ vi.mock('@/db/supabase-server', () => ({
     from: (table: string) => {
       supabaseFromCalls.push(table)
       if (table === 'jobs') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              gt: vi.fn().mockReturnValue({
-                gte: vi.fn().mockReturnValue({
-                  order: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockResolvedValue({ data: mockJobsData, error: null }),
-                  }),
-                }),
-              }),
-            }),
-          }),
+        // Build a flexible chain supporting both:
+        //   getCalibrationPicks: .select().eq().gt().gte().order().limit()
+        //   wrong_visa lookup:   .select().eq().eq().single()
+        const jobsChain: Record<string, unknown> = {}
+        const bindAll = (c: Record<string, unknown>) => {
+          c.eq = vi.fn().mockReturnValue(jobsChain)
+          c.gt = vi.fn().mockReturnValue(jobsChain)
+          c.gte = vi.fn().mockReturnValue(jobsChain)
+          c.order = vi.fn().mockReturnValue(jobsChain)
+          c.limit = vi.fn().mockResolvedValue({ data: mockJobsData, error: null })
+          c.single = vi.fn().mockResolvedValue({ data: mockJobSingleData, error: null })
+          c.update = vi.fn().mockReturnValue(jobsChain)
+          return c
         }
+        bindAll(jobsChain)
+        return { select: vi.fn().mockReturnValue(jobsChain) }
       }
       if (table === 'calibration_log') {
         return {
@@ -72,6 +77,23 @@ vi.mock('@/db/supabase-server', () => ({
             lastInsertData = data
             return { then: (resolve: (v: unknown) => unknown) => resolve({ error: null }) }
           }),
+        }
+      }
+      if (table === 'cap_exempt_employers') {
+        // Used by wrong_visa path: .select().ilike().limit() → array, then .update().eq()
+        const updateChain: Record<string, unknown> = {}
+        updateChain.eq = vi.fn().mockResolvedValue({ error: null })
+        updateChain.update = vi.fn().mockReturnValue(updateChain)
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: mockCapExemptEmployers,
+                error: null,
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue(updateChain),
         }
       }
       if (table === 'immigration_status') {
@@ -197,6 +219,8 @@ describe('logCalibrationConfirmed', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastInsertData = {}
+    mockJobSingleData = null
+    mockCapExemptEmployers = []
   })
 
   it('inserts a calibration_log row with feedback_type=confirmed', async () => {
@@ -221,7 +245,10 @@ describe('logCalibrationConfirmed', () => {
 describe('logCalibrationTooHigh', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    supabaseFromCalls = []
     lastInsertData = {}
+    mockJobSingleData = null
+    mockCapExemptEmployers = []
   })
 
   it('inserts a calibration_log row with feedback_type=too_high and tag', async () => {
@@ -235,8 +262,39 @@ describe('logCalibrationTooHigh', () => {
     })
   })
 
+  it('handles double-call idempotently (upsert with ignoreDuplicates)', async () => {
+    const result1 = await logCalibrationTooHigh('job-double2', 'stale')
+    const result2 = await logCalibrationTooHigh('job-double2', 'stale')
+    expect(result1.success).toBe(true)
+    expect(result2.success).toBe(true)
+  })
+
   it('accepts stale tag without errors', async () => {
     const result = await logCalibrationTooHigh('job-z', 'stale')
+    expect(result.success).toBe(true)
+  })
+
+  it('wrong_visa: downgrades cap_exempt_employer confidence when match found', async () => {
+    mockJobSingleData = {
+      company: 'MIT',
+      cap_exempt_confidence: 'confirmed',
+    }
+    mockCapExemptEmployers = [
+      { id: 'emp-123', employer_name: 'MIT', aliases: null, confidence_level: 'confirmed' },
+    ]
+    const result = await logCalibrationTooHigh('job-visa', 'wrong_visa')
+    expect(result.success).toBe(true)
+    // The action should have attempted the ilike lookup and update
+    expect(supabaseFromCalls).toContain('cap_exempt_employers')
+  })
+
+  it('wrong_visa: succeeds without errors when no employer match found', async () => {
+    mockJobSingleData = {
+      company: 'Unknown Corp',
+      cap_exempt_confidence: 'likely',
+    }
+    mockCapExemptEmployers = []  // no match
+    const result = await logCalibrationTooHigh('job-no-match', 'wrong_visa')
     expect(result.success).toBe(true)
   })
 })
