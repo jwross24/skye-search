@@ -192,4 +192,33 @@ describe('getEmailTemplateData', () => {
     expect(result).not.toBeNull()
     expect(result!.planCActive).toBe(true)
   })
+
+  it('detects offerAccepted when a cap_exempt job matches an offer_accepted application', async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: TEST_USER_ID, email: 'test@test.com' } },
+    })
+
+    const JOB_ID = 'job-uuid-cap-exempt'
+    const immChain = makeChain({ postdoc_end_date: null, opt_expiry: null, employment_active: false, initial_days_used: 0 })
+    const clockChain = makeChain(null)
+    const userChain = makeChain({ profile: {} })
+    const plansChain = makeChain([])
+    const appsChain = makeChain([{ kanban_status: 'offer_accepted', job_id: JOB_ID }])
+    const jobsChain = makeChain([{ id: JOB_ID, visa_path: 'cap_exempt' }])
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'immigration_status') return immChain
+      if (table === 'immigration_clock') return clockChain
+      if (table === 'users') return userChain
+      if (table === 'plans') return plansChain
+      if (table === 'applications') return appsChain
+      if (table === 'jobs') return jobsChain
+      return makeChain(null)
+    })
+
+    const result = await getEmailTemplateData()
+
+    expect(result).not.toBeNull()
+    expect(result!.offerAccepted).toBe(true)
+  })
 })

@@ -56,7 +56,7 @@ ${data.fullName}`
 function buildI983Body(data: EmailTemplateData): string {
   return `Hi ${data.dsoName},
 
-I have accepted a cap-exempt role at ${data.employer ?? '[Employer]'}. Attached is my I-983 training plan for your review. My unemployment clock should pause at ${data.daysUsed} days used once my employment is confirmed.
+I have accepted a cap-exempt role at [New Employer]. Attached is my I-983 training plan for your review. My unemployment clock should pause at ${data.daysUsed} days used once my employment is confirmed.
 
 Please let me know if you need any additional information or if there are any corrections needed to the training plan.
 
