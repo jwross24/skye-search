@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { TrackedApplication, KanbanStatus } from './kanban-board'
 import { VisaBadge } from '@/components/visa-badge'
@@ -165,6 +165,69 @@ function StatusMenu({
   onSelect: (status: KanbanStatus) => void
   onClose: () => void
 }) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  // Compute initial focused index from props (no useEffect + setState needed)
+  const firstEnabledIndex = STATUS_OPTIONS.findIndex((o) => o.value !== currentStatus)
+  const [focusedIndex, setFocusedIndex] = useState(firstEnabledIndex >= 0 ? firstEnabledIndex : 0)
+
+  // Auto-focus the menu container on mount so keyboard events work immediately
+  useEffect(() => {
+    menuRef.current?.focus()
+  }, [])
+
+  // Keep the focused button scrolled into view + visually focused
+  useEffect(() => {
+    if (focusedIndex >= 0 && menuRef.current) {
+      const buttons = menuRef.current.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')
+      buttons[focusedIndex]?.focus()
+    }
+  }, [focusedIndex])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const enabledIndices = STATUS_OPTIONS
+      .map((o, i) => (o.value !== currentStatus ? i : -1))
+      .filter((i) => i >= 0)
+
+    if (!enabledIndices.length) return
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault()
+        const currentPos = enabledIndices.indexOf(focusedIndex)
+        const next = currentPos < enabledIndices.length - 1 ? enabledIndices[currentPos + 1] : enabledIndices[0]
+        setFocusedIndex(next)
+        break
+      }
+      case 'ArrowUp': {
+        e.preventDefault()
+        const currentPos = enabledIndices.indexOf(focusedIndex)
+        const prev = currentPos > 0 ? enabledIndices[currentPos - 1] : enabledIndices[enabledIndices.length - 1]
+        setFocusedIndex(prev)
+        break
+      }
+      case 'Home': {
+        e.preventDefault()
+        setFocusedIndex(enabledIndices[0])
+        break
+      }
+      case 'End': {
+        e.preventDefault()
+        setFocusedIndex(enabledIndices[enabledIndices.length - 1])
+        break
+      }
+      case 'Escape':
+        onClose()
+        break
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        if (focusedIndex >= 0 && STATUS_OPTIONS[focusedIndex].value !== currentStatus) {
+          onSelect(STATUS_OPTIONS[focusedIndex].value)
+        }
+        break
+    }
+  }
+
   return (
     <>
       {/* Backdrop — stopPropagation prevents the click from reaching the card's onSelect */}
@@ -173,19 +236,21 @@ function StatusMenu({
         onClick={(e) => { e.stopPropagation(); onClose() }}
         role="presentation"
       />
-      {/* Menu */}
+      {/* Menu — WAI-ARIA menu pattern with arrow key navigation */}
       <div
+        ref={menuRef}
         className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[140px]"
         role="menu"
         tabIndex={-1}
-        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        onKeyDown={handleKeyDown}
         data-testid="status-menu"
       >
-        {STATUS_OPTIONS.map((option) => (
+        {STATUS_OPTIONS.map((option, index) => (
           <button
             key={option.value}
             type="button"
             role="menuitem"
+            tabIndex={index === focusedIndex ? 0 : -1}
             onClick={(e) => {
               e.stopPropagation()
               onSelect(option.value)

@@ -122,3 +122,82 @@ describe('ApplicationCard', () => {
     expect(screen.getByText('Next: Follow up on Monday')).toBeInTheDocument()
   })
 })
+
+// ─── StatusMenu Keyboard Navigation (A11Y) ──────────────────────────────────
+
+describe('StatusMenu keyboard navigation', () => {
+  it('opens with first non-disabled item focused', async () => {
+    const user = userEvent.setup()
+    const onMove = vi.fn()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={onMove} onSelect={vi.fn()} />
+    )
+
+    // Open the status menu by clicking the trigger
+    await user.click(screen.getByTestId('card-app-test-1-move-button'))
+    log('Step 1', 'Status menu opened')
+
+    const menu = screen.getByTestId('status-menu')
+    expect(menu).toBeInTheDocument()
+
+    // "interested" is current status → disabled. First enabled item should be focused.
+    const menuItems = screen.getAllByRole('menuitem')
+    const firstEnabled = menuItems.find((item) => !item.hasAttribute('disabled'))
+    expect(firstEnabled).toHaveFocus()
+    log('Step 2', 'First non-disabled item has focus')
+  })
+
+  it('ArrowDown moves focus to next enabled item', async () => {
+    const user = userEvent.setup()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+
+    await user.click(screen.getByTestId('card-app-test-1-move-button'))
+
+    // Press ArrowDown — focus should move to the next enabled item
+    await user.keyboard('{ArrowDown}')
+    log('Step 1', 'ArrowDown pressed')
+
+    const menuItems = screen.getAllByRole('menuitem')
+    const enabledItems = menuItems.filter((item) => !item.hasAttribute('disabled'))
+    // After one ArrowDown from the first enabled, the second enabled should have focus
+    if (enabledItems.length >= 2) {
+      expect(enabledItems[1]).toHaveFocus()
+      log('Step 2', 'Second enabled item focused after ArrowDown')
+    }
+  })
+
+  it('ArrowUp from first item wraps to last enabled item', async () => {
+    const user = userEvent.setup()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+
+    await user.click(screen.getByTestId('card-app-test-1-move-button'))
+
+    // Press ArrowUp — should wrap to the last enabled item
+    await user.keyboard('{ArrowUp}')
+
+    const menuItems = screen.getAllByRole('menuitem')
+    const enabledItems = menuItems.filter((item) => !item.hasAttribute('disabled'))
+    const lastEnabled = enabledItems[enabledItems.length - 1]
+    expect(lastEnabled).toHaveFocus()
+    log('Step 1', 'ArrowUp from first wraps to last enabled item')
+  })
+
+  it('Enter selects the focused item', async () => {
+    const user = userEvent.setup()
+    const onMove = vi.fn()
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={onMove} onSelect={vi.fn()} />
+    )
+
+    await user.click(screen.getByTestId('card-app-test-1-move-button'))
+    // Press Enter on the focused item
+    await user.keyboard('{Enter}')
+
+    expect(onMove).toHaveBeenCalled()
+    log('Step 1', 'Enter selects focused menu item')
+  })
+})
