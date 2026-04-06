@@ -195,6 +195,51 @@ export type Database = {
           },
         ]
       }
+      calibration_log: {
+        Row: {
+          calibration_week: string
+          created_at: string
+          feedback_type: string
+          id: string
+          job_id: string
+          tag: string | null
+          user_id: string
+        }
+        Insert: {
+          calibration_week: string
+          created_at?: string
+          feedback_type: string
+          id?: string
+          job_id: string
+          tag?: string | null
+          user_id: string
+        }
+        Update: {
+          calibration_week?: string
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          job_id?: string
+          tag?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calibration_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calibration_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canada_crs: {
         Row: {
           draw_history: Json | null
@@ -537,10 +582,12 @@ export type Database = {
         Row: {
           canonical_url: string | null
           company: string | null
+          content_hash: string | null
           created_at: string
           discovery_source_detail: string | null
           id: string
           indexed_date: string | null
+          last_validated_at: string | null
           normalized_company: string | null
           raw_description: string | null
           scored: boolean | null
@@ -559,10 +606,12 @@ export type Database = {
         Insert: {
           canonical_url?: string | null
           company?: string | null
+          content_hash?: string | null
           created_at?: string
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
           scored?: boolean | null
@@ -581,10 +630,12 @@ export type Database = {
         Update: {
           canonical_url?: string | null
           company?: string | null
+          content_hash?: string | null
           created_at?: string
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
           scored?: boolean | null
@@ -738,6 +789,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used: number
+          last_employment_confirmed_at: string | null
           niw_filing_date: string | null
           niw_priority_date: string | null
           niw_status: string | null
@@ -766,6 +818,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used?: number
+          last_employment_confirmed_at?: string | null
           niw_filing_date?: string | null
           niw_priority_date?: string | null
           niw_status?: string | null
@@ -794,6 +847,7 @@ export type Database = {
             | Database["public"]["Enums"]["initial_days_source_type"]
             | null
           initial_days_used?: number
+          last_employment_confirmed_at?: string | null
           niw_filing_date?: string | null
           niw_priority_date?: string | null
           niw_status?: string | null
@@ -827,6 +881,7 @@ export type Database = {
           company_logo: string | null
           created_at: string
           deadline_source: string | null
+          discovered_job_id: string | null
           employer_type:
             | Database["public"]["Enums"]["employer_type_type"]
             | null
@@ -834,11 +889,15 @@ export type Database = {
             | Database["public"]["Enums"]["employment_type_type"]
             | null
           h1b_sponsor_count: number | null
+          hiring_timeline_estimate: string | null
           id: string
           indexed_date: string | null
           location: string | null
           match_score: number | null
+          raw_description: string | null
           remote_status: string | null
+          requires_citizenship: boolean | null
+          requires_security_clearance: boolean | null
           salary: string | null
           skills_academic_equiv: string[] | null
           skills_required: string[] | null
@@ -863,6 +922,7 @@ export type Database = {
           company_logo?: string | null
           created_at?: string
           deadline_source?: string | null
+          discovered_job_id?: string | null
           employer_type?:
             | Database["public"]["Enums"]["employer_type_type"]
             | null
@@ -870,11 +930,15 @@ export type Database = {
             | Database["public"]["Enums"]["employment_type_type"]
             | null
           h1b_sponsor_count?: number | null
+          hiring_timeline_estimate?: string | null
           id?: string
           indexed_date?: string | null
           location?: string | null
           match_score?: number | null
+          raw_description?: string | null
           remote_status?: string | null
+          requires_citizenship?: boolean | null
+          requires_security_clearance?: boolean | null
           salary?: string | null
           skills_academic_equiv?: string[] | null
           skills_required?: string[] | null
@@ -899,6 +963,7 @@ export type Database = {
           company_logo?: string | null
           created_at?: string
           deadline_source?: string | null
+          discovered_job_id?: string | null
           employer_type?:
             | Database["public"]["Enums"]["employer_type_type"]
             | null
@@ -906,11 +971,15 @@ export type Database = {
             | Database["public"]["Enums"]["employment_type_type"]
             | null
           h1b_sponsor_count?: number | null
+          hiring_timeline_estimate?: string | null
           id?: string
           indexed_date?: string | null
           location?: string | null
           match_score?: number | null
+          raw_description?: string | null
           remote_status?: string | null
+          requires_citizenship?: boolean | null
+          requires_security_clearance?: boolean | null
           salary?: string | null
           skills_academic_equiv?: string[] | null
           skills_required?: string[] | null
@@ -925,6 +994,13 @@ export type Database = {
           why_fits?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_discovered_job_id_fkey"
+            columns: ["discovered_job_id"]
+            isOneToOne: false
+            referencedRelation: "discovered_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_user_id_fkey"
             columns: ["user_id"]
@@ -1121,7 +1197,9 @@ export type Database = {
         Insert: {
           attachments_json?: Json | null
           body_text?: string | null
-          classification_type?: string | null
+          classification_type?:
+            | Database["public"]["Enums"]["email_classification_type"]
+            | null
           created_at?: string
           id?: string
           sender?: string | null
@@ -1134,7 +1212,9 @@ export type Database = {
         Update: {
           attachments_json?: Json | null
           body_text?: string | null
-          classification_type?: string | null
+          classification_type?:
+            | Database["public"]["Enums"]["email_classification_type"]
+            | null
           created_at?: string
           id?: string
           sender?: string | null
@@ -1301,9 +1381,12 @@ export type Database = {
           created_at: string
           disclaimer_acknowledged_at: string | null
           id: string
+          is_admin: boolean
           migration_v1b_completed_at: string | null
+          milestones_seen: string[] | null
           preferences: Json | null
           profile: Json | null
+          push_subscription: Json | null
           skills: string[] | null
           updated_at: string
           user_preferences: Json | null
@@ -1313,9 +1396,12 @@ export type Database = {
           created_at?: string
           disclaimer_acknowledged_at?: string | null
           id: string
+          is_admin?: boolean
           migration_v1b_completed_at?: string | null
+          milestones_seen?: string[] | null
           preferences?: Json | null
           profile?: Json | null
+          push_subscription?: Json | null
           skills?: string[] | null
           updated_at?: string
           user_preferences?: Json | null
@@ -1325,9 +1411,12 @@ export type Database = {
           created_at?: string
           disclaimer_acknowledged_at?: string | null
           id?: string
+          is_admin?: boolean
           migration_v1b_completed_at?: string | null
+          milestones_seen?: string[] | null
           preferences?: Json | null
           profile?: Json | null
+          push_subscription?: Json | null
           skills?: string[] | null
           updated_at?: string
           user_preferences?: Json | null
@@ -1458,6 +1547,23 @@ export type Database = {
       }
     }
     Views: {
+      daily_spend: {
+        Row: {
+          api_call_count: number | null
+          spend_date: string | null
+          total_cents: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       immigration_clock: {
         Row: {
           days_remaining: number | null
@@ -1492,6 +1598,22 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "daily_checkpoint_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_spend: {
+        Row: {
+          api_call_count: number | null
+          total_cents: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_usage_log_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1545,6 +1667,7 @@ export type Database = {
       cron_status_type: "started" | "completed" | "failed"
       deferred_email_status_type: "deferred" | "processed"
       document_status_type: "draft" | "pending_review" | "approved" | "exported"
+      email_classification_type: "job_alert" | "application_update"
       employer_type_type:
         | "university"
         | "nonprofit_research"
@@ -1555,7 +1678,6 @@ export type Database = {
         | "unknown"
       employment_type_type: "full_time" | "part_time" | "contract" | "unknown"
       i140_status_type: "not_filed" | "filed" | "approved" | "denied"
-      email_classification_type: "job_alert" | "application_update"
       inbound_email_status_type: "unprocessed" | "classified" | "ignored"
       initial_days_source_type: "dso_confirmed" | "user_reported"
       kanban_status_type:
@@ -1593,7 +1715,13 @@ export type Database = {
         | "failed_retry"
         | "failed_validation"
       travel_risk_type: "low" | "medium" | "high" | "critical"
-      trigger_source_type: "pg_cron" | "manual_backfill" | "keepalive_gha"
+      trigger_source_type:
+        | "pg_cron"
+        | "manual_backfill"
+        | "keepalive_gha"
+        | "gha_cron"
+        | "vercel_cron"
+        | "retroactive_end_date"
       validation_status_type:
         | "unvalidated"
         | "active"
@@ -1746,6 +1874,7 @@ export const Constants = {
       cron_status_type: ["started", "completed", "failed"],
       deferred_email_status_type: ["deferred", "processed"],
       document_status_type: ["draft", "pending_review", "approved", "exported"],
+      email_classification_type: ["job_alert", "application_update"],
       employer_type_type: [
         "university",
         "nonprofit_research",
@@ -1757,7 +1886,6 @@ export const Constants = {
       ],
       employment_type_type: ["full_time", "part_time", "contract", "unknown"],
       i140_status_type: ["not_filed", "filed", "approved", "denied"],
-      email_classification_type: ["job_alert", "application_update"],
       inbound_email_status_type: ["unprocessed", "classified", "ignored"],
       initial_days_source_type: ["dso_confirmed", "user_reported"],
       kanban_status_type: [
@@ -1799,7 +1927,14 @@ export const Constants = {
         "failed_validation",
       ],
       travel_risk_type: ["low", "medium", "high", "critical"],
-      trigger_source_type: ["pg_cron", "manual_backfill", "keepalive_gha"],
+      trigger_source_type: [
+        "pg_cron",
+        "manual_backfill",
+        "keepalive_gha",
+        "gha_cron",
+        "vercel_cron",
+        "retroactive_end_date",
+      ],
       validation_status_type: [
         "unvalidated",
         "active",
@@ -1824,4 +1959,3 @@ export const Constants = {
     },
   },
 } as const
-
