@@ -38,9 +38,10 @@ vi.mock('@/lib/budget-guard', () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-// Mock cheerio — handles $('body').text() and $('selector').remove()
+// Mock cheerio — handles $('body').text() and $('selector').remove().
+// Mock return type doesn't match full CheerioAPI; cast via unknown.
 vi.mock('cheerio', () => ({
-  load: vi.fn().mockImplementation(() => makeCheerioMock(defaultBodyText)),
+  load: vi.fn().mockImplementation((() => makeCheerioMock(defaultBodyText)) as unknown as () => ReturnType<typeof import('cheerio').load>),
 }))
 
 // Mock Anthropic SDK
@@ -95,7 +96,7 @@ describe('analyzeJobUrl', () => {
 
     // Restore cheerio load to default implementation after clearAllMocks
     const cheerio = await import('cheerio')
-    vi.mocked(cheerio.load).mockImplementation(() => makeCheerioMock(defaultBodyText))
+    vi.mocked(cheerio.load).mockImplementation((() => makeCheerioMock(defaultBodyText)) as unknown as () => ReturnType<typeof cheerio.load>)
 
     // Set ANTHROPIC_API_KEY
     process.env.ANTHROPIC_API_KEY = 'test-key-xyz'
@@ -168,7 +169,7 @@ describe('analyzeJobUrl', () => {
 
   it('returns error when page has too little text content', async () => {
     const cheerio = await import('cheerio')
-    vi.mocked(cheerio.load).mockReturnValueOnce(makeCheerioMock('tiny'))
+    vi.mocked(cheerio.load).mockReturnValueOnce(makeCheerioMock('tiny') as unknown as ReturnType<typeof cheerio.load>)
 
     mockFetch.mockResolvedValue({
       ok: true,
