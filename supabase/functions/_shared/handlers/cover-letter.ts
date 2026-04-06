@@ -332,7 +332,7 @@ async function execute(task: TaskRow): Promise<TaskResult> {
     // Non-fatal — the document exists, just not linked
   }
 
-  // 8. Log API cost
+  // 9. Log API cost
   const usage = response.usage as Record<string, number>
   const costCents = computeCostCents(usage)
 
