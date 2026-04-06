@@ -75,7 +75,8 @@ export function EmploymentConfirmationBanner({
     return (
       <div
         className="mb-6 rounded-xl border border-amber-warm/15 bg-amber-warm/5 px-4 py-4"
-        role="alert"
+        role="region"
+        aria-label="Employment end date form"
         data-testid="employment-confirmation-banner"
       >
         <p className="mb-3 text-sm font-medium text-foreground">

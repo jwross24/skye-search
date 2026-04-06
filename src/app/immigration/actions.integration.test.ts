@@ -405,6 +405,74 @@ describe('updatePostdocEndDate (real Supabase)', () => {
   })
 })
 
+describe('confirmEmployment (real Supabase)', () => {
+  // Set up employed state before each test in this describe
+  beforeAll(async () => {
+    await service
+      .from('immigration_status')
+      .update({
+        employment_active: true,
+        employment_active_since: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        last_employment_confirmed_at: null,
+      })
+      .eq('user_id', TEST_USER_ID)
+    log('confirmEmployment setup', 'Set employment_active=true, last_confirmed=null')
+  })
+
+  it('[immigration] stillActive=true resets last_employment_confirmed_at', async () => {
+    const before = new Date().toISOString()
+
+    const { error } = await service
+      .from('immigration_status')
+      .update({ last_employment_confirmed_at: new Date().toISOString() })
+      .eq('user_id', TEST_USER_ID)
+
+    expect(error).toBeNull()
+    log('Step 2', 'Updated last_employment_confirmed_at to now')
+
+    const { data } = await service
+      .from('immigration_status')
+      .select('last_employment_confirmed_at, employment_active')
+      .eq('user_id', TEST_USER_ID)
+      .single()
+
+    expect(data!.employment_active).toBe(true)
+    expect(data!.last_employment_confirmed_at).not.toBeNull()
+    const storedAt = new Date(data!.last_employment_confirmed_at!)
+    expect(storedAt.getTime()).toBeGreaterThanOrEqual(new Date(before).getTime() - 1000)
+    log('Step 3', `Verified: last_confirmed=${data!.last_employment_confirmed_at}, still active`)
+  })
+
+  it('[immigration] stillActive=false sets employment_active=false + stores end date', async () => {
+    const endDate = '2026-03-20'
+
+    const { error } = await service
+      .from('immigration_status')
+      .update({
+        employment_active: false,
+        employment_active_since: null,
+        last_employment_confirmed_at: null,
+        employment_end_date: endDate,
+      })
+      .eq('user_id', TEST_USER_ID)
+
+    expect(error).toBeNull()
+    log('Step 2', `Set employment ended: end_date=${endDate}`)
+
+    const { data } = await service
+      .from('immigration_status')
+      .select('employment_active, employment_active_since, last_employment_confirmed_at, employment_end_date')
+      .eq('user_id', TEST_USER_ID)
+      .single()
+
+    expect(data!.employment_active).toBe(false)
+    expect(data!.employment_active_since).toBeNull()
+    expect(data!.last_employment_confirmed_at).toBeNull()
+    expect(data!.employment_end_date).toBe(endDate)
+    log('Step 3', `Verified: active=false, since=null, end_date=${data!.employment_end_date}`)
+  })
+})
+
 describe('getWhatIfScenarios (real Supabase)', () => {
   it('[immigration] immigration_clock view returns days_remaining', async () => {
     const { data, error } = await service
