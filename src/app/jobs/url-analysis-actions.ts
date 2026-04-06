@@ -11,8 +11,8 @@
 
 import { createClient } from '@/db/supabase-server'
 
-// Types are kept in a separate non-'use server' file for client component use.
-// This file only exports async functions.
+// UrlAnalysisResult is exported as an interface (erased at compile time by TypeScript).
+// Client components must import it with `import type` — not as a runtime value.
 
 export interface UrlAnalysisResult {
   success: boolean
@@ -43,10 +43,14 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
   } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // 2. Validate URL
+  // 2. Validate URL — only allow http/https to prevent SSRF via file://, ftp://, etc.
+  let parsedUrl: URL
   try {
-    new URL(url)
+    parsedUrl = new URL(url)
   } catch {
+    return { success: false, error: 'Invalid URL' }
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
     return { success: false, error: 'Invalid URL' }
   }
 
@@ -163,7 +167,7 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
 
     // 8. Log cost to api_usage_log
     // Haiku pricing: $0.80/MTok input, $4/MTok output (as of 2026-04)
-    await supabase.from('api_usage_log').insert({
+    const { error: insertError } = await supabase.from('api_usage_log').insert({
       user_id: user.id,
       model: 'claude-haiku-4-5-20251001',
       input_tokens: message.usage.input_tokens,
@@ -174,6 +178,10 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
       ),
       task_type: 'url_analysis',
     })
+    if (insertError) {
+      // Non-fatal: log the error but don't fail the analysis result
+      console.error('[url-analysis] Failed to log API usage:', insertError.message)
+    }
 
     if (!message.parsed_output) {
       return {

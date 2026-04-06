@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { Plus, Link, X, Loader2, Sparkles } from 'lucide-react'
+import { Plus, Link, X, Loader2, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addManualJob, type ManualJobInput } from '@/app/jobs/actions'
 import { analyzeJobUrl } from '@/app/jobs/url-analysis-actions'
@@ -162,8 +162,10 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
       highlightedFields.has(field) ? 'border-ocean/40 bg-ocean/5' : 'border-border/50'
     }`
 
-  // "Look it up" button appears when URL is entered but title is still empty
-  const showAnalyzeButton = urlValue.trim().length > 0 && !titleValue.trim()
+  // "Look it up" button appears when URL is entered and we haven't already
+  // succeeded. Stays visible after analysis fills fields — user might paste
+  // a different URL and want to re-analyze.
+  const showAnalyzeButton = urlValue.trim().length > 0 && analysisState !== 'done'
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card p-6 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -226,7 +228,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="size-3.5" aria-hidden />
+                    <Search className="size-3.5" aria-hidden />
                     <span>Look it up</span>
                   </>
                 )}
@@ -380,7 +382,7 @@ export function AddJobForm({ onClose, onAdded }: AddJobFormProps) {
 
         {/* Description summary from AI analysis — italic paragraph, no card */}
         {descriptionSummary && (
-          <p className="text-xs italic text-muted-foreground leading-relaxed border-l-2 border-ocean/20 pl-3">
+          <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-ocean/20 pl-3">
             {descriptionSummary}
           </p>
         )}

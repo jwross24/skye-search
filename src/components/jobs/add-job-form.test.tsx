@@ -179,15 +179,16 @@ describe('AddJobForm', () => {
     ).toBeTruthy()
   })
 
-  it('does NOT show Look it up button when URL is entered but title is already filled', async () => {
+  it('still shows Look it up button when URL is entered and title is already filled (allows re-analysis)', async () => {
     const user = userEvent.setup()
     render(<AddJobForm {...defaultProps} />)
 
-    // Fill title first, then URL
+    // Fill title first, then URL — button should still show because
+    // Skye might paste a different URL and want to re-analyze
     await user.type(screen.getByLabelText(/job title/i), 'My Job')
     await user.type(screen.getByLabelText(/job url/i), 'https://whoi.edu/jobs/123')
 
-    expect(screen.queryByRole('button', { name: /look up job/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /look up job details/i })).toBeTruthy()
   })
 
   it('fires analyzeJobUrl and populates fields on success', async () => {

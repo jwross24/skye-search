@@ -120,6 +120,13 @@ describe('analyzeJobUrl', () => {
     expect(result.error).toBe('Invalid URL')
   })
 
+  it('returns error when URL uses non-http/https protocol (SSRF guard)', async () => {
+    const result = await analyzeJobUrl('file:///etc/passwd')
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Invalid URL')
+  })
+
   it('returns error when ANTHROPIC_API_KEY is missing', async () => {
     delete process.env.ANTHROPIC_API_KEY
 
