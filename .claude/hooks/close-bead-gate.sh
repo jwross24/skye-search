@@ -263,26 +263,34 @@ BEAD_DESC=$(br show "$BEAD_ID" --json 2>/dev/null | jq -r '.[0].description // "
 if [ -n "$BEAD_DESC" ]; then
   MISSING_SKILLS=""
 
+  # Check skill stamps: prefer bead-scoped, fall back to session (24h TTL)
+  check_skill_stamp() {
+    local name="$1"
+    has_bead_stamp "$name" "$BEAD_ID" 2>/dev/null && return 0
+    stamp_is_fresh "$name" 86400 2>/dev/null && return 0
+    return 1
+  }
+
   if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/impeccable'; then
-    if ! stamp_is_fresh "impeccable" 86400; then
+    if ! check_skill_stamp "impeccable"; then
       MISSING_SKILLS="${MISSING_SKILLS}  ✗ /impeccable — required by bead spec but not invoked this session\n"
     fi
   fi
 
   if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/resend'; then
-    if ! stamp_is_fresh "resend" 86400; then
+    if ! check_skill_stamp "resend"; then
       MISSING_SKILLS="${MISSING_SKILLS}  ✗ /resend — required by bead spec but not invoked this session\n"
     fi
   fi
 
   if echo "$BEAD_DESC" | grep -qiE '(invoke|use)\s+/humanizer'; then
-    if ! stamp_is_fresh "humanizer" 86400; then
+    if ! check_skill_stamp "humanizer"; then
       MISSING_SKILLS="${MISSING_SKILLS}  ✗ /humanizer — required by bead spec but not invoked this session\n"
     fi
   fi
 
   if echo "$BEAD_DESC" | grep -qiE 'context7\s+mcp|use\s+context7'; then
-    if ! stamp_is_fresh "context7" 86400; then
+    if ! check_skill_stamp "context7"; then
       MISSING_SKILLS="${MISSING_SKILLS}  ✗ Context7 MCP — required by bead spec but not queried this session\n"
     fi
   fi
