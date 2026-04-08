@@ -21,6 +21,9 @@ export default async function TrackerPage() {
       next_action_date,
       contacts,
       applied_date,
+      phone_screen_date,
+      interview_date,
+      snoozed_until,
       rejection_type,
       created_at,
       jobs (
@@ -45,6 +48,7 @@ export default async function TrackerPage() {
       )
     `)
     .eq('user_id', user.id)
+    .neq('kanban_status', 'withdrawn')
     .order('created_at', { ascending: false })
 
   // ─── Map DB rows to TrackedApplication[] ───────────────────────────────
@@ -85,6 +89,10 @@ export default async function TrackerPage() {
         nextActionDate: row.next_action_date ?? '',
         contacts: (row.contacts as { name: string; email: string; role: string }[]) ?? [],
         rejectionType: row.rejection_type as TrackedApplication['rejectionType'],
+        appliedDate: row.applied_date ?? undefined,
+        phoneScreenDate: row.phone_screen_date ?? undefined,
+        interviewDate: row.interview_date ?? undefined,
+        snoozedUntil: row.snoozed_until ?? undefined,
       }
     })
 

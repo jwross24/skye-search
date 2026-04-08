@@ -11,8 +11,10 @@ import { RejectionCapture } from './rejection-capture'
 import { OfferVerification } from './offer-verification'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from 'sonner'
-import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection, uninterestApplication } from '@/app/tracker/actions'
+import { moveApplication as moveApplicationAction, updateApplicationNotes, captureRejection, uninterestApplication, snoozeApplication, archiveApplication } from '@/app/tracker/actions'
 import { TagPicker } from '@/components/jobs/tag-picker'
+import { getStalenessLevel, getNudgeMessage, type StalenessLevel } from '@/lib/application-staleness'
+import type { SourceType } from '@/lib/application-staleness'
 import type { DismissTag } from '@/app/jobs/actions'
 import type { SeedJob } from '@/db/seed'
 
@@ -33,6 +35,10 @@ export interface TrackedApplication {
   contacts: { name: string; email: string; role: string }[]
   rejectionType?: RejectionType
   offerVerified?: boolean
+  appliedDate?: string
+  phoneScreenDate?: string
+  interviewDate?: string
+  snoozedUntil?: string
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -203,6 +209,77 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
     }
   }
 
+  // ─── Staleness computation ────────────────────────────────────────────
+  const computeStaleness = (app: TrackedApplication) => {
+    const statusDateMap: Record<string, string | undefined> = {
+      interested: app.dateAdded,
+      tailoring: app.dateAdded,
+      applied: app.appliedDate ?? app.dateAdded,
+      phone_screen: app.phoneScreenDate ?? app.dateAdded,
+      interview: app.interviewDate ?? app.dateAdded,
+    }
+    const statusDate = statusDateMap[app.status] ?? app.dateAdded
+    const daysInStatus = statusDate
+      ? Math.floor((Date.now() - new Date(statusDate + 'T00:00:00Z').getTime()) / (1000 * 60 * 60 * 24))
+      : 0
+
+    const sourceType = (app.job.source_type ?? 'academic') as SourceType
+    const deadline = app.job.application_deadline ?? undefined
+    const hasDeadline = !!deadline
+    const daysToDeadline = deadline
+      ? Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : undefined
+
+    const isSnoozed = app.snoozedUntil && new Date(app.snoozedUntil + 'T00:00:00Z').getTime() > Date.now()
+
+    const level = getStalenessLevel(daysInStatus, app.status, sourceType, hasDeadline, daysToDeadline)
+    const nudge = isSnoozed ? null : getNudgeMessage(app.status, app.job.company, sourceType, daysInStatus, deadline)
+
+    return { level, nudge, daysInStatus }
+  }
+
+  const handleNudgeAction = async (appId: string, action: string) => {
+    const app = applications.find((a) => a.id === appId)
+    if (!app) return
+
+    if (action === 'advance') {
+      const nextStatusMap: Record<string, KanbanStatus> = {
+        interested: 'tailoring',
+        tailoring: 'applied',
+        applied: 'phone_screen',
+        phone_screen: 'interview',
+        interview: 'offer',
+      }
+      const next = nextStatusMap[app.status]
+      if (next) moveApplication(appId, next)
+    } else if (action === 'snooze') {
+      const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      setApplications((prev) =>
+        prev.map((a) => a.id === appId ? { ...a, snoozedUntil: snoozeUntil } : a),
+      )
+      toast.success('Snoozed for a week')
+      const snoozeResult = await snoozeApplication(appId, 7)
+      if (snoozeResult && !snoozeResult.success) {
+        setApplications((prev) =>
+          prev.map((a) => a.id === appId ? { ...a, snoozedUntil: app.snoozedUntil } : a),
+        )
+        toast.error("Couldn't snooze this one. Try again in a moment.")
+      }
+    } else if (action === 'remove') {
+      if (app.status === 'interested') {
+        setPendingUninterest(appId)
+      } else {
+        setApplications((prev) => prev.filter((a) => a.id !== appId))
+        toast.success('Archived to keep your board clean')
+        const archiveResult = await archiveApplication(appId)
+        if (archiveResult && !archiveResult.success) {
+          setApplications((prev) => [...prev, app])
+          toast.error("Couldn't archive this application. Try again in a moment.")
+        }
+      }
+    }
+  }
+
   const selectedApplication = applications.find((a) => a.id === selectedApp) ?? null
   const pendingRejectApp = applications.find((a) => a.id === pendingReject) ?? null
   const pendingOfferApp = applications.find((a) => a.id === pendingOffer) ?? null
@@ -270,6 +347,8 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
                 onSelect={setSelectedApp}
                 onUninterest={column.id === 'interested' ? setPendingUninterest : undefined}
                 activeId={activeId}
+                computeStaleness={computeStaleness}
+                onNudgeAction={handleNudgeAction}
               />
             ))}
             <KanbanColumn
@@ -279,6 +358,8 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
               onSelect={setSelectedApp}
               isRejected
               activeId={activeId}
+              computeStaleness={computeStaleness}
+              onNudgeAction={handleNudgeAction}
             />
           </div>
           <DragOverlay>
@@ -299,16 +380,22 @@ export function KanbanBoard({ initialApplications }: KanbanBoardProps) {
       {/* List view */}
       {resolvedViewMode === 'list' && (
         <div className="space-y-2" data-testid="list-view">
-          {applications.map((app) => (
-            <ApplicationCard
-              key={app.id}
-              application={app}
-              layout="list"
-              onMove={moveApplication}
-              onSelect={() => setSelectedApp(app.id)}
-              onUninterest={app.status === 'interested' ? setPendingUninterest : undefined}
-            />
-          ))}
+          {applications.map((app) => {
+            const staleness = computeStaleness(app)
+            return (
+              <ApplicationCard
+                key={app.id}
+                application={app}
+                layout="list"
+                onMove={moveApplication}
+                onSelect={() => setSelectedApp(app.id)}
+                onUninterest={app.status === 'interested' ? setPendingUninterest : undefined}
+                stalenessLevel={staleness.level}
+                nudge={staleness.nudge}
+                onNudgeAction={(action) => handleNudgeAction(app.id, action)}
+              />
+            )
+          })}
           {applications.length === 0 && (
             <p className="text-sm text-muted-foreground py-8 text-center">
               No applications yet — check your daily picks
@@ -398,6 +485,8 @@ function KanbanColumn({
   onUninterest,
   isRejected = false,
   activeId = null,
+  computeStaleness,
+  onNudgeAction,
 }: {
   column: { id: KanbanStatus; label: string; emptyMessage: string }
   applications: TrackedApplication[]
@@ -406,6 +495,8 @@ function KanbanColumn({
   onUninterest?: (appId: string) => void
   isRejected?: boolean
   activeId?: string | null
+  computeStaleness?: (app: TrackedApplication) => { level: StalenessLevel; nudge: ReturnType<typeof getNudgeMessage> }
+  onNudgeAction?: (appId: string, action: string) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
@@ -424,16 +515,22 @@ function KanbanColumn({
         </span>
       </div>
       <div className="space-y-2 min-h-[120px]">
-        {applications.map((app) => (
-          <DraggableCard
-            key={app.id}
-            application={app}
-            onMove={onMove}
-            onSelect={() => onSelect(app.id)}
-            onUninterest={onUninterest}
-            isDragging={activeId === app.id}
-          />
-        ))}
+        {applications.map((app) => {
+          const staleness = computeStaleness?.(app)
+          return (
+            <DraggableCard
+              key={app.id}
+              application={app}
+              onMove={onMove}
+              onSelect={() => onSelect(app.id)}
+              onUninterest={onUninterest}
+              isDragging={activeId === app.id}
+              stalenessLevel={staleness?.level}
+              nudge={staleness?.nudge}
+              onNudgeAction={onNudgeAction ? (action) => onNudgeAction(app.id, action) : undefined}
+            />
+          )
+        })}
         {applications.length === 0 && (
           <p className="text-xs text-muted-foreground/60 py-6 text-center leading-relaxed">
             {column.emptyMessage}
@@ -450,12 +547,18 @@ function DraggableCard({
   onSelect,
   onUninterest,
   isDragging,
+  stalenessLevel,
+  nudge,
+  onNudgeAction,
 }: {
   application: TrackedApplication
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: () => void
   onUninterest?: (appId: string) => void
   isDragging: boolean
+  stalenessLevel?: StalenessLevel
+  nudge?: ReturnType<typeof getNudgeMessage>
+  onNudgeAction?: (action: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: application.id,
@@ -478,6 +581,9 @@ function DraggableCard({
         onMove={onMove}
         onSelect={onSelect}
         onUninterest={onUninterest}
+        stalenessLevel={stalenessLevel}
+        nudge={nudge}
+        onNudgeAction={onNudgeAction}
       />
     </div>
   )

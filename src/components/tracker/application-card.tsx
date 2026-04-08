@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { TrackedApplication, KanbanStatus } from './kanban-board'
+import type { StalenessLevel } from '@/lib/application-staleness'
 import { VisaBadge } from '@/components/visa-badge'
 
 const STATUS_OPTIONS: { value: KanbanStatus; label: string }[] = [
@@ -21,9 +22,12 @@ interface ApplicationCardProps {
   onMove: (appId: string, status: KanbanStatus) => void
   onSelect: () => void
   onUninterest?: (appId: string) => void
+  stalenessLevel?: StalenessLevel
+  nudge?: { message: string; actions: Array<{ label: string; action: string }> } | null
+  onNudgeAction?: (action: string) => void
 }
 
-export function ApplicationCard({ application, layout, onMove, onSelect, onUninterest }: ApplicationCardProps) {
+export function ApplicationCard({ application, layout, onMove, onSelect, onUninterest, stalenessLevel, nudge, onNudgeAction }: ApplicationCardProps) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
 
   const handleStatusChange = (newStatus: KanbanStatus) => {
@@ -31,10 +35,12 @@ export function ApplicationCard({ application, layout, onMove, onSelect, onUnint
     setShowStatusMenu(false)
   }
 
+  const isCooled = stalenessLevel === 'stale' || stalenessLevel === 'ghosted'
+
   if (layout === 'list') {
     return (
       <div
-        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card hover:bg-accent/30 transition-colors cursor-pointer"
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl bg-card hover:bg-accent/30 transition-colors cursor-pointer ${isCooled ? 'opacity-60' : ''}`}
         data-testid={`card-${application.id}`}
         role="button"
         tabIndex={0}
@@ -83,7 +89,7 @@ export function ApplicationCard({ application, layout, onMove, onSelect, onUnint
   // Card layout (board view)
   return (
     <div
-      className="px-3 py-2.5 rounded-xl bg-card hover:bg-accent/30 transition-colors cursor-pointer group"
+      className={`px-3 py-2.5 rounded-xl bg-card hover:bg-accent/30 transition-colors cursor-pointer group ${isCooled ? 'opacity-60 border border-border/30' : ''}`}
       data-testid={`card-${application.id}`}
       role="button"
       tabIndex={0}
@@ -149,6 +155,27 @@ export function ApplicationCard({ application, layout, onMove, onSelect, onUnint
         >
           Changed my mind
         </button>
+      )}
+      {nudge && (
+        <div className="mt-2 pt-2 border-t border-border/30" data-testid={`nudge-${application.id}`}>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">{nudge.message}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {nudge.actions.map((a) => (
+              <button
+                key={a.label}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onNudgeAction?.(a.action)
+                }}
+                className="text-xs px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+                data-testid={`nudge-action-${a.action}`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )

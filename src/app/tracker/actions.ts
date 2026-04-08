@@ -128,3 +128,45 @@ export async function uninterestApplication(
   revalidatePath('/jobs')
   return { success: true }
 }
+
+export async function snoozeApplication(
+  applicationId: string,
+  days: number = 7,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const snoozeUntil = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const { error } = await supabase
+    .from('applications')
+    .update({ snoozed_until: snoozeUntil })
+    .eq('id', applicationId)
+    .eq('user_id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/tracker')
+  return { success: true }
+}
+
+export async function archiveApplication(
+  applicationId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('applications')
+    .update({
+      kanban_status: 'withdrawn',
+      withdrawn_date: new Date().toISOString().split('T')[0],
+      withdrawal_reason: 'ghosted',
+    })
+    .eq('id', applicationId)
+    .eq('user_id', user.id)
+
+  if (error) return { success: false, error: error.message }
+  revalidatePath('/tracker')
+  return { success: true }
+}

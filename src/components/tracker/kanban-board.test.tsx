@@ -21,6 +21,8 @@ vi.mock('@/app/tracker/actions', () => ({
   updateApplicationNotes: vi.fn().mockResolvedValue({ success: true }),
   captureRejection: vi.fn().mockResolvedValue({ success: true }),
   uninterestApplication: vi.fn().mockResolvedValue({ success: true }),
+  snoozeApplication: vi.fn().mockResolvedValue({ success: true }),
+  archiveApplication: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 vi.mock('@/app/tracker/cover-letter-actions', () => ({

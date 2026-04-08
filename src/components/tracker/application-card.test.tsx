@@ -14,6 +14,8 @@ vi.mock('@/app/tracker/actions', () => ({
   updateApplicationNotes: vi.fn().mockResolvedValue({ success: true }),
   captureRejection: vi.fn().mockResolvedValue({ success: true }),
   uninterestApplication: vi.fn().mockResolvedValue({ success: true }),
+  snoozeApplication: vi.fn().mockResolvedValue({ success: true }),
+  archiveApplication: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 const INTERESTED_APP: TrackedApplication = {
@@ -120,6 +122,115 @@ describe('ApplicationCard', () => {
     )
     log('Step 2', 'Next action visible')
     expect(screen.getByText('Next: Follow up on Monday')).toBeInTheDocument()
+  })
+})
+
+// ─── Staleness Visual Cooldown ──────────────────────────────────────────────
+
+describe('Staleness visual cooldown', () => {
+  it('stale card has reduced opacity class in card layout', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} stalenessLevel="stale" />
+    )
+    const card = screen.getByTestId('card-app-test-1')
+    expect(card.className).toContain('opacity-60')
+  })
+
+  it('ghosted card has reduced opacity class in card layout', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} stalenessLevel="ghosted" />
+    )
+    const card = screen.getByTestId('card-app-test-1')
+    expect(card.className).toContain('opacity-60')
+  })
+
+  it('fresh card does not have reduced opacity', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} stalenessLevel="fresh" />
+    )
+    const card = screen.getByTestId('card-app-test-1')
+    expect(card.className).not.toContain('opacity-60')
+  })
+
+  it('stale card in list layout has reduced opacity', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="list" onMove={vi.fn()} onSelect={vi.fn()} stalenessLevel="stale" />
+    )
+    const card = screen.getByTestId('card-app-test-1')
+    expect(card.className).toContain('opacity-60')
+  })
+})
+
+// ─── Nudge Messages ────────────────────────────────────────────────────────
+
+describe('Nudge messages', () => {
+  it('nudge message renders below card content', () => {
+    const nudge = {
+      message: 'This one\u2019s been waiting \u2014 still interested in Brown University?',
+      actions: [
+        { label: 'Apply this week', action: 'advance' },
+        { label: 'Not ready yet', action: 'snooze' },
+        { label: 'Remove', action: 'remove' },
+      ],
+    }
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} nudge={nudge} onNudgeAction={vi.fn()} />
+    )
+
+    expect(screen.getByTestId('nudge-app-test-1')).toBeInTheDocument()
+    expect(screen.getByText(/still interested in Brown University/)).toBeInTheDocument()
+  })
+
+  it('nudge actions are clickable buttons', async () => {
+    const user = userEvent.setup()
+    const onNudgeAction = vi.fn()
+    const nudge = {
+      message: 'Applied to Brown University 15 days ago. Any updates?',
+      actions: [
+        { label: 'Got a response', action: 'advance' },
+        { label: 'Still waiting', action: 'snooze' },
+      ],
+    }
+    render(
+      <ApplicationCard application={APPLIED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} nudge={nudge} onNudgeAction={onNudgeAction} />
+    )
+
+    await user.click(screen.getByTestId('nudge-action-advance'))
+    expect(onNudgeAction).toHaveBeenCalledWith('advance')
+
+    await user.click(screen.getByTestId('nudge-action-snooze'))
+    expect(onNudgeAction).toHaveBeenCalledWith('snooze')
+  })
+
+  it('no nudge section when nudge is null', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} nudge={null} onNudgeAction={vi.fn()} />
+    )
+    expect(screen.queryByTestId('nudge-app-test-1')).not.toBeInTheDocument()
+  })
+
+  it('no nudge section when nudge is undefined', () => {
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={vi.fn()} />
+    )
+    expect(screen.queryByTestId('nudge-app-test-1')).not.toBeInTheDocument()
+  })
+
+  it('nudge action click does not trigger card onSelect', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const onNudgeAction = vi.fn()
+    const nudge = {
+      message: 'Test nudge',
+      actions: [{ label: 'Act', action: 'advance' }],
+    }
+    render(
+      <ApplicationCard application={INTERESTED_APP} layout="card" onMove={vi.fn()} onSelect={onSelect} nudge={nudge} onNudgeAction={onNudgeAction} />
+    )
+
+    await user.click(screen.getByTestId('nudge-action-advance'))
+    expect(onNudgeAction).toHaveBeenCalled()
+    expect(onSelect).not.toHaveBeenCalled()
   })
 })
 
