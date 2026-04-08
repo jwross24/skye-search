@@ -158,7 +158,7 @@ export function ApplicationCard({ application, layout, onMove, onSelect, onUnint
       )}
       {nudge && (
         <div className="mt-2 pt-2 border-t border-border/30" data-testid={`nudge-${application.id}`}>
-          <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">{nudge.message}</p>
+          <p className="text-xs text-amber-warm mb-2">{nudge.message}</p>
           <div className="flex flex-wrap gap-1.5">
             {nudge.actions.map((a) => (
               <button
