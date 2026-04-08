@@ -113,7 +113,7 @@ fi
 # Skipped inside worktrees — main-context-only gate.
 
 if [ "$HAS_TSX" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
-  if ! has_stamp "agent-browser"; then
+  if ! has_bead_stamp "agent-browser"; then
     echo "BLOCKED: UI bead detected but agent-browser verification was not run." >&2
     echo "" >&2
     echo "  → agent-browser --session-name skye open http://localhost:3000/<route>" >&2
@@ -128,7 +128,7 @@ fi
 # Skipped inside worktrees — main-context-only gate.
 
 if [ "$HAS_TSX" = "true" ] && [ "$IS_WORKTREE" = "false" ]; then
-  if ! has_stamp "impeccable"; then
+  if ! has_bead_stamp "impeccable"; then
     echo "BLOCKED: .tsx files staged but /impeccable skill was not invoked." >&2
     echo "" >&2
     echo "  → /impeccable" >&2

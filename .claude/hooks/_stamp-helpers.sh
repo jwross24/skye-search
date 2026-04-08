@@ -124,6 +124,18 @@ has_stamp() {
   stamp_is_fresh "$name" 600
 }
 
+# Bead-only stamp check: NO session fallback. For gates that must run
+# per-bead (agent-browser, impeccable) — session stamps let different
+# beads piggyback on a single run, which defeats the purpose.
+has_bead_stamp() {
+  local name="$1"
+  local bead="${2:-$(current_bead)}"
+  if [ -z "$bead" ]; then
+    return 1  # No bead claimed — cannot check bead stamp
+  fi
+  bead_stamp_exists "$name" "$bead"
+}
+
 # Read a counter value
 read_counter() {
   local path
