@@ -57,7 +57,9 @@ describe('EmploymentConfirmationBanner visibility', () => {
     expect(screen.getByTestId('employment-confirmation-banner')).toBeDefined()
     // Floor rounding can show 34 or 35 depending on exact time
     expect(screen.getByText(/Last confirmed 3[45] days ago/)).toBeDefined()
-    log('Step 2', 'Banner visible with days-since-confirmed')
+    // day7 escalation level: gentle question in the banner heading
+    expect(screen.getByText(/bridge role at Woods Hole still active/)).toBeDefined()
+    log('Step 2', 'Banner visible with days-since-confirmed and escalation copy')
   })
 
   it('hides banner when last confirmed <30 days ago', () => {
@@ -217,6 +219,18 @@ describe('EmploymentConfirmationBanner styling', () => {
     )
     expect(screen.getByRole('alert')).toBeDefined()
   })
+
+  it('exposes escalation level via data attribute', () => {
+    const { container } = render(
+      <EmploymentConfirmationBanner
+        employerName="UMass Boston"
+        lastConfirmedAt={null}
+        employmentActiveSince={daysAgo(10)}
+      />,
+    )
+    const banner = container.querySelector('[data-escalation-level]')
+    expect(banner?.getAttribute('data-escalation-level')).toBe('day7')
+  })
 })
 
 describe('EmploymentConfirmationBanner error handling', () => {
@@ -256,5 +270,95 @@ describe('EmploymentConfirmationBanner error handling', () => {
     // Banner should still show the date picker (error recovery)
     expect(screen.getByLabelText('Employment end date')).toBeDefined()
     expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('employment'))
+  })
+})
+
+describe('EmploymentConfirmationBanner escalation levels', () => {
+  it('day14 banner shows "haven\'t confirmed" message', () => {
+    // day14 = 7-22 days overdue. Never confirmed + 14-29 days active = day14.
+    render(
+      <EmploymentConfirmationBanner
+        employerName="Woods Hole"
+        lastConfirmedAt={null}
+        employmentActiveSince={daysAgo(20)}
+      />,
+    )
+    expect(screen.getByText(/haven't confirmed/)).toBeDefined()
+    expect(screen.getByText(/verify/)).toBeDefined()
+  })
+
+  it('day30 banner shows "over a month" message', () => {
+    // day30 = 23-37 days overdue. For confirmed: 53-67 days since confirmed.
+    render(
+      <EmploymentConfirmationBanner
+        employerName="NOAA"
+        lastConfirmedAt={daysAgo(55)}
+        employmentActiveSince={daysAgo(90)}
+      />,
+    )
+    expect(screen.getByText(/over a month/)).toBeDefined()
+    const banner = screen.getByTestId('employment-confirmation-banner')
+    expect(banner.getAttribute('data-escalation-level')).toBe('day30')
+  })
+
+  it('day45 banner shows stronger urgency', () => {
+    // day45 = 38-52 days overdue. For confirmed: 68-82 days since confirmed.
+    render(
+      <EmploymentConfirmationBanner
+        employerName="EPA"
+        lastConfirmedAt={daysAgo(75)}
+        employmentActiveSince={daysAgo(120)}
+      />,
+    )
+    expect(screen.getByText(/6 weeks/)).toBeDefined()
+    expect(screen.getByText(/role has ended/)).toBeDefined()
+    const banner = screen.getByTestId('employment-confirmation-banner')
+    expect(banner.getAttribute('data-escalation-level')).toBe('day45')
+  })
+
+  it('day60 banner shows maximum urgency', () => {
+    // day60 = 53+ days overdue. For confirmed: 83+ days since confirmed.
+    render(
+      <EmploymentConfirmationBanner
+        employerName="USGS"
+        lastConfirmedAt={daysAgo(90)}
+        employmentActiveSince={daysAgo(150)}
+      />,
+    )
+    expect(screen.getByText(/unverified/)).toBeDefined()
+    expect(screen.getByText(/clock should be running/)).toBeDefined()
+    const banner = screen.getByTestId('employment-confirmation-banner')
+    expect(banner.getAttribute('data-escalation-level')).toBe('day60')
+  })
+
+  it('confirming at any escalation level resets to done', async () => {
+    const user = userEvent.setup()
+    // Render at day45 escalation
+    render(
+      <EmploymentConfirmationBanner
+        employerName="EPA"
+        lastConfirmedAt={daysAgo(75)}
+        employmentActiveSince={daysAgo(120)}
+      />,
+    )
+    expect(screen.getByTestId('employment-confirmation-banner')).toBeDefined()
+
+    await user.click(screen.getByRole('button', { name: /Yes, still active/ }))
+
+    expect(confirmEmployment).toHaveBeenCalledWith(true)
+    expect(screen.queryByTestId('employment-confirmation-banner')).toBeNull()
+  })
+
+  it('never uses red styling even at highest escalation', () => {
+    const { container } = render(
+      <EmploymentConfirmationBanner
+        employerName="USGS"
+        lastConfirmedAt={daysAgo(90)}
+        employmentActiveSince={daysAgo(150)}
+      />,
+    )
+    const banner = container.querySelector('[role="alert"]')
+    expect(banner?.className).toContain('amber-warm')
+    expect(banner?.className).not.toContain('red')
   })
 })

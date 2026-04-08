@@ -6,6 +6,7 @@ import { CronFailureAlert } from './email-templates/templates/cron-failure'
 import { BudgetAlert } from './email-templates/templates/budget-alert'
 import { EmploymentConfirmation } from './email-templates/templates/employment-confirmation'
 import { getSpendSummary } from './budget-guard'
+import { getEscalationLevel } from './employment-escalation'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -528,7 +529,7 @@ async function checkEmploymentConfirmation(
 
   const now = new Date(today + 'T00:00:00Z')
 
-  // Check if confirmation is needed
+  // Compute days for escalation
   const lastConfirmed = immRow.last_employment_confirmed_at
     ? new Date(immRow.last_employment_confirmed_at)
     : null
@@ -536,22 +537,15 @@ async function checkEmploymentConfirmation(
     ? new Date(immRow.employment_active_since)
     : null
 
-  if (lastConfirmed) {
-    // Has been confirmed before — only alert if >30 days ago
-    const daysSinceConfirmed = Math.floor(
-      (now.getTime() - lastConfirmed.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    if (daysSinceConfirmed < 30) return null
-  } else if (activeSince) {
-    // Never confirmed — only alert if active >7 days
-    const daysSinceActive = Math.floor(
-      (now.getTime() - activeSince.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    if (daysSinceActive < 7) return null
-  } else {
-    // No active_since and no confirmed_at — skip
-    return null
-  }
+  const daysSinceConfirmed = lastConfirmed
+    ? Math.floor((now.getTime() - lastConfirmed.getTime()) / (1000 * 60 * 60 * 24))
+    : null
+  const daysSinceActive = activeSince
+    ? Math.floor((now.getTime() - activeSince.getTime()) / (1000 * 60 * 60 * 24))
+    : 0
+
+  const level = getEscalationLevel(daysSinceConfirmed, daysSinceActive)
+  if (level === 'none') return null
 
   // Get employer name for the email
   const { data: enrollmentRow } = await supabase
@@ -563,16 +557,19 @@ async function checkEmploymentConfirmation(
     .maybeSingle()
 
   const employerName = enrollmentRow?.employer_name ?? null
-  const daysSinceConfirmed = lastConfirmed
-    ? Math.floor((now.getTime() - lastConfirmed.getTime()) / (1000 * 60 * 60 * 24))
-    : null
+
+  // Higher escalation levels get more explicit subject lines
+  const subject = level === 'day30' || level === 'day45' || level === 'day60'
+    ? 'Quick check: Is your bridge role still active? (employment unconfirmed)'
+    : 'Quick check: Is your bridge role still active?'
 
   const idempotencyKey = `employment-confirmation/${userId}/${today}`
+  const results: AlertResult[] = []
 
   try {
     const { id } = await sendEmail({
       to: userEmail,
-      subject: 'Quick check: Is your bridge role still active?',
+      subject,
       react: EmploymentConfirmation({
         employerName,
         daysSinceConfirmed,
@@ -580,13 +577,40 @@ async function checkEmploymentConfirmation(
       idempotencyKey,
     })
 
-    return { userId, alertType: 'employment_confirmation', sent: true, messageId: id }
+    results.push({ userId, alertType: 'employment_confirmation', sent: true, messageId: id })
   } catch (err) {
-    return {
+    results.push({
       userId,
       alertType: 'employment_confirmation',
       sent: false,
       reason: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  // Developer alert at day45+ escalation
+  if (level === 'day45' || level === 'day60') {
+    const devEmail = process.env.DEVELOPER_ALERT_EMAIL
+    if (devEmail) {
+      try {
+        const devIdempotencyKey = `employment-escalation-dev/${userId}/${today}`
+        const { id } = await sendEmail({
+          to: devEmail,
+          subject: `Employment unconfirmed (${level}) for user ${userId}`,
+          react: CronFailureAlert({
+            errorMessage: `Employment confirmation has reached ${level} escalation. User has not confirmed employment at ${employerName || 'unknown employer'} for ${daysSinceConfirmed !== null ? `${daysSinceConfirmed} days` : `${daysSinceActive} days since activation`}.`,
+            triggerSource: 'employment_escalation',
+            executionDate: today,
+            userId,
+          }),
+          idempotencyKey: devIdempotencyKey,
+        })
+        results.push({ userId, alertType: 'employment_confirmation', sent: true, messageId: id })
+      } catch {
+        // Don't fail the user alert pipeline for developer alert errors
+      }
     }
   }
+
+  // Return the first result (user email result) as the primary result
+  return results[0] ?? null
 }
