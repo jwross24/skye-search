@@ -12,6 +12,8 @@ import { isCalibrationWindow } from '@/lib/calibration-window'
 import { getCalibrationPicks } from '@/app/jobs/calibration-actions'
 import { getCalibrationWeekStart } from '@/lib/calibration-week'
 import { getMomentumMessage, getMilestone } from '@/lib/momentum'
+import { WeeklyRecapCard } from '@/components/jobs/weekly-recap-card'
+import { getWeekBounds } from '@/lib/weekly-recap'
 
 export default async function JobsPage() {
   const supabase = await createClient()
@@ -24,9 +26,12 @@ export default async function JobsPage() {
   // Monday of this week (for momentum weekly counts)
   const mondayOfWeek = getCalibrationWeekStart(new Date()).toISOString()
 
+  // Week bounds for weekly recap card
+  const { weekStart: recapWeekStart } = getWeekBounds(new Date())
+
   // ─── Parallel queries ────────────────────────────────────────────────
 
-  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult, activeOfferResult, weekVotesResult, weekAppsResult, totalAppsResult, activeInterviewsResult] = await Promise.all([
+  const [jobsResult, votesResult, appsResult, immResult, clockResult, pendingOfferResult, userResult, activeOfferResult, weekVotesResult, weekAppsResult, totalAppsResult, activeInterviewsResult, weeklyRecapResult] = await Promise.all([
     supabase.from('jobs').select('*').eq('user_id', user.id)
       .or('requires_citizenship.is.null,requires_citizenship.neq.true')
       .or('requires_security_clearance.is.null,requires_security_clearance.neq.true'),
@@ -82,6 +87,12 @@ export default async function JobsPage() {
     supabase.from('applications').select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .in('kanban_status', ['phone_screen', 'interview', 'final_round']),
+    // Weekly recap: check if recap exists for current week
+    supabase.from('weekly_activity_log')
+      .select('week_start, week_end, jobs_reviewed_count, applications_submitted_count, summary_text')
+      .eq('user_id', user.id)
+      .eq('week_start', recapWeekStart)
+      .maybeSingle(),
   ])
 
   // ─── Filter out already-voted / already-applied jobs ─────────────────
@@ -198,6 +209,27 @@ export default async function JobsPage() {
   const momentumMessage = getMomentumMessage(momentumCtx)
   const milestone = getMilestone(momentumCtx, seenMilestones)
 
+  // ─── Weekly recap ──────────────────────────────────────────────────────
+  const recapRow = weeklyRecapResult.data
+  const recapData = recapRow
+    ? {
+        weekLabel: formatRecapWeekLabel(recapRow.week_start, recapRow.week_end),
+        summaryText: recapRow.summary_text ?? '',
+        jobsReviewed: recapRow.jobs_reviewed_count ?? 0,
+        applicationsSubmitted: recapRow.applications_submitted_count ?? 0,
+        daysRemaining,
+        phase: momentumCtx.is_employed
+          ? 'active'
+          : daysRemaining < 60
+            ? 'pressure'
+            : momentumCtx.interviews_active > 0
+              ? 'response'
+              : momentumCtx.total_applications >= 10
+                ? 'active'
+                : 'launch',
+      }
+    : null
+
   // ─── Calibration window check ─────────────────────────────────────────
   const inCalibrationWindow = isCalibrationWindow(new Date())
   const calibrationResult = inCalibrationWindow ? await getCalibrationPicks() : { picks: [] }
@@ -209,6 +241,10 @@ export default async function JobsPage() {
 
       {calibrationPicks.length > 0 && (
         <CalibrationCard picks={calibrationPicks} />
+      )}
+
+      {recapData && recapData.summaryText && (
+        <WeeklyRecapCard {...recapData} />
       )}
 
       {(momentumMessage || milestone) && (
@@ -225,4 +261,16 @@ export default async function JobsPage() {
       )}
     </div>
   )
+}
+
+/** Format week bounds into "Mar 31 – Apr 6" */
+function formatRecapWeekLabel(weekStart: string, weekEnd: string): string {
+  const start = new Date(weekStart + 'T12:00:00Z')
+  const end = new Date(weekEnd + 'T12:00:00Z')
+  const startMonth = start.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const startDay = start.getUTCDate()
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const endDay = end.getUTCDate()
+  if (startMonth === endMonth) return `${startMonth} ${startDay} – ${endDay}`
+  return `${startMonth} ${startDay} – ${endMonth} ${endDay}`
 }

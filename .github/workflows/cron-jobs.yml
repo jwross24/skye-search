@@ -12,10 +12,12 @@ on:
     - cron: '15 8 * * 2,5'
     # Midday batch: daily-email → push-nudge (12:00 UTC daily)
     - cron: '0 12 * * *'
+    # Sunday recap: 10pm UTC = 6pm ET (Sundays only)
+    - cron: '0 22 * * 0'
   workflow_dispatch:
     inputs:
       batch:
-        description: 'Which batch to run (morning, discovery, midday, all)'
+        description: 'Which batch to run (morning, discovery, midday, sunday, all)'
         required: false
         default: 'all'
         type: choice
@@ -24,6 +26,7 @@ on:
           - morning
           - discovery
           - midday
+          - sunday
 
 env:
   BASE_URL: https://skye-search.vercel.app
@@ -180,3 +183,25 @@ jobs:
           echo "Push nudge: HTTP $HTTP_CODE"
           cat /tmp/response.json 2>/dev/null | head -c 500 || true
           echo ""
+
+  sunday:
+    name: Sunday Batch (weekly-recap)
+    runs-on: ubuntu-latest
+    if: >
+      github.event.schedule == '0 22 * * 0' ||
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.batch == 'sunday' || inputs.batch == 'all')
+    steps:
+      - name: Weekly recap
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 60 \
+            -X POST "$BASE_URL/api/cron/weekly-recap" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Weekly recap: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
