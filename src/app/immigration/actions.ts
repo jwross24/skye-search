@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/db/supabase-server'
 import { computeExtensionCorrections } from '@/lib/postdoc-extension'
+import { computeEmploymentEndCorrections } from '@/lib/employment-backfill'
 
 // Not exported: 'use server' files may only export async functions
 interface CalibrationData {
@@ -73,7 +74,7 @@ export async function toggleEmployment(isEmployed: boolean, startDate?: string) 
 export async function confirmEmployment(
   stillActive: boolean,
   endDate?: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; backfill_error?: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
@@ -106,6 +107,67 @@ export async function confirmEmployment(
     .eq('user_id', user.id)
 
   if (error) return { success: false, error: error.message }
+
+  // Retroactive backfill: if endDate is in the past, correct employed_bridge
+  // checkpoints to unemployed so the clock reflects the actual end date.
+  const today = new Date().toISOString().split('T')[0]
+  if (endDate && endDate < today) {
+    // Get employment_start_date for validation
+    const { data: immRow } = await supabase
+      .from('immigration_status')
+      .select('employment_start_date')
+      .eq('user_id', user.id)
+      .single()
+
+    // Find employed_bridge checkpoints after the end date
+    const { data: bridgeCheckpoints } = await supabase
+      .from('daily_checkpoint')
+      .select('checkpoint_date')
+      .eq('user_id', user.id)
+      .eq('status_snapshot', 'employed_bridge')
+      .gt('checkpoint_date', endDate)
+      .lte('checkpoint_date', today)
+
+    // Check for existing corrections to avoid duplicates
+    const { data: existingCorrections } = await supabase
+      .from('checkpoint_corrections')
+      .select('checkpoint_date')
+      .eq('user_id', user.id)
+      .eq('trigger_source', 'retroactive_end_date')
+      .gt('checkpoint_date', endDate)
+      .lte('checkpoint_date', today)
+
+    const existingDates = new Set(
+      (existingCorrections ?? []).map((c) => c.checkpoint_date),
+    )
+
+    const result = computeEmploymentEndCorrections({
+      userId: user.id,
+      endDate,
+      today,
+      employmentStartDate: immRow?.employment_start_date ?? null,
+      employedBridgeDates: (bridgeCheckpoints ?? [])
+        .map((c) => c.checkpoint_date)
+        .filter((d) => !existingDates.has(d)),
+    })
+
+    if ('error' in result) {
+      // Safety guard triggered — employment is already toggled off,
+      // but backfill is capped. Return the error but don't roll back.
+      revalidatePath('/immigration')
+      return { success: true, backfill_error: result.error }
+    }
+
+    if (result.corrections.length > 0) {
+      const { error: corrError } = await supabase
+        .from('checkpoint_corrections')
+        .insert(result.corrections)
+      if (corrError) {
+        return { success: false, error: corrError.message }
+      }
+    }
+  }
+
   revalidatePath('/immigration')
   return { success: true }
 }
