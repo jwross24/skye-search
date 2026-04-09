@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+.next/
+dist/
+build/
+out/
+
+# Test artifacts
+playwright-report/
+test-results/
+coverage/
+.eval-cache/
+
+# Supabase generated
+supabase/.temp/
+supabase/.branches/
+
+# Cache
+.ruff_cache/
+.turbo/
+*.tsbuildinfo
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment
+.env.local
+
+# Logs
+*.log
+
+# Git
+.git/
