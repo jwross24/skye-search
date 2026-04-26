@@ -122,7 +122,7 @@ for i in $(seq 0 $((NUM_FINDINGS - 1))); do
           '. + [{"finding": $f, "problem": "Bead disposition must reference a bead ID (e.g., skye-search-abc). Create the bead first with br create.", "action": $a}]')
       else
         # Verify the bead actually exists
-        BEAD_EXISTS=$(br show "$BEAD_REF" --json 2>/dev/null | jq -r '.id // ""' 2>/dev/null || true)
+        BEAD_EXISTS=$(br show "$BEAD_REF" --json 2>/dev/null | jq -r '.[0].id // ""' 2>/dev/null || true)
         if [ -z "$BEAD_EXISTS" ]; then
           ISSUES=$(printf '%s' "$ISSUES" | jq -c --arg f "#$FINDING_ID: $DESC" --arg b "$BEAD_REF" \
             '. + [{"finding": $f, "problem": "Referenced bead " + $b + " does not exist. Create it with br create before closing."}]')
