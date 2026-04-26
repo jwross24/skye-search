@@ -109,6 +109,13 @@ bun run verify
 ```
 Never commit if any fail. Fix first.
 
+### Database Types
+After every migration, regenerate the typed Supabase schema:
+```
+rtk proxy bunx supabase gen types typescript --local > src/types/database.ts
+```
+Use `rtk proxy` to bypass RTK output summarization (plain `>` redirect corrupts the file with `// ... NNN lines omitted` markers). The canonical path is `src/types/database.ts` — no other types file exists.
+
 ### Git Rules
 - Never: git reset --hard, git clean -fd, git push --force, rm -rf
 - Always: git pull before committing

@@ -97,6 +97,7 @@ export type Database = {
           rejection_type:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until: string | null
           start_date: string | null
           submission_channel:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -131,6 +132,7 @@ export type Database = {
           rejection_type?:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until?: string | null
           start_date?: string | null
           submission_channel?:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -165,6 +167,7 @@ export type Database = {
           rejection_type?:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until?: string | null
           start_date?: string | null
           submission_channel?:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -587,6 +590,7 @@ export type Database = {
           discovery_source_detail: string | null
           id: string
           indexed_date: string | null
+          is_job_posting: boolean | null
           last_validated_at: string | null
           normalized_company: string | null
           raw_description: string | null
@@ -611,6 +615,7 @@ export type Database = {
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          is_job_posting?: boolean | null
           last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
@@ -635,6 +640,7 @@ export type Database = {
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          is_job_posting?: boolean | null
           last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
@@ -1740,6 +1746,7 @@ export type Database = {
         | "immigration"
         | "timing"
         | "other"
+        | "ghosted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1955,7 +1962,9 @@ export const Constants = {
         "immigration",
         "timing",
         "other",
+        "ghosted",
       ],
     },
   },
 } as const
+
