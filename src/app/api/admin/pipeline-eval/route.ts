@@ -61,23 +61,38 @@ export async function GET(req: Request) {
     .eq('is_job_posting', true)
     .gte('created_at', thirtyDaysAgo)
 
-  const { count: realJobs } = await supabase
+  // Numerators are scoped by discovered_jobs.created_at (NOT jobs.created_at) so
+  // the time window matches the denominators above. Otherwise a job discovered 31d
+  // ago and scored today would inflate realJobs while the discovered_jobs row
+  // is excluded — pushing relevance_rate above 100%.
+  const { count: realJobsInWindow } = await supabase
     .from('jobs')
-    .select('*', { count: 'exact', head: true })
+    .select('*, discovered_jobs!inner(created_at)', { count: 'exact', head: true })
     .eq('user_id', userId)
     .gt('match_score', 0)
-    .gte('created_at', thirtyDaysAgo)
+    .gte('discovered_jobs.created_at', thirtyDaysAgo)
+
+  // For relevance_rate: the numerator must come from the SAME universe as
+  // validPostings (is_job_posting=true). Excludes legacy NULL rows AND
+  // anything Claude classified as non-posting.
+  const { count: realJobsValidOnly } = await supabase
+    .from('jobs')
+    .select('*, discovered_jobs!inner(created_at, is_job_posting)', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gt('match_score', 0)
+    .gte('discovered_jobs.created_at', thirtyDaysAgo)
+    .eq('discovered_jobs.is_job_posting', true)
 
   const validityRate = scoredWithSignal && scoredWithSignal > 0
     ? (validPostings ?? 0) / scoredWithSignal
     : null
 
   const relevanceRate = validPostings && validPostings > 0
-    ? (realJobs ?? 0) / validPostings
+    ? (realJobsValidOnly ?? 0) / validPostings
     : null
 
   const overallYield = scoredDiscovered && scoredDiscovered > 0
-    ? (realJobs ?? 0) / scoredDiscovered
+    ? (realJobsInWindow ?? 0) / scoredDiscovered
     : null
 
   // Keep this so existing `totalDiscovered` reference at line 181 doesn't dangle:
@@ -214,13 +229,13 @@ export async function GET(req: Request) {
         value: relevanceRate,
         target: 0.60,
         met: relevanceRate !== null && relevanceRate >= 0.60,
-        detail: { valid_postings: validPostings ?? 0, real_jobs: realJobs ?? 0 },
+        detail: { valid_postings: validPostings ?? 0, real_jobs: realJobsValidOnly ?? 0 },
       },
       overall_yield: {
         value: overallYield,
         target: 0.50,
         met: overallYield !== null && overallYield >= 0.50,
-        detail: { total_discovered: totalDiscovered ?? 0, scored: scoredDiscovered ?? 0, real_jobs: realJobs ?? 0 },
+        detail: { total_discovered: totalDiscovered ?? 0, scored: scoredDiscovered ?? 0, real_jobs: realJobsInWindow ?? 0 },
       },
       us_canada_rate: {
         value: usCanadaRate,
