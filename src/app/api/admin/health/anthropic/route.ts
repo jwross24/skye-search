@@ -30,7 +30,11 @@ export async function GET(req: Request) {
   }
 
   const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const client = new Anthropic()
+  // maxRetries: 0 — this is a health probe. Default SDK behavior retries twice
+  // on transient errors (5xx, network), which can triple latency before we
+  // surface "network" / "unknown" to the dashboard. We want fast, honest signal.
+  // 401 (AuthenticationError) is not retried by the SDK regardless.
+  const client = new Anthropic({ maxRetries: 0 })
 
   const started = Date.now()
   try {
