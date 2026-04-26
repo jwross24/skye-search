@@ -107,6 +107,10 @@
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-close-learn.sh"
           },
           {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-evaluator-execute-nudge.sh"
+          },
+          {
             "type": "prompt",
             "if": "Write|Edit",
             "prompt": "Check if this file edit adds NEW imports from libraries that may have stale training data: @supabase/, @anthropic-ai/, resend, exa-js, next/, zod. Look at the actual content: $ARGUMENTS. If new library imports are added (not just editing existing code that already uses them), respond {\"ok\": false, \"reason\": \"Fetch Context7 docs for [specific library] before committing \u2014 training data may be stale\"}. If no new library imports, respond {\"ok\": true}.",
@@ -182,6 +186,28 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end-auto-wrap.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/retro-mandate.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/user-correction-detector.sh"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/decide-dont-punt-detector.sh"
           }
         ]
       }
