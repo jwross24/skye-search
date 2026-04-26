@@ -96,6 +96,13 @@ supabase stop            # Stop all containers
 - Run `supabase db reset` to replay all migrations after pulling new ones
 - Run `bun run src/db/seed-to-supabase.ts` after reset to seed data + create test user
 
+**Optional API keys** (features fail open if missing — `scripts/check-prereqs.sh` warns):
+- `ANTHROPIC_API_KEY` — Look it up (Add Job URL analysis), weekly recap commentary. Get one at https://console.anthropic.com/settings/keys.
+- `EXA_API_KEY` — Job discovery via neural search. Get one at https://dashboard.exa.ai.
+- `RESEND_API_KEY` — Email send (alerts, weekly recap delivery). Get one at https://resend.com/api-keys.
+
+Edge Function scoring uses a SEPARATE `ANTHROPIC_API_KEY` stored in Supabase secrets (`supabase secrets list`). Rotating the Vercel key does not rotate the Edge Function key — fix both when keys change.
+
 ### Build Gate (mandatory before every commit)
 ```
 bun run verify

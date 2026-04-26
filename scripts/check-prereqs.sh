@@ -57,6 +57,21 @@ else
   ERRORS=$((ERRORS + 1))
 fi
 
+# ─── Optional API keys (warn, don't block) ───────────────────────────────
+# These keys gate features. Missing or placeholder values fail open at
+# runtime ("AI analysis unavailable", no email send, etc.) — surface them
+# here so the next agent doesn't waste time debugging silent feature gaps.
+
+if [ -f .env.local ]; then
+  for key in ANTHROPIC_API_KEY EXA_API_KEY RESEND_API_KEY; do
+    line=$(grep "^${key}=" .env.local 2>/dev/null || true)
+    val="${line#*=}"
+    if [ -z "$line" ] || [ -z "$val" ] || echo "$val" | grep -qE '^(your_|sk-ant-\.\.\.|re_your_|placeholder)'; then
+      echo "⚠ ${key} not set or placeholder in .env.local — features that depend on it will fail open"
+    fi
+  done
+fi
+
 # ─── Result ──────────────────────────────────────────────────────────────
 
 echo ""
