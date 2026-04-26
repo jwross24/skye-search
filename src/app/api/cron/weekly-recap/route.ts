@@ -201,9 +201,10 @@ async function handler(req: NextRequest) {
     let summaryText: string
     let haikuInputTokens = 0
     let haikuOutputTokens = 0
-    // Set when the AI summary was skipped (auth failure, missing key, or
-    // when no notable events triggered a Haiku call). The email template
-    // can use this later to show "AI summary skipped this week."
+    // Set when generateHaikuSummary returns aiUnavailable=true (Anthropic auth
+    // failure). Other skip paths (no notable events, missing API key entirely)
+    // leave this false — the email template can read haiku_used + ai_unavailable
+    // together to disambiguate "AI down" from "AI not invoked this week."
     let aiUnavailable = false
 
     if (notableEvents.length > 0 && process.env.ANTHROPIC_API_KEY) {
