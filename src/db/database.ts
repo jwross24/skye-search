@@ -97,6 +97,7 @@ export type Database = {
           rejection_type:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until: string | null
           start_date: string | null
           submission_channel:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -131,6 +132,7 @@ export type Database = {
           rejection_type?:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until?: string | null
           start_date?: string | null
           submission_channel?:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -165,6 +167,7 @@ export type Database = {
           rejection_type?:
             | Database["public"]["Enums"]["rejection_type_type"]
             | null
+          snoozed_until?: string | null
           start_date?: string | null
           submission_channel?:
             | Database["public"]["Enums"]["submission_channel_type"]
@@ -188,6 +191,51 @@ export type Database = {
           },
           {
             foreignKeyName: "applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calibration_log: {
+        Row: {
+          calibration_week: string
+          created_at: string
+          feedback_type: string
+          id: string
+          job_id: string
+          tag: string | null
+          user_id: string
+        }
+        Insert: {
+          calibration_week: string
+          created_at?: string
+          feedback_type: string
+          id?: string
+          job_id: string
+          tag?: string | null
+          user_id: string
+        }
+        Update: {
+          calibration_week?: string
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          job_id?: string
+          tag?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calibration_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calibration_log_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -539,8 +587,10 @@ export type Database = {
           company: string | null
           content_hash: string | null
           created_at: string
+          discovery_source_detail: string | null
           id: string
           indexed_date: string | null
+          is_job_posting: boolean | null
           last_validated_at: string | null
           normalized_company: string | null
           raw_description: string | null
@@ -562,8 +612,10 @@ export type Database = {
           company?: string | null
           content_hash?: string | null
           created_at?: string
+          discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          is_job_posting?: boolean | null
           last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
@@ -585,8 +637,10 @@ export type Database = {
           company?: string | null
           content_hash?: string | null
           created_at?: string
+          discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
+          is_job_posting?: boolean | null
           last_validated_at?: string | null
           normalized_company?: string | null
           raw_description?: string | null
@@ -1335,6 +1389,7 @@ export type Database = {
           id: string
           is_admin: boolean
           migration_v1b_completed_at: string | null
+          milestones_seen: string[] | null
           preferences: Json | null
           profile: Json | null
           push_subscription: Json | null
@@ -1349,6 +1404,7 @@ export type Database = {
           id: string
           is_admin?: boolean
           migration_v1b_completed_at?: string | null
+          milestones_seen?: string[] | null
           preferences?: Json | null
           profile?: Json | null
           push_subscription?: Json | null
@@ -1363,6 +1419,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           migration_v1b_completed_at?: string | null
+          milestones_seen?: string[] | null
           preferences?: Json | null
           profile?: Json | null
           push_subscription?: Json | null
@@ -1670,6 +1727,7 @@ export type Database = {
         | "keepalive_gha"
         | "gha_cron"
         | "vercel_cron"
+        | "retroactive_end_date"
       validation_status_type:
         | "unvalidated"
         | "active"
@@ -1688,6 +1746,7 @@ export type Database = {
         | "immigration"
         | "timing"
         | "other"
+        | "ghosted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1881,6 +1940,7 @@ export const Constants = {
         "keepalive_gha",
         "gha_cron",
         "vercel_cron",
+        "retroactive_end_date",
       ],
       validation_status_type: [
         "unvalidated",
@@ -1902,6 +1962,7 @@ export const Constants = {
         "immigration",
         "timing",
         "other",
+        "ghosted",
       ],
     },
   },
