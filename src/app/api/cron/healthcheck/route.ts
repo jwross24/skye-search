@@ -3,12 +3,20 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
 import { CronFailureAlert } from '@/lib/email-templates/templates/cron-failure'
+import { runHealthChecks } from '@/lib/health'
 
 /**
  * GET /api/cron/healthcheck
  *
- * Daily self-monitoring cron (6:00 UTC) — calls /api/health?ready=true internally.
- * If any check is degraded, sends an email alert via Resend.
+ * Daily self-monitoring cron (6:00 UTC) — runs the health checks IN-PROCESS
+ * via `runHealthChecks` from `@/lib/health`. If any check is degraded, sends
+ * an email alert via Resend.
+ *
+ * Why in-process and not an outbound fetch to /api/health?
+ * Vercel sets VERCEL_URL to the deployment-specific URL, which sits behind
+ * Deployment Protection and returns an HTML challenge page. A `res.json()`
+ * on that HTML throws "Unexpected token '<'". Calling the lib function
+ * directly removes the network hop and the env-var dependency.
  *
  * Alert rate: once per day per outage (the cron fires once daily). A sustained
  * outage produces one alert per day, which is intentional for a solo app.
@@ -60,43 +68,34 @@ async function handler(req: NextRequest) {
     // Reaper failure is non-fatal — health check proceeds
   }
 
-  // ─── Health check ─────────────────────────────────────────────────────
+  // ─── Health check (in-process) ────────────────────────────────────────
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-      || process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`
-      || 'http://localhost:3000'
+    const report = await runHealthChecks({ ready: true })
 
-    const res = await fetch(`${baseUrl}/api/health?ready=true`, {
-      headers: { 'Cache-Control': 'no-cache' },
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    const body = await res.json()
-
-    if (body.status === 'ready') {
+    if (report.status === 'ready') {
       return NextResponse.json({ status: 'ok', health: 'ready', reaped })
     }
 
     // ─── Degraded — build alert details ───────────────────────────────
-    const failedChecks = Object.entries(body.checks ?? {})
-      .filter(([, v]) => !(v as { healthy: boolean }).healthy)
-      .map(([k, v]) => `${k}: ${(v as { detail?: string }).detail ?? 'unhealthy'}`)
+    const failedChecks = Object.entries(report.checks ?? {})
+      .filter(([, v]) => !v.healthy)
+      .map(([k, v]) => `${k}: ${v.detail ?? 'unhealthy'}`)
 
     const errorMessage = failedChecks.length > 0
       ? failedChecks.join('\n')
-      : `Health status: ${body.status} (HTTP ${res.status})`
+      : `Health status: ${report.status}`
 
     const sent = await sendAlert(errorMessage)
 
     return NextResponse.json({
       status: sent ? 'alerted' : 'degraded_no_recipient',
-      health: body.status,
+      health: report.status,
       failedChecks,
       reaped,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    const sent = await sendAlert(`Health endpoint unreachable: ${message}`)
+    const sent = await sendAlert(`Health check threw: ${message}`)
 
     return NextResponse.json({
       status: sent ? 'alerted' : 'degraded_no_recipient',

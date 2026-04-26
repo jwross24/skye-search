@@ -4,10 +4,17 @@ function log(step: string, detail: string) {
   process.stdout.write(`  [healthcheck-cron] ${step}: ${detail}\n`)
 }
 
-// ─── Mock fetch (for internal health call) ──────────────────────────────────
+// ─── Mock fetch — should never be called by the cron's healthcheck path ────
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
+
+// ─── Mock runHealthChecks (in-process health logic) ────────────────────────
+
+const mockRunHealthChecks = vi.fn()
+vi.mock('@/lib/health', () => ({
+  runHealthChecks: (...args: unknown[]) => mockRunHealthChecks(...args),
+}))
 
 // ─── Mock sendEmail ─────────────────────────────────────────────────────────
 
@@ -44,7 +51,6 @@ vi.mock('@supabase/supabase-js', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.CRON_SECRET = 'test-secret'
-  process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000'
   process.env.DEVELOPER_ALERT_EMAIL = 'dev@test.com'
 })
 
@@ -70,11 +76,11 @@ describe('GET /api/cron/healthcheck', () => {
   })
 
   it('returns ok when health is ready', async () => {
-    log('happy', 'Health endpoint returns ready')
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ status: 'ready', checks: {} }),
+    log('happy', 'runHealthChecks returns ready')
+    mockRunHealthChecks.mockResolvedValueOnce({
+      status: 'ready',
+      checks: {},
+      timestamp: '2026-04-26T00:00:00.000Z',
     })
 
     const { GET } = await import('./route')
@@ -85,21 +91,20 @@ describe('GET /api/cron/healthcheck', () => {
     expect(body.status).toBe('ok')
     expect(body.health).toBe('ready')
     expect(mockSendEmail).not.toHaveBeenCalled()
-    log('result', 'No alert sent')
+    // Critical: cron must NOT make outbound HTTP requests for health
+    expect(mockFetch).not.toHaveBeenCalled()
+    log('result', 'No alert sent, no outbound fetch')
   })
 
   it('sends email alert when health is degraded', async () => {
-    log('degraded', 'Health endpoint returns degraded')
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      json: async () => ({
-        status: 'degraded',
-        checks: {
-          db: { healthy: false, detail: 'connection failed' },
-          unemployment_cron: { healthy: true },
-        },
-      }),
+    log('degraded', 'runHealthChecks returns degraded')
+    mockRunHealthChecks.mockResolvedValueOnce({
+      status: 'degraded',
+      checks: {
+        db: { healthy: false, detail: 'connection failed' },
+        unemployment_cron: { healthy: true },
+      },
+      timestamp: '2026-04-26T00:00:00.000Z',
     })
 
     const { GET } = await import('./route')
@@ -114,12 +119,13 @@ describe('GET /api/cron/healthcheck', () => {
     const emailArgs = mockSendEmail.mock.calls[0][0]
     expect(emailArgs.to).toBe('dev@test.com')
     expect(emailArgs.subject).toContain('health check failed')
+    expect(mockFetch).not.toHaveBeenCalled()
     log('result', 'Alert email sent with failure details')
   })
 
-  it('sends alert when health endpoint is unreachable', async () => {
-    log('unreachable', 'Health endpoint throws')
-    mockFetch.mockRejectedValueOnce(new Error('ECONNREFUSED'))
+  it('sends alert when runHealthChecks throws', async () => {
+    log('threw', 'runHealthChecks throws')
+    mockRunHealthChecks.mockRejectedValueOnce(new Error('ECONNREFUSED'))
 
     const { GET } = await import('./route')
     const res = await GET(makeRequest('test-secret'))
@@ -127,16 +133,22 @@ describe('GET /api/cron/healthcheck', () => {
 
     expect(body.status).toBe('alerted')
     expect(body.health).toBe('unreachable')
+    expect(body.error).toBe('ECONNREFUSED')
     expect(mockSendEmail).toHaveBeenCalledOnce()
-    log('result', 'Alert sent for unreachable endpoint')
+
+    const emailArgs = mockSendEmail.mock.calls[0][0]
+    // The catch path now uses "Health check threw" (no HTTP roundtrip)
+    expect(emailArgs.react).toBeDefined()
+    expect(mockFetch).not.toHaveBeenCalled()
+    log('result', 'Alert sent for thrown health check')
   })
 
   it('does not crash if email sending fails', async () => {
     log('email-fail', 'Resend throws')
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      json: async () => ({ status: 'degraded', checks: { db: { healthy: false } } }),
+    mockRunHealthChecks.mockResolvedValueOnce({
+      status: 'degraded',
+      checks: { db: { healthy: false } },
+      timestamp: '2026-04-26T00:00:00.000Z',
     })
     mockSendEmail.mockRejectedValueOnce(new Error('Resend down'))
 
@@ -154,5 +166,23 @@ describe('GET /api/cron/healthcheck', () => {
     const { GET } = await import('./route')
     const res = await GET(makeRequest('anything'))
     expect(res.status).toBe(500)
+  })
+
+  it('returns degraded_no_recipient when DEVELOPER_ALERT_EMAIL and RESEND_FROM_EMAIL are unset', async () => {
+    log('no-recipient', 'No alert email configured')
+    delete process.env.DEVELOPER_ALERT_EMAIL
+    delete process.env.RESEND_FROM_EMAIL
+    mockRunHealthChecks.mockResolvedValueOnce({
+      status: 'degraded',
+      checks: { db: { healthy: false, detail: 'down' } },
+      timestamp: '2026-04-26T00:00:00.000Z',
+    })
+
+    const { GET } = await import('./route')
+    const res = await GET(makeRequest('test-secret'))
+    const body = await res.json()
+
+    expect(body.status).toBe('degraded_no_recipient')
+    expect(mockSendEmail).not.toHaveBeenCalled()
   })
 })

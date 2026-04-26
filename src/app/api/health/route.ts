@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { runHealthChecks } from '@/lib/health'
 
 /**
  * GET /api/health
@@ -9,157 +9,14 @@ import { createClient } from '@supabase/supabase-js'
  * 2. The process is alive and can handle requests
  *
  * For deeper checks (DB, cron health, pipeline staleness), use GET /api/health?ready=true
+ *
+ * Implementation lives in `src/lib/health.ts` so the cron healthcheck can call
+ * it in-process (avoiding outbound HTTP through Vercel Deployment Protection).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const checkReady = url.searchParams.get('ready') === 'true'
-
-  // Liveness: always returns 200 if we got here
-  if (!checkReady) {
-    return NextResponse.json({ status: 'alive', timestamp: new Date().toISOString() })
-  }
-
-  // Readiness: check external dependencies + cron health
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-  )
-
-  const checks: Record<string, { healthy: boolean; last_run?: string; stale?: boolean; detail?: string }> = {}
-
-  // ─── DB connectivity ────────────────────────────────────────────────────
-  try {
-    const { error } = await supabase.from('users').select('id', { count: 'exact', head: true })
-    checks.db = { healthy: !error, detail: error?.message }
-  } catch {
-    checks.db = { healthy: false, detail: 'connection failed' }
-  }
-
-  // ─── Unemployment cron (daily — checks actual checkpoint data) ──────────
-  // The cron creates yesterday's checkpoint. On Hobby plan it has a 1-hour flex
-  // window. An idempotent re-run (skip_idempotent) doesn't write to cron_execution_log,
-  // so we check daily_checkpoint directly — the source of truth for whether the
-  // system is tracking unemployment days correctly.
-  try {
-    const { data: lastCheckpoint } = await supabase
-      .from('daily_checkpoint')
-      .select('checkpoint_date, created_at')
-      .order('checkpoint_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (lastCheckpoint?.created_at) {
-      const ageHours = (Date.now() - new Date(lastCheckpoint.created_at).getTime()) / (1000 * 60 * 60)
-      // 50h threshold: cron targets yesterday, so a checkpoint from 2 days ago is stale.
-      // Normal gap is ~24h (yesterday's checkpoint created today). 50h accommodates
-      // Hobby plan flex window + timezone edge cases without false alarms.
-      checks.unemployment_cron = {
-        healthy: ageHours < 50,
-        last_run: lastCheckpoint.created_at,
-        stale: ageHours >= 50,
-        detail: ageHours >= 50
-          ? `${Math.round(ageHours)}h since last checkpoint (${lastCheckpoint.checkpoint_date})`
-          : `latest: ${lastCheckpoint.checkpoint_date}`,
-      }
-    } else {
-      checks.unemployment_cron = { healthy: true, detail: 'no checkpoints yet (bootstrap)' }
-    }
-  } catch {
-    checks.unemployment_cron = { healthy: false, detail: 'query failed' }
-  }
-
-  // ─── Queue worker (stale if pending tasks >24h old) ────────────────────
-  try {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { count: stalePending } = await supabase
-      .from('task_queue')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['pending', 'processing'])
-      .lt('created_at', twentyFourHoursAgo)
-
-    const { data: lastCompleted } = await supabase
-      .from('task_queue')
-      .select('updated_at')
-      .eq('status', 'completed')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const hasStale = (stalePending ?? 0) > 0
-    checks.queue_worker = {
-      healthy: !hasStale,
-      last_run: lastCompleted?.updated_at ?? undefined,
-      stale: hasStale,
-      detail: hasStale ? `${stalePending} tasks pending >24h` : undefined,
-    }
-  } catch {
-    checks.queue_worker = { healthy: false, detail: 'query failed' }
-  }
-
-  // ─── Exa discovery pipeline (bi-weekly — stale if >8 days) ─────────────
-  try {
-    const { data: lastDiscovery } = await supabase
-      .from('discovered_jobs')
-      .select('created_at')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (lastDiscovery?.created_at) {
-      const ageDays = (Date.now() - new Date(lastDiscovery.created_at).getTime()) / (1000 * 60 * 60 * 24)
-      checks.exa_pipeline = {
-        healthy: ageDays < 8,
-        last_run: lastDiscovery.created_at,
-        stale: ageDays >= 8,
-        detail: ageDays >= 8 ? `${Math.round(ageDays)}d since last discovery` : undefined,
-      }
-    } else {
-      checks.exa_pipeline = { healthy: true, detail: 'no discoveries yet (bootstrap)' }
-    }
-  } catch {
-    checks.exa_pipeline = { healthy: false, detail: 'query failed' }
-  }
-
-  // ─── AI scoring pipeline (daily — stale if >26h when unscored jobs exist) ─
-  try {
-    const { data: lastScored } = await supabase
-      .from('task_queue')
-      .select('updated_at')
-      .eq('task_type', 'ai_score_batch')
-      .eq('status', 'completed')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const { count: unscoredCount } = await supabase
-      .from('discovered_jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('scored', false)
-
-    if (lastScored?.updated_at) {
-      const ageHours = (Date.now() - new Date(lastScored.updated_at).getTime()) / (1000 * 60 * 60)
-      const hasBacklog = (unscoredCount ?? 0) > 0 && ageHours >= 26
-      checks.scoring_pipeline = {
-        healthy: !hasBacklog,
-        last_run: lastScored.updated_at,
-        stale: hasBacklog,
-        detail: hasBacklog ? `${unscoredCount} unscored, ${Math.round(ageHours)}h since last score` : `${unscoredCount ?? 0} unscored`,
-      }
-    } else {
-      checks.scoring_pipeline = { healthy: true, detail: `${unscoredCount ?? 0} unscored (no scoring runs yet)` }
-    }
-  } catch {
-    checks.scoring_pipeline = { healthy: false, detail: 'query failed' }
-  }
-
-  const allHealthy = Object.values(checks).every(c => c.healthy)
-
-  return NextResponse.json(
-    {
-      status: allHealthy ? 'ready' : 'degraded',
-      checks,
-      timestamp: new Date().toISOString(),
-    },
-    { status: allHealthy ? 200 : 503 },
-  )
+  const ready = url.searchParams.get('ready') === 'true'
+  const report = await runHealthChecks({ ready })
+  const httpStatus = report.status === 'degraded' ? 503 : 200
+  return NextResponse.json(report, { status: httpStatus })
 }
