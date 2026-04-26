@@ -587,6 +587,8 @@ export type Database = {
           company: string | null
           content_hash: string | null
           created_at: string
+          description_fetch_attempts: number
+          description_fetched_at: string | null
           discovery_source_detail: string | null
           id: string
           indexed_date: string | null
@@ -612,6 +614,8 @@ export type Database = {
           company?: string | null
           content_hash?: string | null
           created_at?: string
+          description_fetch_attempts?: number
+          description_fetched_at?: string | null
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null
@@ -637,6 +641,8 @@ export type Database = {
           company?: string | null
           content_hash?: string | null
           created_at?: string
+          description_fetch_attempts?: number
+          description_fetched_at?: string | null
           discovery_source_detail?: string | null
           id?: string
           indexed_date?: string | null

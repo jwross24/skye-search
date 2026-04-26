@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 function log(step: string, detail: string) {
-  process.stdout.write(`  [score-cron] ${step}: ${detail}\n`)
+  process.stdout.write(`  [fetch-description-cron] ${step}: ${detail}\n`)
 }
 
-const { mockInsert, mockSelectCount, mockSelectUnscored } = vi.hoisted(() => ({
+const { mockInsert, mockSelectCount, mockSelectPending } = vi.hoisted(() => ({
   mockInsert: vi.fn().mockResolvedValue({ error: null }),
   mockSelectCount: vi.fn(),
-  mockSelectUnscored: vi.fn(),
+  mockSelectPending: vi.fn(),
 }))
 
 vi.mock('@supabase/supabase-js', () => {
@@ -40,22 +40,17 @@ vi.mock('@supabase/supabase-js', () => {
         if (table === 'discovered_jobs') {
           return {
             select: (...args: unknown[]) => {
-              // Head count query vs data query
+              // Head count query: select('*', { count: 'exact', head: true })
               if (args.length > 1) {
-                // count query: .select('*', { count: 'exact', head: true })
                 return chainable(mockSelectCount())
               }
-              // Data query: .eq.eq.not.not.order.order.limit (added a second .not for description_fetched_at)
+              // Data query: select('id') ...
               return {
                 eq: () => ({
-                  eq: () => ({
-                    not: () => ({
-                      not: () => ({
-                        order: () => ({
-                          order: () => ({
-                            limit: () => mockSelectUnscored(),
-                          }),
-                        }),
+                  is: () => ({
+                    lt: () => ({
+                      order: () => ({
+                        limit: () => mockSelectPending(),
                       }),
                     }),
                   }),
@@ -70,46 +65,45 @@ vi.mock('@supabase/supabase-js', () => {
   }
 })
 
-vi.mock('@/lib/budget-guard', () => ({
-  checkBudget: vi.fn().mockResolvedValue({ action: 'allow' }),
-}))
-
-const CRON_SECRET = 'test-score-secret'
+const CRON_SECRET = 'test-fetch-desc-secret'
 
 function makeRequest(secret?: string) {
   const headers = new Headers()
   if (secret) headers.set('authorization', `Bearer ${secret}`)
-  return new NextRequest('http://localhost:3000/api/cron/score', { method: 'POST', headers })
+  return new NextRequest('http://localhost:3000/api/cron/fetch-description', {
+    method: 'POST',
+    headers,
+  })
 }
 
-describe('POST /api/cron/score', () => {
+describe('POST /api/cron/fetch-description', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.CRON_SECRET = CRON_SECRET
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SECRET_KEY = 'test-key'
     mockSelectCount.mockResolvedValue({ count: 0 })
-    mockSelectUnscored.mockResolvedValue({
+    mockSelectPending.mockResolvedValue({
       data: [{ id: 'job-1' }, { id: 'job-2' }],
       error: null,
     })
   })
 
-  it('[score] returns 401 without authorization', async () => {
+  it('[fetch-desc] returns 401 without authorization', async () => {
     const { POST } = await import('./route')
     const res = await POST(makeRequest())
     expect(res.status).toBe(401)
     log('auth', 'Rejected: no authorization header')
   })
 
-  it('[score] returns 401 with wrong secret', async () => {
+  it('[fetch-desc] returns 401 with wrong secret', async () => {
     const { POST } = await import('./route')
     const res = await POST(makeRequest('wrong-secret'))
     expect(res.status).toBe(401)
     log('auth', 'Rejected: wrong secret')
   })
 
-  it('[score] returns 500 when CRON_SECRET not configured', async () => {
+  it('[fetch-desc] returns 500 when CRON_SECRET not configured', async () => {
     delete process.env.CRON_SECRET
     const { POST } = await import('./route')
     const res = await POST(makeRequest('anything'))
@@ -119,7 +113,7 @@ describe('POST /api/cron/score', () => {
     log('auth', 'Rejected: CRON_SECRET missing')
   })
 
-  it('[score] creates scoring task when unscored jobs exist', async () => {
+  it('[fetch-desc] enqueues fetch_description task with correct payload shape', async () => {
     const { POST } = await import('./route')
     const res = await POST(makeRequest(CRON_SECRET))
     const body = await res.json()
@@ -127,12 +121,29 @@ describe('POST /api/cron/score', () => {
     expect(res.status).toBe(200)
     expect(body.ok).toBe(true)
     expect(body.tasks_created).toBe(1)
-    expect(body.jobs_to_score).toBe(2)
+    expect(body.jobs_to_fetch).toBe(2)
     expect(mockInsert).toHaveBeenCalledOnce()
-    log('happy path', `Created ${body.tasks_created} task(s), ${body.jobs_to_score} jobs to score`)
+    const insertArg = mockInsert.mock.calls[0][0]
+    expect(insertArg.task_type).toBe('fetch_description')
+    expect(insertArg.payload_json).toEqual({ discovered_job_ids: ['job-1', 'job-2'] })
+    log('happy path', `Created ${body.tasks_created} task(s) for ${body.jobs_to_fetch} jobs`)
   })
 
-  it('[score] skips when pending task exists (idempotent)', async () => {
+  it('[fetch-desc] returns tasks_created: 0 when no rows pending fetch', async () => {
+    mockSelectPending.mockResolvedValue({ data: [], error: null })
+    const { POST } = await import('./route')
+    const res = await POST(makeRequest(CRON_SECRET))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body.ok).toBe(true)
+    expect(body.tasks_created).toBe(0)
+    expect(body.reason).toBe('no rows pending fetch')
+    expect(mockInsert).not.toHaveBeenCalled()
+    log('no work', `Skipped: ${body.reason}`)
+  })
+
+  it('[fetch-desc] idempotency: skips when pending task < 30min old', async () => {
     mockSelectCount.mockResolvedValue({ count: 1 })
     const { POST } = await import('./route')
     const res = await POST(makeRequest(CRON_SECRET))
@@ -141,48 +152,8 @@ describe('POST /api/cron/score', () => {
     expect(body.ok).toBe(true)
     expect(body.tasks_created).toBe(0)
     expect(body.reason).toContain('pending')
+    expect(body.reason).toContain('30min')
     expect(mockInsert).not.toHaveBeenCalled()
     log('idempotent', `Skipped: ${body.reason}`)
-  })
-
-  it('[score] skips when no unscored jobs', async () => {
-    mockSelectCount.mockResolvedValue({ count: 0 })
-    mockSelectUnscored.mockResolvedValue({ data: [], error: null })
-    const { POST } = await import('./route')
-    const res = await POST(makeRequest(CRON_SECRET))
-    const body = await res.json()
-
-    expect(body.ok).toBe(true)
-    expect(body.tasks_created).toBe(0)
-    expect(body.reason).toBe('no unscored jobs')
-    log('no work', `Skipped: ${body.reason}`)
-  })
-
-  it('[score] (llrb) requires description_fetched_at IS NOT NULL in unscored query', async () => {
-    // Static check: route source filters on description_fetched_at so rows where
-    // we never attempted to fetch a description don't get pulled into scoring.
-    const { readFileSync } = await import('fs')
-    const content = readFileSync(
-      'src/app/api/cron/score/route.ts',
-      'utf8',
-    )
-    expect(content).toContain(".not('description_fetched_at', 'is', null)")
-    // Both the data query (line ~78) AND the totalUnscored count (line ~100)
-    // must apply the filter so the backlog warning doesn't drift from reality.
-    const matches = content.match(/\.not\('description_fetched_at', 'is', null\)/g) ?? []
-    expect(matches.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('[score] skips when budget paused', async () => {
-    const { checkBudget } = await import('@/lib/budget-guard')
-    vi.mocked(checkBudget).mockResolvedValue({ action: 'pause', reason: 'Daily cap reached' } as ReturnType<typeof checkBudget> extends Promise<infer T> ? T : never)
-    const { POST } = await import('./route')
-    const res = await POST(makeRequest(CRON_SECRET))
-    const body = await res.json()
-
-    expect(body.ok).toBe(true)
-    expect(body.tasks_created).toBe(0)
-    expect(body.reason).toContain('Budget paused')
-    log('budget', `Skipped: ${body.reason}`)
   })
 })

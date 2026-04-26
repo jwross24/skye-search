@@ -40,6 +40,20 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       (inputs.batch == 'morning' || inputs.batch == 'all')
     steps:
+      - name: Fetch descriptions
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" --max-time 60 \
+            -X POST "$BASE_URL/api/cron/fetch-description" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            -d '{"triggerSource":"gha_cron"}')
+          echo "Fetch descriptions: HTTP $HTTP_CODE"
+          cat /tmp/response.json 2>/dev/null | head -c 500 || true
+          echo ""
+          [ "$HTTP_CODE" = "200" ] || exit 1
+
       - name: Score
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

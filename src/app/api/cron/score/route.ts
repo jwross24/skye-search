@@ -69,13 +69,21 @@ async function handler(req: NextRequest) {
       })
     }
 
-    // Query unscored discovered_jobs with priority ordering
+    // Query unscored discovered_jobs with priority ordering.
+    //
+    // Filter on description_fetched_at IS NOT NULL so we only score rows where
+    // the fetch_description pipeline (or original adapter) has at least
+    // attempted to populate a description. Combined with raw_description IS
+    // NOT NULL, this means: rows that tried-and-failed (description_fetched_at
+    // set, raw_description still NULL) are deliberately excluded — they will
+    // never score until a description appears. See bead skye-search-llrb.
     const { data: unscoredJobs, error: queryError } = await supabase
       .from('discovered_jobs')
       .select('id')
       .eq('user_id', userId)
       .eq('scored', false)
       .not('raw_description', 'is', null)
+      .not('description_fetched_at', 'is', null)
       .order('structured_deadline', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true })
       .limit(50)
@@ -91,13 +99,16 @@ async function handler(req: NextRequest) {
       return NextResponse.json({ ok: true, tasks_created: 0, reason: 'no unscored jobs' })
     }
 
-    // Backlog check: warn if >200 unscored (don't fire extra batches)
+    // Backlog check: warn if >200 unscored (don't fire extra batches).
+    // Same description_fetched_at filter as the data query above so the count
+    // matches what the next batch would actually pick up.
     const { count: totalUnscored } = await supabase
       .from('discovered_jobs')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('scored', false)
       .not('raw_description', 'is', null)
+      .not('description_fetched_at', 'is', null)
 
     const jobIds = unscoredJobs.map(j => j.id)
 
