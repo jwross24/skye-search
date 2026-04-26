@@ -110,8 +110,12 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
   }
 
   // 7. Claude Haiku structured extraction
+  // Lift the dynamic import OUT of the try block so the class (and its
+  // attached static error types) are in scope for the catch — we need
+  // `instanceof Anthropic.AuthenticationError` to differentiate auth
+  // failures from generic SDK errors.
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
   try {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
     const { zodOutputFormat } = await import('@anthropic-ai/sdk/helpers/zod')
     const { z } = await import('zod')
 
@@ -203,6 +207,16 @@ export async function analyzeJobUrl(url: string): Promise<UrlAnalysisResult> {
 
     return { success: true, fields: message.parsed_output }
   } catch (err) {
+    // Auth failure (e.g., placeholder API key in production) gets a friendly,
+    // actionable message — never leak the raw 401 wording into the UI or log
+    // the error message/stack (someone might screenshot the dashboard).
+    if (err instanceof Anthropic.AuthenticationError) {
+      console.error('[url-analysis] anthropic_auth_failed', { request_id: err.requestID })
+      return {
+        success: false,
+        error: 'AI analysis is temporarily unavailable. Add details manually.',
+      }
+    }
     const errorMessage = err instanceof Error ? err.message : 'AI analysis failed'
     return { success: false, error: `Analysis failed: ${errorMessage}. Add details manually.` }
   }

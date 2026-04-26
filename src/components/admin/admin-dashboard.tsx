@@ -8,6 +8,7 @@ import { CostTracker } from './cost-tracker'
 import { CronHistory } from './cron-history'
 import { ScoringStats } from './scoring-stats'
 import { PipelineEval } from './pipeline-eval'
+import { AiHealth } from './ai-health'
 
 interface PipelineHealthData {
   discovery: { status: string; lastRun: string | null; completed: number; failed: number; sources: string[] }
@@ -59,6 +60,13 @@ export function AdminDashboard() {
             </p>
           </div>
           <div className="text-xs text-zinc-600 font-mono">auto-refresh: 30s</div>
+        </div>
+
+        {/* Section 0: AI Health probe — surfaces stale/placeholder API keys
+             that pass the env-var presence check. Sits above pipeline health
+             because an invalid key silently breaks scoring + URL analysis. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <AiHealth />
         </div>
 
         {/* Section 1: Pipeline Health Cards */}

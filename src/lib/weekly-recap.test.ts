@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   getWeekBounds,
   detectNotableEvents,
   generateTemplateSummary,
+  generateHaikuSummary,
   buildMomentumContext,
   buildPhaseFromContext,
   type NotableEventContext,
@@ -206,3 +207,84 @@ describe('phase detection integration', () => {
     expect(buildPhaseFromContext(ctx)).toBe('pressure')
   })
 })
+
+// ─── generateHaikuSummary auth handling ─────────────────────────────────────
+
+describe('generateHaikuSummary', () => {
+  // Helper: build a FakeAnthropic class that EXTENDS the real default export
+  // so static error classes (AuthenticationError etc.) survive on the
+  // prototype chain. Plain Object.assign would drop them — they're attached
+  // to BaseAnthropic, the parent.
+  async function withMockedSdk(
+    messagesImpl: { create: (...args: unknown[]) => unknown },
+    fn: (gen: typeof generateHaikuSummary) => Promise<void>,
+  ) {
+    const realSdk = await vi.importActual<typeof import('@anthropic-ai/sdk')>(
+      '@anthropic-ai/sdk',
+    )
+    class FakeAnthropic extends realSdk.default {
+      constructor() {
+        // jsdom env triggers SDK's browser guard — opt out (no real network
+        // is hit because we overwrite `messages` immediately).
+        super({ apiKey: 'test-key-xyz', dangerouslyAllowBrowser: true })
+        this.messages = messagesImpl as unknown as typeof this.messages
+      }
+    }
+    vi.doMock('@anthropic-ai/sdk', () => ({ default: FakeAnthropic }))
+    vi.resetModules()
+    try {
+      const { generateHaikuSummary: gen } = await import('./weekly-recap')
+      await fn(gen)
+    } finally {
+      vi.doUnmock('@anthropic-ai/sdk')
+      vi.resetModules()
+    }
+  }
+
+  it('returns aiUnavailable=true on Anthropic 401', async () => {
+    const realSdk = await vi.importActual<typeof import('@anthropic-ai/sdk')>(
+      '@anthropic-ai/sdk',
+    )
+    const authError = new realSdk.default.AuthenticationError(
+      401,
+      {
+        type: 'error',
+        error: { type: 'authentication_error', message: 'invalid x-api-key' },
+      },
+      'invalid x-api-key',
+      new Headers(),
+    )
+
+    await withMockedSdk(
+      { create: vi.fn().mockRejectedValueOnce(authError) },
+      async (gen) => {
+        const result = await gen('active', ['First interview scheduled'], 5, 2, 90)
+
+        expect(result.aiUnavailable).toBe(true)
+        expect(result.inputTokens).toBe(0)
+        expect(result.outputTokens).toBe(0)
+        // Falls back to template summary text — user still gets a coherent
+        // recap when AI commentary is skipped.
+        expect(result.text).toContain('5 jobs')
+        expect(result.text).toContain('2 applications')
+        // Template summary must NOT leak raw 401 wording.
+        expect(result.text).not.toContain('401')
+        expect(result.text).not.toContain('invalid x-api-key')
+      },
+    )
+  })
+
+  it('non-auth errors propagate to caller', async () => {
+    await withMockedSdk(
+      { create: vi.fn().mockRejectedValueOnce(new Error('overloaded')) },
+      async (gen) => {
+        await expect(gen('active', ['anything'], 1, 1, 90)).rejects.toThrow('overloaded')
+      },
+    )
+  })
+})
+
+// Reference the imported function so lint doesn't flag it as unused when the
+// suite above re-imports via dynamic import. The bare reference asserts the
+// module resolves correctly at static-analysis time too.
+void generateHaikuSummary

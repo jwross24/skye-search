@@ -60,9 +60,27 @@ const mockMessageParse = vi.fn().mockResolvedValue({
   usage: { input_tokens: 2000, output_tokens: 200 },
 })
 
-vi.mock('@anthropic-ai/sdk', () => {
-  const MockAnthropic = function () {
-    return { messages: { parse: mockMessageParse } }
+vi.mock('@anthropic-ai/sdk', async () => {
+  // The real SDK attaches error classes (AuthenticationError, RateLimitError,
+  // APIConnectionError, …) as STATIC properties of the parent class
+  // `BaseAnthropic` — so they're inherited via prototype chain, not own
+  // properties of `Anthropic`. Copying with Object.assign would silently drop
+  // them (they aren't enumerable own props of the default export).
+  //
+  // The cleanest fix: have the mock CLASS EXTEND the real Anthropic so the
+  // static-error inheritance survives. The constructor then replaces
+  // `this.messages` with the parse mock so no real network call ever fires.
+  const actual = await vi.importActual<typeof import('@anthropic-ai/sdk')>('@anthropic-ai/sdk')
+  class MockAnthropic extends actual.default {
+    constructor() {
+      // Call the real ctor with a fake key so it doesn't fail on missing env.
+      // dangerouslyAllowBrowser: vitest may run this in jsdom env — the SDK
+      // refuses to construct otherwise. No real network is hit because we
+      // overwrite `messages` immediately below.
+      super({ apiKey: 'test-key-xyz', dangerouslyAllowBrowser: true })
+      // Replace messages with the parse mock for assertions.
+      this.messages = { parse: mockMessageParse } as unknown as typeof this.messages
+    }
   }
   return { default: MockAnthropic }
 })
@@ -268,5 +286,26 @@ describe('analyzeJobUrl', () => {
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Not authenticated')
+  })
+
+  it('returns friendly message when Anthropic returns 401', async () => {
+    // Construct a real AuthenticationError instance so `instanceof` works
+    // against the same class lifted out of the action's try block.
+    const Anthropic = (await import('@anthropic-ai/sdk')).default
+    const authError = new Anthropic.AuthenticationError(
+      401,
+      { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } },
+      'invalid x-api-key',
+      new Headers(),
+    )
+    mockMessageParse.mockRejectedValueOnce(authError)
+
+    const result = await analyzeJobUrl('https://whoi.edu/jobs/123')
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('AI analysis is temporarily unavailable. Add details manually.')
+    // Crucially: no raw 401 wording leaks into the user-facing string.
+    expect(result.error).not.toContain('401')
+    expect(result.error).not.toContain('invalid x-api-key')
   })
 })

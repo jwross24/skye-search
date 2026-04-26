@@ -201,6 +201,10 @@ async function handler(req: NextRequest) {
     let summaryText: string
     let haikuInputTokens = 0
     let haikuOutputTokens = 0
+    // Set when the AI summary was skipped (auth failure, missing key, or
+    // when no notable events triggered a Haiku call). The email template
+    // can use this later to show "AI summary skipped this week."
+    let aiUnavailable = false
 
     if (notableEvents.length > 0 && process.env.ANTHROPIC_API_KEY) {
       try {
@@ -214,8 +218,10 @@ async function handler(req: NextRequest) {
         summaryText = result.text
         haikuInputTokens = result.inputTokens
         haikuOutputTokens = result.outputTokens
+        if (result.aiUnavailable) aiUnavailable = true
       } catch (err) {
-        // Fallback to template if Haiku fails
+        // Fallback to template if Haiku fails (non-auth errors only — auth
+        // is handled inside generateHaikuSummary and returns aiUnavailable).
         console.error('[weekly-recap] Haiku summary failed, using template:', err)
         summaryText = generateTemplateSummary(phase, jobsReviewed, applicationsSubmitted)
       }
@@ -302,6 +308,7 @@ async function handler(req: NextRequest) {
       phase,
       notableEvents,
       haiku_used: haikuInputTokens > 0,
+      ai_unavailable: aiUnavailable,
       email_sent: !!emailId,
       email_id: emailId,
     })
