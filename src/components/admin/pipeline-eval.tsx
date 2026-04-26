@@ -28,7 +28,9 @@ interface EvalData {
   period: string
   computed_at: string
   metrics: {
-    posting_precision: MetricValue
+    validity_rate: MetricValue
+    relevance_rate: MetricValue
+    overall_yield: MetricValue
     us_canada_rate: MetricValue
     visa_known_rate: MetricValue
     interested_rate: MetricValue
@@ -39,7 +41,9 @@ interface EvalData {
 }
 
 const METRIC_LABELS: Record<string, { label: string; description: string; invertTarget?: boolean }> = {
-  posting_precision: { label: 'Posting Precision', description: 'Real jobs / scored discovered' },
+  validity_rate: { label: 'Validity Rate', description: 'Real postings / scored (excluding unknowns)' },
+  relevance_rate: { label: 'Relevance Rate', description: 'Matched jobs / valid postings — measures query specificity' },
+  overall_yield: { label: 'Overall Yield', description: 'Matched jobs / scored — legacy "Posting Precision"' },
   us_canada_rate: { label: 'US/Canada Rate', description: 'Jobs in US or Canada' },
   visa_known_rate: { label: 'Visa Path Known', description: 'Jobs with identified visa path' },
   interested_rate: { label: 'Interested Rate', description: 'Applications / (applications + dismissals) — high match jobs' },

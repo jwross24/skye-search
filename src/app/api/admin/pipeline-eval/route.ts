@@ -18,7 +18,9 @@ export interface SourceMetric {
 /**
  * GET /api/admin/pipeline-eval
  *
- * Computes 5 pipeline quality metrics from existing data.
+ * Computes 7 pipeline quality metrics from existing data:
+ * validity_rate, relevance_rate, overall_yield, us_canada_rate,
+ * visa_known_rate, interested_rate, duplicate_rate.
  * Used to measure whether P0 scoring fixes worked.
  */
 export async function GET(req: Request) {
@@ -30,14 +32,12 @@ export async function GET(req: Request) {
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  // ─── 1. Posting Precision ────────────────────────────────────────────
-  // discovered_jobs (scored=true) → how many made it to the jobs table?
-  const { count: totalDiscovered } = await supabase
-    .from('discovered_jobs')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', thirtyDaysAgo)
-
+  // ─── Validity, Relevance, Overall Yield ─────────────────────────────
+  // Validity: of scored discovered_jobs with a known is_job_posting signal,
+  //   what % are actual job postings? (vs career pages, articles, listings).
+  // Relevance: of valid postings, what % are relevant to Skye's profile?
+  // Overall Yield: of all scored discovered_jobs, what % became real
+  //   matched jobs? (the legacy "Posting Precision" formula.)
   const { count: scoredDiscovered } = await supabase
     .from('discovered_jobs')
     .select('*', { count: 'exact', head: true })
@@ -45,7 +45,22 @@ export async function GET(req: Request) {
     .eq('scored', true)
     .gte('created_at', thirtyDaysAgo)
 
-  // Jobs with match_score > 0 are real postings that passed filtering
+  const { count: scoredWithSignal } = await supabase
+    .from('discovered_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('scored', true)
+    .not('is_job_posting', 'is', null)
+    .gte('created_at', thirtyDaysAgo)
+
+  const { count: validPostings } = await supabase
+    .from('discovered_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('scored', true)
+    .eq('is_job_posting', true)
+    .gte('created_at', thirtyDaysAgo)
+
   const { count: realJobs } = await supabase
     .from('jobs')
     .select('*', { count: 'exact', head: true })
@@ -53,9 +68,24 @@ export async function GET(req: Request) {
     .gt('match_score', 0)
     .gte('created_at', thirtyDaysAgo)
 
-  const postingPrecision = scoredDiscovered && scoredDiscovered > 0
+  const validityRate = scoredWithSignal && scoredWithSignal > 0
+    ? (validPostings ?? 0) / scoredWithSignal
+    : null
+
+  const relevanceRate = validPostings && validPostings > 0
+    ? (realJobs ?? 0) / validPostings
+    : null
+
+  const overallYield = scoredDiscovered && scoredDiscovered > 0
     ? (realJobs ?? 0) / scoredDiscovered
     : null
+
+  // Keep this so existing `totalDiscovered` reference at line 181 doesn't dangle:
+  const { count: totalDiscovered } = await supabase
+    .from('discovered_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', thirtyDaysAgo)
 
   // ─── 2. US/Canada Rate ───────────────────────────────────────────────
   // Also fetch url + match_score for per-source metrics (no second query needed).
@@ -174,10 +204,22 @@ export async function GET(req: Request) {
     period: '30d',
     computed_at: new Date().toISOString(),
     metrics: {
-      posting_precision: {
-        value: postingPrecision,
-        target: 0.95,
-        met: postingPrecision !== null && postingPrecision >= 0.95,
+      validity_rate: {
+        value: validityRate,
+        target: 0.90,
+        met: validityRate !== null && validityRate >= 0.90,
+        detail: { scored_with_signal: scoredWithSignal ?? 0, valid_postings: validPostings ?? 0 },
+      },
+      relevance_rate: {
+        value: relevanceRate,
+        target: 0.60,
+        met: relevanceRate !== null && relevanceRate >= 0.60,
+        detail: { valid_postings: validPostings ?? 0, real_jobs: realJobs ?? 0 },
+      },
+      overall_yield: {
+        value: overallYield,
+        target: 0.50,
+        met: overallYield !== null && overallYield >= 0.50,
         detail: { total_discovered: totalDiscovered ?? 0, scored: scoredDiscovered ?? 0, real_jobs: realJobs ?? 0 },
       },
       us_canada_rate: {

@@ -79,6 +79,7 @@ const ScoringOutputSchema = z.object({
   ]),
   employment_type: z.enum(['full_time', 'part_time', 'contract', 'unknown']),
   match_score: z.number().min(0).max(1),
+  is_job_posting: z.boolean(),
   why_fits: z.string(),
   skills_academic_equiv: z.array(z.string()),
   application_deadline: z.string().nullable(),
@@ -125,15 +126,22 @@ const SCORING_RUBRIC = `
 ## Scoring Instructions
 
 ### FIRST: Is this an actual job posting?
-Before scoring, determine if this is a specific, open job posting for a
-defined role. If this is ANY of the following, set match_score = 0.0 and
-skip all other scoring:
+Set is_job_posting=true if and only if this is a specific, currently open
+job posting for ONE defined role. Set is_job_posting=false (and match_score=0,
+and skip detailed scoring of the other fields by returning sensible defaults)
+for ANY of:
 - A careers landing page ("Why Work at...", "Life at...", "About Us")
 - An employer information page (general company/lab description)
 - A job board index page (list of many positions, not one specific role)
 - A news article, blog post, or research paper
 - An expired or closed position
-Only proceed with scoring if this is an active posting for ONE specific role.
+
+The relationship is: is_job_posting=false ALWAYS implies match_score=0.
+is_job_posting=true does NOT imply match_score>0 — a real posting can
+still score 0 if it's outside the candidate's field or geographic scope.
+
+This separation lets the admin dashboard distinguish "Exa returned junk"
+from "Exa returned real jobs in wrong fields" — they need different fixes.
 
 ### Geographic requirement
 This candidate requires positions in the United States or Canada only
@@ -724,6 +732,13 @@ async function processBatch(
       result.totalRetries += retries
       const output = scored.output
 
+      // Invariant: is_job_posting=false MUST mean match_score=0.
+      // If Claude violates this (rare but possible), enforce it.
+      if (output.is_job_posting === false && output.match_score > 0) {
+        output.match_score = 0
+        output.why_fits = 'Filtered: Claude classified as non-posting but assigned score'
+      }
+
       // Safety net 1: international location → zero score
       if (output.match_score > 0 && isInternationalLocation(output.location)) {
         output.match_score = 0
@@ -759,7 +774,7 @@ async function processBatch(
       if (output.match_score === 0) {
         await supabase
           .from('discovered_jobs')
-          .update({ scored: true })
+          .update({ scored: true, is_job_posting: output.is_job_posting })
           .eq('id', job.id)
         result.skipped++
         continue
@@ -823,7 +838,7 @@ async function processBatch(
       // Mark discovered_job as scored
       await supabase
         .from('discovered_jobs')
-        .update({ scored: true })
+        .update({ scored: true, is_job_posting: output.is_job_posting })
         .eq('id', job.id)
 
       // Log API usage

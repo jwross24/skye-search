@@ -39,16 +39,39 @@ describe('GET /api/admin/pipeline-eval', () => {
     expect(res.status).toBe(401)
   })
 
-  it('[admin] returns all 5 metrics', async () => {
+  it('[admin] returns all 7 metrics including validity/relevance/yield split', async () => {
     const { GET } = await import('./route')
     const res = await GET(new Request('http://localhost:3000/api/admin/pipeline-eval'))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.metrics.posting_precision).toBeDefined()
+    expect(body.metrics.validity_rate).toBeDefined()
+    expect(body.metrics.relevance_rate).toBeDefined()
+    expect(body.metrics.overall_yield).toBeDefined()
     expect(body.metrics.us_canada_rate).toBeDefined()
     expect(body.metrics.visa_known_rate).toBeDefined()
     expect(body.metrics.interested_rate).toBeDefined()
     expect(body.metrics.duplicate_rate).toBeDefined()
+    // Legacy posting_precision metric removed — split into three
+    expect(body.metrics.posting_precision).toBeUndefined()
+  })
+
+  it('[admin] validity/relevance/yield metrics have correct targets', async () => {
+    const { GET } = await import('./route')
+    const res = await GET(new Request('http://localhost:3000/api/admin/pipeline-eval'))
+    const body = await res.json()
+    expect(body.metrics.validity_rate.target).toBe(0.90)
+    expect(body.metrics.relevance_rate.target).toBe(0.60)
+    expect(body.metrics.overall_yield.target).toBe(0.50)
+  })
+
+  it('[admin] validity_rate is null when no rows have a signal yet (all legacy)', async () => {
+    // Default mock returns count: 0 for all queries → scoredWithSignal = 0
+    const { GET } = await import('./route')
+    const res = await GET(new Request('http://localhost:3000/api/admin/pipeline-eval'))
+    const body = await res.json()
+    expect(body.metrics.validity_rate.value).toBeNull()
+    expect(body.metrics.relevance_rate.value).toBeNull()
+    expect(body.metrics.overall_yield.value).toBeNull()
   })
 
   it('[admin] returns source_metrics as an object', async () => {

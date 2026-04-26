@@ -207,6 +207,57 @@ describe('Positive feedback signal from applications', () => {
   })
 })
 
+describe('is_job_posting field (uiib: validity vs relevance split)', () => {
+  it('Zod schema includes is_job_posting boolean', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // The schema must declare is_job_posting as a boolean field
+    expect(content).toContain('is_job_posting: z.boolean()')
+  })
+
+  it('rubric instructs Claude to set is_job_posting explicitly', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    expect(content).toContain('is_job_posting=true')
+    expect(content).toContain('is_job_posting=false')
+    // Rubric calls out the relationship between the flag and match_score
+    expect(content).toContain('is_job_posting=false ALWAYS implies match_score=0')
+  })
+
+  it('handler applies defensive invariant when Claude violates the relationship', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // If is_job_posting=false but match_score>0, force match_score to 0
+    expect(content).toContain('output.is_job_posting === false && output.match_score > 0')
+    expect(content).toContain('Filtered: Claude classified as non-posting but assigned score')
+  })
+
+  it('zero-score path persists is_job_posting on discovered_jobs', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // Both update sites must propagate the flag (string match for the literal payload)
+    expect(content).toContain('{ scored: true, is_job_posting: output.is_job_posting }')
+  })
+
+  it('success path persists is_job_posting on discovered_jobs', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // Verify the literal payload appears more than once (zero-score skip + post-upsert mark)
+    const matches = content.match(/\{ scored: true, is_job_posting: output\.is_job_posting \}/g) ?? []
+    expect(matches.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('bulk-skip writes (filter + dedup) leave is_job_posting NULL', async () => {
+    const { readFileSync } = await import('fs')
+    const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
+    // The pre-Claude bulk update is intentionally `{ scored: true }` only — those rows
+    // never reached Claude, so we have no signal. Leaving is_job_posting NULL excludes
+    // them from validity_rate denominator.
+    const bulkMatches = content.match(/\.update\(\{ scored: true \}\)\n\s+\.in\('id',/g) ?? []
+    expect(bulkMatches.length).toBeGreaterThanOrEqual(2) // filter skip + dedup skip
+  })
+})
+
 describe('SCORING_RUBRIC content', () => {
   // We can't easily import the rubric from the Deno module in Vitest,
   // so we read the file and check string content
@@ -215,6 +266,7 @@ describe('SCORING_RUBRIC content', () => {
     const content = readFileSync('supabase/functions/_shared/handlers/ai-scoring.ts', 'utf8')
     expect(content).toContain('Is this an actual job posting?')
     expect(content).toContain('careers landing page')
+    // Either explicit 0 or 0.0 is acceptable — both are present in the rubric now
     expect(content).toContain('match_score = 0.0')
   })
 

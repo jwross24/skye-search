@@ -13,7 +13,9 @@ const mockData = {
   period: '30d',
   computed_at: '2026-04-03T00:00:00Z',
   metrics: {
-    posting_precision: { value: 0.92, target: 0.95, met: false, detail: { total_discovered: 100, scored: 80, real_jobs: 74 } },
+    validity_rate: { value: 0.92, target: 0.90, met: true, detail: { scored_with_signal: 80, valid_postings: 74 } },
+    relevance_rate: { value: 0.65, target: 0.60, met: true, detail: { valid_postings: 74, real_jobs: 48 } },
+    overall_yield: { value: 0.55, target: 0.50, met: true, detail: { total_discovered: 100, scored: 80, real_jobs: 48 } },
     us_canada_rate: { value: 0.97, target: 0.95, met: true, detail: { total_with_location: 74, us_canada: 72 } },
     visa_known_rate: { value: 0.85, target: 0.80, met: true, detail: { total_jobs: 74, visa_known: 63 } },
     interested_rate: { value: 0.35, target: 0.30, met: true, detail: { applications: 7, votes: 13 } },
@@ -47,20 +49,45 @@ beforeEach(() => {
 })
 
 describe('PipelineEval', () => {
-  it('renders all 5 metric labels', async () => {
+  it('renders all 7 metric labels including the validity/relevance/yield split', async () => {
     render(<PipelineEval />)
 
-    expect(await screen.findByText('Posting Precision')).toBeTruthy()
+    expect(await screen.findByText('Validity Rate')).toBeTruthy()
+    expect(screen.getByText('Relevance Rate')).toBeTruthy()
+    expect(screen.getByText('Overall Yield')).toBeTruthy()
     expect(screen.getByText('US/Canada Rate')).toBeTruthy()
     expect(screen.getByText('Visa Path Known')).toBeTruthy()
     expect(screen.getByText('Interested Rate')).toBeTruthy()
     expect(screen.getByText('Duplicate Rate')).toBeTruthy()
+    // Posting Precision label removed — replaced by validity/relevance/yield
+    expect(screen.queryByText('Posting Precision')).toBeNull()
   })
 
   it('shows targets met count', async () => {
     render(<PipelineEval />)
 
-    expect(await screen.findByText('4/5 targets met')).toBeTruthy()
+    expect(await screen.findByText('7/7 targets met')).toBeTruthy()
+  })
+
+  it('renders "—" for null metric values (legacy data with no signal)', async () => {
+    const dataWithNulls = {
+      ...mockData,
+      metrics: {
+        ...mockData.metrics,
+        validity_rate: { value: null, target: 0.90, met: false, detail: { scored_with_signal: 0, valid_postings: 0 } },
+        relevance_rate: { value: null, target: 0.60, met: false, detail: { valid_postings: 0, real_jobs: 0 } },
+        overall_yield: { value: null, target: 0.50, met: false, detail: { total_discovered: 0, scored: 0, real_jobs: 0 } },
+      },
+    }
+    mockFetchResponse.mockReturnValue(dataWithNulls)
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: () => Promise.resolve(dataWithNulls) } as Response)
+
+    render(<PipelineEval />)
+    await screen.findByText('Validity Rate')
+
+    // Three "—" placeholders should render for the three null metrics
+    const dashes = screen.getAllByText('—')
+    expect(dashes.length).toBeGreaterThanOrEqual(3)
   })
 
   it('displays source breakdown badges', async () => {
@@ -140,7 +167,7 @@ describe('PipelineEval', () => {
     render(<PipelineEval />)
 
     // Wait for data to settle (other elements will render)
-    await screen.findByText('Posting Precision')
+    await screen.findByText('Validity Rate')
 
     // Source Performance should NOT appear
     expect(screen.queryByText('Source Performance')).toBeNull()

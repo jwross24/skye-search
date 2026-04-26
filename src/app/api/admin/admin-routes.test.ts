@@ -309,13 +309,15 @@ describe('GET /api/admin/pipeline-eval', () => {
     const body = await res.json()
 
     expect(body.period).toBe('30d')
-    expect(body.metrics.posting_precision).toBeDefined()
+    expect(body.metrics.validity_rate).toBeDefined()
+    expect(body.metrics.relevance_rate).toBeDefined()
+    expect(body.metrics.overall_yield).toBeDefined()
     expect(body.metrics.us_canada_rate).toBeDefined()
     expect(body.metrics.visa_known_rate).toBeDefined()
     expect(body.metrics.interested_rate).toBeDefined()
     expect(body.metrics.duplicate_rate).toBeDefined()
     expect(body.source_breakdown).toBeDefined()
-    log('pipeline-eval', `All 5 metrics present, period=${body.period}`)
+    log('pipeline-eval', `All 7 metrics present, period=${body.period}`)
   })
 
   it('[admin] computes rates from job data', async () => {
